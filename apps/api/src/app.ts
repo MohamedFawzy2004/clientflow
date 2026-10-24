@@ -16,6 +16,8 @@ import { noStore, originCheck, securityHeaders } from './middleware/security.js'
 import { authRouter } from './modules/auth/routes.js';
 import { cookieSettings } from './modules/auth/session.js';
 import { contactsRouter } from './modules/contacts/routes.js';
+import { dealsRouter } from './modules/deals/routes.js';
+import { salesRouter } from './modules/sales/routes.js';
 import { healthRouter } from './modules/health/routes.js';
 import { invitationsRouter } from './modules/invitations/routes.js';
 import { teamRouter } from './modules/team/routes.js';
@@ -67,8 +69,10 @@ export function createApp(deps: AppDeps): Express {
 
   api.use('/auth', authRouter(deps, limiters));
   api.use('/contacts', contactsRouter(deps));
+  api.use('/deals', dealsRouter(deps));
   api.use('/invitations', invitationsRouter(deps, limiters));
   api.use('/users', requireAuth, teamRouter(deps));
+  api.use(salesRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', api);
