@@ -10,10 +10,11 @@ import 'dotenv/config';
 
 const run = (cmd: string, args: string[], env: NodeJS.ProcessEnv = {}) => {
   // npm needs a shell on Windows, and the shell splits unquoted arguments on spaces.
-  const quoted = args.map((a) => (/\s/.test(a) ? `"${a}"` : a));
+  const useShell = process.platform === 'win32';
+  const quoted = useShell ? args.map((a) => (/\s/.test(a) ? `"${a}"` : a)) : args;
   const res = spawnSync(cmd, quoted, {
     stdio: 'inherit',
-    shell: process.platform === 'win32',
+    shell: useShell,
     env: { ...process.env, ...env },
   });
   if (res.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed with ${res.status}`);

@@ -1,0 +1,13 @@
+# Secret scanning config (SEC-21). Extends the default gitleaks rules.
+# The allowlist names exact fictional test passphrases only. Never add paths or broad patterns:
+# a real key committed to a test file must still fail the scan.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fictional passphrases used in automated tests (not credentials for any system)"
+regexTarget = "secret"
+regexes = [
+  '''quiet-harbor-lantern-58''',
+  '''tidal-copper-meadow-29''',
+]
