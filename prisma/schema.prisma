@@ -1,0 +1,172 @@
+// ClientFlow database schema. TypeScript uses camelCase, PostgreSQL uses snake_case (spec §23.2).
+// Check constraints, the audit append-only trigger and other rules Prisma cannot express
+// are added as SQL inside the migration files.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../apps/api/src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  importFileExtension    = "js"
+  generatedFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  SALES_MANAGER
+  SALES
+  PM
+  MEMBER
+  FINANCE
+  CLIENT
+}
+
+enum ContactLifecycle {
+  LEAD
+  CUSTOMER
+}
+
+enum ContactSource {
+  REFERRAL
+  WEBSITE
+  SOCIAL
+  EVENT
+  OUTBOUND
+  PARTNER
+  OTHER
+}
+
+enum AuditOutcome {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+model Agency {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  name            String   @db.VarChar(200)
+  slug            String   @unique @db.VarChar(80)
+  defaultCurrency String   @default("EGP") @map("default_currency") @db.Char(3)
+  timezone        String   @default("Africa/Cairo") @db.VarChar(64)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  users       User[]
+  contacts    Contact[]
+  activities  Activity[]
+  auditEvents AuditEvent[]
+
+  @@map("agencies")
+}
+
+model User {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  agencyId     String    @map("agency_id") @db.Uuid
+  emailNorm    String    @map("email_norm") @db.VarChar(254)
+  name         String    @db.VarChar(120)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         Role
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency        Agency       @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  sessions      Session[]
+  ownedContacts Contact[]    @relation("ContactOwner")
+  activities    Activity[]
+  auditEvents   AuditEvent[]
+
+  @@unique([agencyId, emailNorm])
+  // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
+  @@unique([agencyId, id])
+  @@index([emailNorm])
+  @@map("users")
+}
+
+model Session {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Contact {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  agencyId     String           @map("agency_id") @db.Uuid
+  ownerId      String           @map("owner_id") @db.Uuid
+  fullName     String           @map("full_name") @db.VarChar(200)
+  emailNorm    String?          @map("email_norm") @db.VarChar(254)
+  phone        String?          @db.VarChar(40)
+  phoneNorm    String?          @map("phone_norm") @db.VarChar(20)
+  companyName  String?          @map("company_name") @db.VarChar(200)
+  lifecycle    ContactLifecycle @default(LEAD)
+  source       ContactSource?
+  nextActionAt DateTime?        @map("next_action_at") @db.Timestamptz(3)
+  notes        String?          @db.VarChar(5000)
+  archivedAt   DateTime?        @map("archived_at") @db.Timestamptz(3)
+  version      Int              @default(1)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  // Composite FK: the owner must belong to the same agency as the contact.
+  owner  User   @relation("ContactOwner", fields: [agencyId, ownerId], references: [agencyId, id], onDelete: Restrict)
+
+  @@index([agencyId, ownerId, createdAt(sort: Desc)])
+  @@index([agencyId, createdAt(sort: Desc)])
+  @@index([agencyId, emailNorm])
+  @@index([agencyId, phoneNorm])
+  @@map("contacts")
+}
+
+model Activity {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  agencyId   String   @map("agency_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  entityType String   @map("entity_type") @db.VarChar(40)
+  entityId   String   @map("entity_id") @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(60)
+  summary    String   @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  actor  User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([agencyId, entityType, entityId, createdAt(sort: Desc)])
+  @@map("activities")
+}
+
+model AuditEvent {
+  id               String       @id @default(uuid(7)) @db.Uuid
+  agencyId         String?      @map("agency_id") @db.Uuid
+  actorId          String?      @map("actor_id") @db.Uuid
+  action           String       @db.VarChar(80)
+  targetType       String?      @map("target_type") @db.VarChar(40)
+  targetId         String?      @map("target_id") @db.Uuid
+  outcome          AuditOutcome
+  requestId        String?      @map("request_id") @db.VarChar(64)
+  metadataRedacted Json?        @map("metadata_redacted")
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency Agency? @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  actor  User?   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([agencyId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_events")
+}

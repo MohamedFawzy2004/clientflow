@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+apps/api/src/generated
+prisma/migrations
+package-lock.json
+CLIENTFLOW_MASTER_SPEC.md
+docs/specification
+docs/REQUIREMENTS_TRACEABILITY.csv
