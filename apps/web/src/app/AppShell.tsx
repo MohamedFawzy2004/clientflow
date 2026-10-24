@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
-import { LayoutDashboard, LogOut, Menu, UserCog, Users, X } from 'lucide-react';
+import {
+  Briefcase,
+  CalendarClock,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  UserCog,
+  Users,
+  X,
+} from 'lucide-react';
 import { can, canAny, ROLE_LABELS, type Role, type SessionUser } from '@clientflow/contracts';
 import { toast } from 'sonner';
 import { Avatar, Wordmark } from '../components/ui/brand';
@@ -30,7 +39,16 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
   },
   {
     group: 'Sales',
-    items: [{ to: '/app/leads', label: 'Leads', icon: Users, visible: canSeeLeads }],
+    items: [
+      { to: '/app/follow-ups', label: 'Follow-ups', icon: CalendarClock, visible: canSeeLeads },
+      { to: '/app/leads', label: 'Leads', icon: Users, visible: canSeeLeads },
+      {
+        to: '/app/deals',
+        label: 'Deals',
+        icon: Briefcase,
+        visible: (r) => canAny(r, ['deals.read.all', 'deals.read.own']),
+      },
+    ],
   },
   {
     group: 'Workspace',
