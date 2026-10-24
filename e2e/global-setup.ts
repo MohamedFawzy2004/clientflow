@@ -39,6 +39,8 @@ export default async function globalSetup() {
     owner: { email: 'owner@e2e.test', password: password() },
     salesA: { email: 'sales.a@e2e.test', password: password() },
     salesB: { email: 'sales.b@e2e.test', password: password() },
+    // Owned by the M2 password-reset test, which changes this user's password.
+    resetUser: { email: 'reset.user@e2e.test', password: password() },
   };
 
   run(
@@ -62,6 +64,7 @@ export default async function globalSetup() {
   for (const [key, name] of [
     ['salesA', 'Sami Ahmed'],
     ['salesB', 'Basma Nabil'],
+    ['resetUser', 'Rana Fathy'],
   ] as const) {
     const passwordHash = await hash(creds[key].password, {
       algorithm: 2,
