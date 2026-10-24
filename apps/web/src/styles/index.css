@@ -1,0 +1,121 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens from the master spec §7.2. Measured WCAG contrast (2026-10-24):
+ * on white: text 16.4, muted 5.97, primary 4.90, info 6.79, success 5.86, warning 5.29, danger 6.50.
+ * primary drops to 4.47 on surface-alt and 4.33 on primary-soft, so teal TEXT on tinted
+ * backgrounds uses primary-strong (#056B61, 5.84+). subtle (3.5) is for icons/borders only.
+ */
+@theme {
+  --color-bg: #f7f9fc;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1f5f9;
+  --color-text: #122033;
+  --color-muted: #53657b;
+  --color-subtle: #7a8a9e;
+  --color-primary: #087f72;
+  --color-primary-hover: #056b61;
+  --color-primary-strong: #056b61;
+  --color-primary-soft: #e6f4f2;
+  --color-info: #2859a9;
+  --color-info-soft: #eaf1fb;
+  --color-success: #15734a;
+  --color-success-soft: #e8f5ee;
+  --color-warning: #946100;
+  --color-warning-soft: #fdf4e3;
+  --color-danger: #b42333;
+  --color-danger-soft: #fcebed;
+  --color-border: #dce4ed;
+  --color-border-strong: #c3cfdc;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-card: 0 3px 14px rgba(16, 36, 60, 0.05);
+  --shadow-pop: 0 12px 40px rgba(16, 36, 60, 0.14);
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Spec §7.3 breakpoints: tablet 768, laptop 1024, wide 1440. */
+  --breakpoint-wide: 90rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+    font-size: 14px;
+    line-height: 21px;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-primary-soft);
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes cf-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Tailwind v4 centers dialogs with the `translate` property, so this keyframe must not touch
+   translate: it only animates `transform` (scale + small rise), which composes with it. */
+@keyframes cf-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cf-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes cf-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}

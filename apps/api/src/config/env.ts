@@ -1,0 +1,42 @@
+import { z } from 'zod';
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  DATABASE_URL: z.string().url().startsWith('postgresql://'),
+  API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+  APP_ORIGINS: z
+    .string()
+    .min(1)
+    .transform((v) =>
+      v
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().url()).min(1)),
+  CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+const PLACEHOLDER_MARKERS = ['change-me', 'replace-with'];
+
+/** Validates process.env once. Fails closed on missing or placeholder secrets (SEC-16). */
+export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  const parsed = envSchema.safeParse(source);
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+    throw new Error(`Invalid environment configuration: ${issues}`);
+  }
+  const env = parsed.data;
+  const secrets = [env.CSRF_SECRET, env.DATABASE_URL];
+  if (secrets.some((s) => PLACEHOLDER_MARKERS.some((m) => s.includes(m)))) {
+    throw new Error('Environment still contains placeholder secrets from .env.example.');
+  }
+  if (env.NODE_ENV === 'production' && env.APP_ORIGINS.some((o) => !o.startsWith('https://'))) {
+    throw new Error('APP_ORIGINS must use https:// in production.');
+  }
+  return env;
+}
