@@ -31,7 +31,7 @@ export default async function globalSetup() {
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   await client.query(
-    'TRUNCATE TABLE audit_events, activities, contacts, sessions, password_reset_tokens, invitations, users, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE audit_events, activities, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, agencies RESTART IDENTITY CASCADE',
   );
 
   const password = () => randomBytes(18).toString('base64url');
@@ -39,6 +39,8 @@ export default async function globalSetup() {
     owner: { email: 'owner@e2e.test', password: password() },
     salesA: { email: 'sales.a@e2e.test', password: password() },
     salesB: { email: 'sales.b@e2e.test', password: password() },
+    // Owned by the M2 password-reset test, which changes this user's password.
+    resetUser: { email: 'reset.user@e2e.test', password: password() },
   };
 
   run(
@@ -62,6 +64,7 @@ export default async function globalSetup() {
   for (const [key, name] of [
     ['salesA', 'Sami Ahmed'],
     ['salesB', 'Basma Nabil'],
+    ['resetUser', 'Rana Fathy'],
   ] as const) {
     const passwordHash = await hash(creds[key].password, {
       algorithm: 2,

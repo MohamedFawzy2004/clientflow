@@ -10,7 +10,7 @@ const SINK = 'e2e/.mail-sink';
 const SHOTS = 'docs/milestones/m2-screenshots';
 const creds = () =>
   JSON.parse(readFileSync('e2e/.auth/credentials.json', 'utf8')) as Record<
-    'owner' | 'salesA' | 'salesB',
+    'owner' | 'salesA' | 'salesB' | 'resetUser',
     { email: string; password: string }
   >;
 
@@ -148,7 +148,7 @@ test.describe.serial('M2 identity journey', () => {
   test('forgot password → emailed link → new password works, old one does not', async ({
     page,
   }) => {
-    const who = creds().salesB;
+    const who = creds().resetUser;
     const newPassword = 'harbor-violet-quartz-63';
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto('/login');

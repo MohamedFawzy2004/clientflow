@@ -190,6 +190,102 @@ try {
           eventType: 'contact.created',
           summary: `Lead added by ${ownerName}`,
           createdAt: contact.createdAt,
+          occurredAt: contact.createdAt,
+        },
+      });
+    }
+  }
+
+  // Fictional deals across stages and two currencies (spec §21), added once.
+  if ((await db.deal.count({ where: { agencyId: agency.id } })) === 0) {
+    const pipeline = await db.pipeline.findFirstOrThrow({
+      where: { agencyId: agency.id, isDefault: true },
+      include: { stages: { orderBy: { position: 'asc' } } },
+    });
+    const contacts = await db.contact.findMany({
+      where: { agencyId: agency.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    const day = 86_400_000;
+    const DEALS: Array<{
+      contact: number;
+      title: string;
+      amount: bigint;
+      currency: string;
+      stage: number;
+      nextStep?: string;
+      inDays?: number;
+      lost?: string;
+    }> = [
+      {
+        contact: 0,
+        title: 'Online ordering website',
+        amount: 18_500_000n,
+        currency: 'EGP',
+        stage: 3,
+        nextStep: 'Send revised scope',
+        inDays: 1,
+      },
+      {
+        contact: 1,
+        title: 'Fleet tracking dashboard',
+        amount: 4_200_000n,
+        currency: 'USD',
+        stage: 2,
+        nextStep: 'Discovery call with ops lead',
+        inDays: -2,
+      },
+      { contact: 2, title: 'Clinic booking app', amount: 32_000_000n, currency: 'EGP', stage: 1 },
+      {
+        contact: 3,
+        title: 'Property listings portal',
+        amount: 9_750_050n,
+        currency: 'EGP',
+        stage: 0,
+        nextStep: 'Qualify budget',
+        inDays: 4,
+      },
+      {
+        contact: 4,
+        title: 'Fashion e-commerce migration',
+        amount: 27_500_000n,
+        currency: 'EGP',
+        stage: 4,
+        nextStep: 'Negotiate payment schedule',
+        inDays: 0,
+      },
+      {
+        contact: 6,
+        title: 'Tour packages site',
+        amount: 1_850_000n,
+        currency: 'USD',
+        stage: 1,
+        lost: 'Chose a template platform',
+      },
+    ];
+    for (const d of DEALS) {
+      const contact = contacts[d.contact];
+      if (!contact) continue;
+      await db.deal.create({
+        data: {
+          agencyId: agency.id,
+          contactId: contact.id,
+          ownerId: contact.ownerId,
+          pipelineId: pipeline.id,
+          stageId: pipeline.stages[d.stage]!.id,
+          title: d.title,
+          amountMinor: d.amount,
+          currency: d.currency,
+          nextStep: d.nextStep ?? null,
+          nextStepAt: d.inDays === undefined ? null : new Date(Date.now() + d.inDays * day),
+          ...(d.lost
+            ? {
+                status: 'LOST' as const,
+                closedAt: new Date(),
+                closedById: contact.ownerId,
+                lostReason: d.lost,
+              }
+            : {}),
         },
       });
     }

@@ -1,5 +1,7 @@
-import type { ActivityItem, ContactDetail, ContactSummary } from '@clientflow/contracts';
+import type { ContactDetail, ContactSummary, ContactWithDeals } from '@clientflow/contracts';
 import type { Activity, Contact, User } from '../../generated/prisma/client.js';
+import { toTimelineEntry } from '../../lib/timeline.js';
+import { type DealRow, toDealSummary } from '../deals/serializer.js';
 
 type ContactWithOwner = Contact & { owner: Pick<User, 'id' | 'name'> };
 type ActivityWithActor = Activity & { actor: Pick<User, 'id' | 'name'> | null };
@@ -16,19 +18,11 @@ export function toContactSummary(c: ContactWithOwner): ContactSummary {
     source: c.source,
     owner: { id: c.owner.id, name: c.owner.name },
     nextActionAt: c.nextActionAt?.toISOString() ?? null,
+    convertedAt: c.convertedAt?.toISOString() ?? null,
+    archivedAt: c.archivedAt?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
     version: c.version,
-  };
-}
-
-export function toActivityItem(a: ActivityWithActor): ActivityItem {
-  return {
-    id: a.id,
-    eventType: a.eventType,
-    summary: a.summary,
-    actor: a.actor ? { id: a.actor.id, name: a.actor.name } : null,
-    createdAt: a.createdAt.toISOString(),
   };
 }
 
@@ -36,5 +30,13 @@ export function toContactDetail(
   c: ContactWithOwner,
   activities: ActivityWithActor[],
 ): ContactDetail {
-  return { ...toContactSummary(c), notes: c.notes, activities: activities.map(toActivityItem) };
+  return { ...toContactSummary(c), notes: c.notes, activities: activities.map(toTimelineEntry) };
+}
+
+export function toContactWithDeals(
+  c: ContactWithOwner,
+  activities: ActivityWithActor[],
+  deals: DealRow[],
+): ContactWithDeals {
+  return { ...toContactDetail(c, activities), deals: deals.map(toDealSummary) };
 }
