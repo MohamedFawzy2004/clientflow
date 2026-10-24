@@ -1,4 +1,10 @@
-import type { Currency, DealDetail, DealSummary, TimelineEntry } from '@clientflow/contracts';
+import {
+  proposalReference,
+  type Currency,
+  type DealDetail,
+  type DealSummary,
+  type TimelineEntry,
+} from '@clientflow/contracts';
 import type { Contact, Deal, PipelineStage, User } from '../../generated/prisma/client.js';
 import { formatDateOnly } from '../../lib/agency-time.js';
 
@@ -36,7 +42,13 @@ export function toDealSummary(d: DealRow): DealSummary {
 }
 
 export function toDealDetail(
-  d: DealRow & { closedBy: Pick<User, 'id' | 'name'> | null },
+  d: DealRow & {
+    closedBy: Pick<User, 'id' | 'name'> | null;
+    acceptedProposalVersion: {
+      versionNo: number;
+      proposal: { id: string; number: number };
+    } | null;
+  },
   activities: TimelineEntry[],
 ): DealDetail {
   return {
@@ -44,6 +56,13 @@ export function toDealDetail(
     lostReason: d.lostReason,
     wonOverrideReason: d.wonOverrideReason,
     closedBy: d.closedBy ? { id: d.closedBy.id, name: d.closedBy.name } : null,
+    acceptedProposal: d.acceptedProposalVersion
+      ? {
+          id: d.acceptedProposalVersion.proposal.id,
+          reference: proposalReference(d.acceptedProposalVersion.proposal.number),
+          versionNo: d.acceptedProposalVersion.versionNo,
+        }
+      : null,
     activities,
   };
 }

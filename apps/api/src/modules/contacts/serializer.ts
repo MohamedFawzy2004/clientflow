@@ -34,9 +34,13 @@ export function toContactDetail(
 }
 
 export function toContactWithDeals(
-  c: ContactWithOwner,
+  c: ContactWithOwner & { clientOrg?: { id: string; name: string } | null },
   activities: ActivityWithActor[],
   deals: DealRow[],
 ): ContactWithDeals {
-  return { ...toContactDetail(c, activities), deals: deals.map(toDealSummary) };
+  return {
+    ...toContactDetail(c, activities),
+    clientOrg: c.clientOrg ? { id: c.clientOrg.id, name: c.clientOrg.name } : null,
+    deals: deals.map(toDealSummary),
+  };
 }

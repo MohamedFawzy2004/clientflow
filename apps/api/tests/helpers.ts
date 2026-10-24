@@ -22,7 +22,7 @@ export function testDb(): Db {
 /** TRUNCATE skips row-level triggers, so the append-only audit table can still be reset. */
 export async function resetDb(db = testDb()) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE audit_events, activities, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE audit_events, activities, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 }
 

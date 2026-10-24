@@ -11,7 +11,8 @@ type Tx = Prisma.TransactionClient;
 export async function listMembers({ db }: AppDeps, actor: AuthUser): Promise<TeamMember[]> {
   const now = new Date();
   const users = await db.user.findMany({
-    where: { agencyId: actor.agencyId },
+    // Portal (CLIENT) users are managed per client organization, not on the team page.
+    where: { agencyId: actor.agencyId, role: { not: 'CLIENT' } },
     orderBy: [{ active: 'desc' }, { name: 'asc' }],
     include: {
       _count: { select: { sessions: { where: { revokedAt: null, expiresAt: { gt: now } } } } },
@@ -44,7 +45,9 @@ async function loadForChange(tx: Tx, actor: AuthUser, targetId: string, action: 
   if (!UUID_PATTERN.test(targetId)) throw notFound();
   const [current, target] = await Promise.all([
     tx.user.findUnique({ where: { id: actor.id }, select: { role: true, active: true } }),
-    tx.user.findFirst({ where: { id: targetId, agencyId: actor.agencyId } }),
+    tx.user.findFirst({
+      where: { id: targetId, agencyId: actor.agencyId, role: { not: 'CLIENT' } },
+    }),
   ]);
   if (!current?.active || !can(current.role, 'team.manage')) throw forbidden();
   if (!target) throw notFound();

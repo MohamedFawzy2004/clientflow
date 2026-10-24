@@ -112,6 +112,8 @@ export interface SessionUser {
   email: string;
   role: Role;
   agency: { id: string; name: string; defaultCurrency: string; timezone: string };
+  /** CLIENT users only: the organization they belong to. */
+  clientOrg: { id: string; name: string } | null;
 }
 
 export interface LoginResponse {
@@ -288,6 +290,8 @@ export interface InvitationPreview {
   email: string;
   role: Role;
   agencyName: string;
+  /** Portal invitations: the client organization the person will belong to. */
+  clientOrgName: string | null;
   expiresAt: string;
 }
 

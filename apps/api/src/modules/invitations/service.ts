@@ -47,7 +47,7 @@ const invitedBySelect = { invitedBy: { select: { id: true, name: true } } } as c
 
 export async function listInvitations({ db }: AppDeps, actor: AuthUser) {
   const rows = await db.invitation.findMany({
-    where: { agencyId: actor.agencyId },
+    where: { agencyId: actor.agencyId, role: { not: 'CLIENT' } },
     include: invitedBySelect,
     orderBy: { createdAt: 'desc' },
     take: 100,
@@ -144,7 +144,7 @@ export async function createInvitation(
 async function findAgencyInvitation(deps: AppDeps, actor: AuthUser, id: string) {
   if (!UUID_PATTERN.test(id)) throw notFound();
   const inv = await deps.db.invitation.findFirst({
-    where: { id, agencyId: actor.agencyId },
+    where: { id, agencyId: actor.agencyId, role: { not: 'CLIENT' } },
     include: invitedBySelect,
   });
   if (!inv) throw notFound();
@@ -198,9 +198,10 @@ export async function resendInvitation(
 async function findOpenInvitation(deps: AppDeps, token: string) {
   const inv = await deps.db.invitation.findUnique({
     where: { tokenHash: sha256Hex(token) },
-    include: { agency: true },
+    include: { agency: true, clientOrg: true },
   });
   if (!inv || invitationStatus(inv) !== 'PENDING') throw tokenInvalid('invitation');
+  if (inv.clientOrg?.archivedAt) throw tokenInvalid('invitation');
   return inv;
 }
 
@@ -210,6 +211,7 @@ export async function previewInvitation(deps: AppDeps, token: string) {
     email: inv.emailNorm,
     role: inv.role,
     agencyName: inv.agency.name,
+    clientOrgName: inv.clientOrg?.name ?? null,
     expiresAt: inv.expiresAt.toISOString(),
   };
 }
@@ -236,9 +238,15 @@ export async function acceptInvitation(
 
   return db.$transaction(async (tx) => {
     const locked = await tx.$queryRaw<
-      Array<{ id: string; agency_id: string; email_norm: string; role: Role }>
+      Array<{
+        id: string;
+        agency_id: string;
+        email_norm: string;
+        role: Role;
+        client_org_id: string | null;
+      }>
     >`
-      SELECT id, agency_id, email_norm, role FROM invitations
+      SELECT id, agency_id, email_norm, role, client_org_id FROM invitations
       WHERE token_hash = ${tokenHash} AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
       FOR UPDATE`;
     const inv = locked[0];
@@ -256,6 +264,7 @@ export async function acceptInvitation(
         emailNorm: inv.email_norm,
         name: input.name,
         role: inv.role,
+        clientOrgId: inv.client_org_id,
         passwordHash,
       },
       include: { agency: true },

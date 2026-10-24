@@ -109,7 +109,7 @@ export async function getContact(db: Db, actor: AuthUser, id: string) {
   if (!UUID_PATTERN.test(id)) throw notFound();
   const contact = await db.contact.findFirst({
     where: { AND: [scope, { id }] },
-    include: { owner: ownerSelect },
+    include: { owner: ownerSelect, clientOrg: { select: { id: true, name: true } } },
   });
   if (!contact) throw notFound();
   const activities = await db.activity.findMany({

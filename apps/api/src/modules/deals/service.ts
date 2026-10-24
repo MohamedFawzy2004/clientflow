@@ -106,7 +106,13 @@ async function findReadable(db: Db | Tx, actor: AuthUser, id: string) {
   if (!UUID_PATTERN.test(id)) throw notFound();
   const deal = await db.deal.findFirst({
     where: { AND: [dealReadScope(actor), { id }] },
-    include: { ...dealInclude, closedBy: { select: { id: true, name: true } } },
+    include: {
+      ...dealInclude,
+      closedBy: { select: { id: true, name: true } },
+      acceptedProposalVersion: {
+        select: { versionNo: true, proposal: { select: { id: true, number: true } } },
+      },
+    },
   });
   if (!deal) throw notFound();
   return deal;
@@ -379,14 +385,12 @@ export async function closeDeal(
     if (input.outcome === 'WON') {
       if (!can(actor.role, 'deals.override_won')) {
         throw forbidden(
-          'Marking a deal won needs an accepted proposal or a sales manager’s confirmation.',
+          'A deal is won when the client accepts a proposal, or by a sales manager’s documented override.',
         );
       }
       if (!input.overrideReason) {
         throw validationFailed({
-          overrideReason: [
-            'Explain why this deal is won without an accepted proposal (proposals arrive in a later release).',
-          ],
+          overrideReason: ['Explain why this deal is won without a client-accepted proposal.'],
         });
       }
     }
