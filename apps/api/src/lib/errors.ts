@@ -27,3 +27,23 @@ export const csrfInvalid = () =>
 
 export const validationFailed = (fieldErrors: Record<string, string[]>) =>
   new AppError(422, 'VALIDATION_FAILED', 'Some fields need your attention.', fieldErrors);
+
+/** Business-rule conflict, e.g. removing the last owner or inviting an existing member. */
+export const conflict = (message: string) => new AppError(409, 'CONFLICT', message);
+
+export const staleVersion = () =>
+  new AppError(
+    409,
+    'CONFLICT_STALE_VERSION',
+    'This record changed since you opened it. Refresh to see the latest version.',
+  );
+
+/** Same message for unknown, used, expired and revoked links, so they cannot be told apart. */
+export const tokenInvalid = (what: 'invitation' | 'reset') =>
+  new AppError(
+    400,
+    'TOKEN_INVALID',
+    what === 'invitation'
+      ? 'This invitation link is invalid or has expired. Ask your admin for a new one.'
+      : 'This reset link is invalid or has expired. Request a new one.',
+  );

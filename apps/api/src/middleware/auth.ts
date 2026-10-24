@@ -1,8 +1,13 @@
 import type { RequestHandler } from 'express';
-import type { Role } from '@clientflow/contracts';
+import { canAny, type Permission } from '@clientflow/contracts';
 import type { Db } from '../db/client.js';
 import { csrfInvalid, forbidden, unauthenticated } from '../lib/errors.js';
-import { type CookieSettings, resolveSession, verifySessionCsrf } from '../modules/auth/session.js';
+import {
+  type CookieSettings,
+  resolveSession,
+  verifyPreSessionCsrf,
+  verifySessionCsrf,
+} from '../modules/auth/session.js';
 import { isSafeMethod } from './security.js';
 
 /** Attaches req.auth when a valid session cookie is present. Never rejects by itself. */
@@ -38,16 +43,38 @@ export function csrfProtection(secret: string): RequestHandler {
   };
 }
 
+/**
+ * CSRF for forms used while signed out (login, invitation acceptance, password reset).
+ * Accepts a valid pre-session token (cookie + matching header), or, when the browser already has
+ * a session, that session's token.
+ */
+export function requireFormCsrf(secret: string, cookies: CookieSettings): RequestHandler {
+  return (req, _res, next) => {
+    const header = req.get('x-csrf-token');
+    const preCookie = req.cookies?.[cookies.preCsrfName] as string | undefined;
+    const ok =
+      verifyPreSessionCsrf(secret, preCookie, header) ||
+      (req.auth !== undefined &&
+        header !== undefined &&
+        verifySessionCsrf(secret, req.auth.sessionTokenHash, header));
+    if (!ok) return next(csrfInvalid());
+    next();
+  };
+}
+
 export const requireAuth: RequestHandler = (req, _res, next) => {
   if (!req.auth) return next(unauthenticated());
   next();
 };
 
-export function requireRole(...roles: Role[]): RequestHandler {
-  const allowed = new Set<Role>(roles);
+/**
+ * Capability gate from the declarative matrix (packages/contracts/src/permissions.ts).
+ * Passes when the role holds ANY listed permission. Record scope is still checked in services.
+ */
+export function requirePermission(...permissions: Permission[]): RequestHandler {
   return (req, _res, next) => {
     if (!req.auth) return next(unauthenticated());
-    if (!allowed.has(req.auth.user.role)) return next(forbidden());
+    if (!canAny(req.auth.user.role, permissions)) return next(forbidden());
     next();
   };
 }

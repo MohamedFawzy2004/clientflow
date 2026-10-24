@@ -7,6 +7,7 @@ import { createDb, type Db } from '../src/db/client.js';
 import { createLogger } from '../src/middleware/logger.js';
 import { bootstrapOwner } from '../src/modules/auth/bootstrap.js';
 import { hashPassword } from '../src/lib/password.js';
+import { MemoryMailer } from '../src/lib/mailer.js';
 
 export const ORIGIN = 'http://localhost:5173';
 export const CSRF_SECRET = 'test-csrf-secret-that-is-long-enough-1234567890';
@@ -21,13 +22,16 @@ export function testDb(): Db {
 /** TRUNCATE skips row-level triggers, so the append-only audit table can still be reset. */
 export async function resetDb(db = testDb()) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE audit_events, activities, contacts, sessions, users, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE audit_events, activities, contacts, sessions, password_reset_tokens, invitations, users, agencies RESTART IDENTITY CASCADE',
   );
 }
 
 export interface TestApp {
   app: Express;
   logs: string[];
+  mailer: MemoryMailer;
+  /** Resolves once work started after a response (e.g. reset emails) has finished. */
+  settled: () => Promise<void>;
 }
 
 export function makeApp(overrides: Partial<AppConfig> = {}, db: Db = testDb()): TestApp {
@@ -38,18 +42,26 @@ export function makeApp(overrides: Partial<AppConfig> = {}, db: Db = testDb()): 
       cb();
     },
   });
+  const mailer = new MemoryMailer();
+  const pending: Promise<unknown>[] = [];
   const app = createApp({
     db,
     logger: createLogger('info', sink),
+    mailer,
+    background: (work) => pending.push(work),
     config: {
       isProduction: false,
       appOrigins: [ORIGIN],
       csrfSecret: CSRF_SECRET,
       trustProxy: 0,
+      publicUrl: ORIGIN,
       ...overrides,
     },
   });
-  return { app, logs };
+  const settled = async () => {
+    await Promise.all(pending.splice(0));
+  };
+  return { app, logs, mailer, settled };
 }
 
 export interface SeededAgency {

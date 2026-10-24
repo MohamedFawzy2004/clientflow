@@ -55,6 +55,8 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'VALIDATION_FAILED'
   | 'CONFLICT_STALE_VERSION'
+  | 'CONFLICT'
+  | 'TOKEN_INVALID'
   | 'MALFORMED_REQUEST'
   | 'PAYLOAD_TOO_LARGE'
   | 'RATE_LIMITED'
@@ -221,3 +223,95 @@ export interface PossibleDuplicate {
 export interface ContactCreateMeta {
   possibleDuplicates: PossibleDuplicate[];
 }
+
+// ---------------------------------------------------------------------------
+// Passwords, invitations, password reset, team (M2)
+// ---------------------------------------------------------------------------
+
+export * from './permissions.js';
+export * from './time.js';
+
+/** Shape rules only. The server also rejects common and breached passwords (SEC-03). */
+export const newPasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters.`)
+  .max(PASSWORD_MAX_LENGTH, `Use at most ${PASSWORD_MAX_LENGTH} characters.`);
+
+/** Opaque one-time tokens are base64url, 43 characters for 32 random bytes. */
+const tokenField = z.string().regex(/^[A-Za-z0-9_-]{32,64}$/, 'This link is not valid.');
+
+const staffRoleEnum = z.enum(
+  ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES', 'PM', 'MEMBER', 'FINANCE'],
+  { message: 'Choose a role from the list.' },
+);
+
+export const invitationCreateSchema = z.object({ email: emailField, role: staffRoleEnum }).strict();
+export type InvitationCreate = z.infer<typeof invitationCreateSchema>;
+
+export const invitationTokenSchema = z.object({ token: tokenField }).strict();
+
+export const invitationAcceptSchema = z
+  .object({
+    token: tokenField,
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Enter your name.')
+      .max(120, 'Name must be 120 characters or fewer.'),
+    password: newPasswordSchema,
+  })
+  .strict();
+export type InvitationAccept = z.infer<typeof invitationAcceptSchema>;
+
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+
+export interface InvitationSummary {
+  id: string;
+  email: string;
+  role: Role;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+  invitedBy: { id: string; name: string };
+}
+
+export interface InvitationCreated {
+  invitation: InvitationSummary;
+  /** Shown once to the inviter so the invite works even without email delivery. */
+  acceptUrl: string;
+  emailDelivery: 'sent_to_dev_sink' | 'disabled';
+}
+
+export interface InvitationPreview {
+  email: string;
+  role: Role;
+  agencyName: string;
+  expiresAt: string;
+}
+
+export const passwordResetRequestSchema = z.object({ email: emailField }).strict();
+export const passwordResetConfirmSchema = z
+  .object({ token: tokenField, password: newPasswordSchema })
+  .strict();
+
+export type MemberStatus = 'ACTIVE' | 'DEACTIVATED';
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  status: MemberStatus;
+  lastLoginAt: string | null;
+  activeSessions: number;
+  createdAt: string;
+  version: number;
+  isSelf: boolean;
+}
+
+export const memberUpdateSchema = z
+  .object({ role: staffRoleEnum, version: z.number().int().positive() })
+  .strict();
+export type MemberUpdate = z.infer<typeof memberUpdateSchema>;
+
+export const memberActionSchema = z.object({ version: z.number().int().positive() }).strict();

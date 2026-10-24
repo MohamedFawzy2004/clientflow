@@ -1,0 +1,20 @@
+# Secret scanning config (SEC-21). Extends the default gitleaks rules.
+# Allowlisted values are fictional test fixtures only, never paths or folders: a real key
+# committed to a test file must still fail the scan.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fictional test fixtures (not credentials for any system)"
+regexTarget = "secret"
+regexes = [
+  # Convention for test passphrases: three or more lowercase words and two digits,
+  # e.g. "amber-orchard-signal-77". Real API keys and tokens never have this shape.
+  '''^[a-z]+(?:-[a-z]+){2,}-[0-9]{2}$''',
+  # Throwaway CSRF secrets used only inside unit/integration tests.
+  '''^test-csrf-secret-that-is-long-enough-1234567890$''',
+  '''^unit-test-secret-unit-test-secret-123$''',
+  '''^another-secret-another-secret-12345$''',
+  # Deliberately weak password used to prove the policy rejects it.
+  '''^qwertyuiop12$''',
+]

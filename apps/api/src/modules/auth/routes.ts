@@ -1,23 +1,26 @@
 import { type RequestHandler, Router } from 'express';
-import { loginRequestSchema, type LoginResponse, type SessionUser } from '@clientflow/contracts';
+import {
+  loginRequestSchema,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+  type SessionUser,
+} from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
 import { writeAudit } from '../../lib/audit.js';
-import { AppError, csrfInvalid } from '../../lib/errors.js';
+import { AppError } from '../../lib/errors.js';
 import { normalizeEmail } from '../../lib/normalize.js';
 import { getDummyHash, verifyPassword } from '../../lib/password.js';
 import { parseOrThrow } from '../../lib/validation.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, requireFormCsrf } from '../../middleware/auth.js';
+import { confirmReset, processResetRequest } from './password-reset.js';
 import {
   cookieSettings,
-  createSession,
   issuePreSessionCsrf,
   preCsrfCookieOptions,
   revokeSession,
-  sessionCookieOptions,
   sessionCsrfToken,
-  verifyPreSessionCsrf,
-  verifySessionCsrf,
 } from './session.js';
+import { signIn } from './sign-in.js';
 import type { AuthContext } from '../../types/express.js';
 
 const INVALID_CREDENTIALS = () =>
@@ -33,15 +36,20 @@ function toSessionUser(auth: AuthContext): SessionUser {
   };
 }
 
-export function authRouter(
-  deps: AppDeps,
-  limiters: { loginPerIp: RequestHandler; loginFailuresPerEmail: RequestHandler },
-) {
-  const { db, config } = deps;
+export interface AuthLimiters {
+  loginPerIp: RequestHandler;
+  loginFailuresPerEmail: RequestHandler;
+  tokenPerIp: RequestHandler;
+  resetRequestsPerEmail: RequestHandler;
+}
+
+export function authRouter(deps: AppDeps, limiters: AuthLimiters) {
+  const { db, config, logger } = deps;
   const cookies = cookieSettings(config.isProduction);
+  const formCsrf = requireFormCsrf(config.csrfSecret, cookies);
   const router = Router();
 
-  // Returns a CSRF token: session-bound when signed in, otherwise a pre-session token for login.
+  // Returns a CSRF token: session-bound when signed in, otherwise a pre-session token for forms.
   router.get('/csrf', (req, res) => {
     if (req.auth) {
       res.json({
@@ -59,26 +67,14 @@ export function authRouter(
     '/login',
     limiters.loginPerIp,
     limiters.loginFailuresPerEmail,
+    formCsrf,
     async (req, res, next) => {
       try {
-        // Signed-out browsers use the pre-session token. A signed-in browser that logs in again
-        // (session rotation) may present its session-bound token instead.
-        const preCookie = req.cookies?.[cookies.preCsrfName] as string | undefined;
-        const header = req.get('x-csrf-token');
-        const csrfOk =
-          verifyPreSessionCsrf(config.csrfSecret, preCookie, header) ||
-          (req.auth !== undefined &&
-            header !== undefined &&
-            verifySessionCsrf(config.csrfSecret, req.auth.sessionTokenHash, header));
-        if (!csrfOk) throw csrfInvalid();
         const input = parseOrThrow(loginRequestSchema, req.body);
         const emailNorm = normalizeEmail(input.email);
 
         // Single agency in v1 (spec §0.2), so the email identifies the account.
-        const user = await db.user.findFirst({
-          where: { emailNorm },
-          include: { agency: true },
-        });
+        const user = await db.user.findFirst({ where: { emailNorm }, include: { agency: true } });
         const passwordOk = user
           ? await verifyPassword(user.passwordHash, input.password)
           : await verifyPassword(await getDummyHash(), input.password).then(() => false);
@@ -95,36 +91,7 @@ export function authRouter(
           throw INVALID_CREDENTIALS();
         }
 
-        // Rotation: an existing session on this browser is revoked before a new one is issued.
-        if (req.auth) await revokeSession(db, req.auth.sessionId);
-
-        const { token, tokenHash } = await createSession(db, user.id);
-        await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-        await writeAudit(db, {
-          agencyId: user.agencyId,
-          actorId: user.id,
-          action: 'auth.login',
-          outcome: 'SUCCESS',
-          requestId: req.requestId,
-        });
-
-        res.clearCookie(cookies.preCsrfName, { path: '/', secure: cookies.secure });
-        res.cookie(cookies.sessionName, token, sessionCookieOptions(cookies));
-        const body: LoginResponse = {
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.emailNorm,
-            role: user.role,
-            agency: {
-              id: user.agency.id,
-              name: user.agency.name,
-              defaultCurrency: user.agency.defaultCurrency,
-              timezone: user.agency.timezone,
-            },
-          },
-          csrfToken: sessionCsrfToken(config.csrfSecret, tokenHash),
-        };
+        const body = await signIn(deps, req, res, user, 'auth.login');
         res.json({ data: body, meta: { requestId: req.requestId } });
       } catch (err) {
         next(err);
@@ -152,6 +119,40 @@ export function authRouter(
 
   router.get('/me', requireAuth, (req, res) => {
     res.json({ data: toSessionUser(req.auth!), meta: { requestId: req.requestId } });
+  });
+
+  // Always the same 202, whether or not the account exists (no enumeration). The work runs after
+  // the response is sent, so timing does not reveal it either.
+  router.post(
+    '/password-reset/request',
+    limiters.tokenPerIp,
+    limiters.resetRequestsPerEmail,
+    formCsrf,
+    (req, res, next) => {
+      try {
+        const { email } = parseOrThrow(passwordResetRequestSchema, req.body);
+        res.status(202).json({
+          data: { message: 'If an active account uses that email, a reset link is on its way.' },
+          meta: { requestId: req.requestId },
+        });
+        const work = processResetRequest(deps, email, req.requestId).catch((err: unknown) =>
+          logger.error({ err, requestId: req.requestId }, 'Password reset request failed'),
+        );
+        deps.background?.(work);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  router.post('/password-reset/confirm', limiters.tokenPerIp, formCsrf, async (req, res, next) => {
+    try {
+      const input = parseOrThrow(passwordResetConfirmSchema, req.body);
+      await confirmReset(deps, input, req.requestId);
+      res.json({ data: { passwordReset: true }, meta: { requestId: req.requestId } });
+    } catch (err) {
+      next(err);
+    }
   });
 
   return router;
