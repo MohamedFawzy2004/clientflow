@@ -87,3 +87,26 @@ E2E found that blur validation on an autofocused, empty field shifted the layout
 ## ADR-021 — Team management rules (ACCEPTED, M2)
 
 Owner and Admin hold `team.*`. Only owners hold `team.manage_owners`: granting OWNER, or changing, deactivating or signing out an owner. Nobody changes their own role or status through team endpoints, so the acting owner always remains, and the last-owner lock (`FOR UPDATE` on owner rows) is defense in depth for races. Role change and deactivation revoke all of the member's sessions in the same transaction; deactivation also voids unused reset links. Edits carry the member's `version`, and stale edits get `409 CONFLICT_STALE_VERSION`. CLIENT can never be granted through staff endpoints (also enforced by a check constraint on invitations).
+
+## ADR-022 — Shared contracts split into a base module plus feature modules (ACCEPTED, M3)
+
+`packages/contracts/src/index.ts` only re-exports `base`, `permissions`, `time`, `money` and `crm`. The CRM schemas once imported values from `index.ts`, and that circular import left them `undefined` at runtime. Feature modules now import from `base.ts` and never from the barrel.
+
+## ADR-023 — Money: BigInt minor units in the database, decimal strings on the wire (ACCEPTED, M3)
+
+Amounts are stored as `BIGINT` minor units with a DB check (0 to 9×10¹⁴) and a supported-currency check (EGP, USD, EUR, GBP, SAR, AED; all have 2 decimals). JSON carries amounts as decimal strings (`"245000.50"`), never as numbers. `parseMoneyToMinor` parses user input with string arithmetic and rejects exponents, negatives and extra decimals. `formatMoney` formats from the string. Totals are computed per currency (`groupBy`) and are never added across currencies; there is no FX conversion. Changing a deal's currency requires re-entering the amount, so a value can never silently change meaning.
+
+## ADR-024 — Marking a deal WON before proposals exist: manager override (ACCEPTED, M3, revisit in M4)
+
+FR-D05 allows WON only with an accepted proposal or a documented, authorized override. Proposals arrive in M4. Until then, WON needs `deals.override_won` (Owner, Admin, Sales manager) **and** a written reason. The reason is stored on the deal and shown in its history. Salespeople see the button disabled with an explanation, and the API returns 403 for them. Winning a deal whose contact is still a LEAD converts that contact to CUSTOMER in the same transaction (same ID, history kept). In M4 the normal WON path will come from an accepted proposal, and the override stays as the exception.
+
+## ADR-025 — `deals.closed_by_id` uses a simple foreign key (ACCEPTED, M3)
+
+Owner, contact, pipeline and stage use composite `(agency_id, …)` foreign keys, so cross-agency links are impossible. `closed_by_id` started that way too, but Prisma cannot model a composite FK on a nullable column that shares `agency_id` with other relations without schema drift. A follow-up migration (`20261024184612_deal_closed_by_fk`) replaced it with a simple FK to `users.id`. The closer is always the authenticated actor from the same agency, set by the server, never from input. `prisma migrate diff` is empty afterwards.
+
+## ADR-026 — Sales record rules (ACCEPTED, M3)
+
+- **Reassignment** (`sales.reassign`) is held by Owner, Admin and Sales manager. The spec names Owner/Admin; Sales manager is added because the role exists to run the team's pipeline. The new owner must be an active member of the agency with a sales-capable role (otherwise 422).
+- **Archived contacts** are hidden from lists by default, stay readable by ID, and are read-only: every write returns 409 until the contact is restored.
+- **Timeline entries** (note, call, email, meeting) may be back-dated but not dated more than 5 minutes in the future. They are ordered by `occurred_at`.
+- **Deal visibility:** Sales see deals they own; managers see all deals in the agency. A deal cannot be attached to a contact the user cannot see. That returns 422 on `contactId`, the same response as an unknown ID, so it reveals nothing.
