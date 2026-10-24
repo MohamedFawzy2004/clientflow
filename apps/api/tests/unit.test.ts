@@ -42,7 +42,9 @@ describe('tokens', () => {
   });
 
   it('hashes tokens as SHA-256 hex', () => {
-    expect(sha256Hex('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+    expect(sha256Hex('abc')).toBe(
+      'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+    );
   });
 
   it('compares safely across different lengths', () => {
@@ -97,7 +99,11 @@ describe('contact policy', () => {
   });
 
   it('scopes SALES to owned contacts and managers to the agency', () => {
-    expect(contactReadScope(user('SALES'))).toEqual({ agencyId: 'a1', archivedAt: null, ownerId: 'u1' });
+    expect(contactReadScope(user('SALES'))).toEqual({
+      agencyId: 'a1',
+      archivedAt: null,
+      ownerId: 'u1',
+    });
     expect(contactReadScope(user('SALES_MANAGER'))).toEqual({ agencyId: 'a1', archivedAt: null });
     expect(contactReadScope(user('OWNER'))).toEqual({ agencyId: 'a1', archivedAt: null });
   });
@@ -120,7 +126,12 @@ describe('contact DTOs', () => {
   });
 
   it('treats empty optional strings as absent', () => {
-    const result = contactCreateSchema.parse({ fullName: '  Mona  ', email: '', phone: '', notes: '' });
+    const result = contactCreateSchema.parse({
+      fullName: '  Mona  ',
+      email: '',
+      phone: '',
+      notes: '',
+    });
     expect(result).toEqual({ fullName: 'Mona' });
   });
 

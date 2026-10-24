@@ -12,7 +12,10 @@ import { BootstrapError, bootstrapOwner } from '../modules/auth/bootstrap.js';
 function promptHidden(question: string): Promise<string> {
   return new Promise((resolve) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    const output = rl as unknown as { _writeToOutput: (s: string) => void; output: NodeJS.WriteStream };
+    const output = rl as unknown as {
+      _writeToOutput: (s: string) => void;
+      output: NodeJS.WriteStream;
+    };
     const original = output._writeToOutput.bind(rl);
     let prompted = false;
     output._writeToOutput = (s: string) => {
@@ -38,7 +41,9 @@ async function main() {
     },
   });
   if (!values.agency || !values.name || !values.email) {
-    console.error('Usage: npm run bootstrap:owner -- --agency "<agency>" --name "<owner name>" --email <email>');
+    console.error(
+      'Usage: npm run bootstrap:owner -- --agency "<agency>" --name "<owner name>" --email <email>',
+    );
     process.exit(2);
   }
 

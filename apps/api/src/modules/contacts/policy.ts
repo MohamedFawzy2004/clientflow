@@ -7,7 +7,12 @@ import type { AuthUser } from '../../types/express.js';
 // list, detail, search, counts and duplicate hints share the same scope (SEC-25).
 const SEES_ALL_AGENCY_CONTACTS: ReadonlySet<Role> = new Set(['OWNER', 'ADMIN', 'SALES_MANAGER']);
 const SEES_OWNED_CONTACTS: ReadonlySet<Role> = new Set(['SALES']);
-const CAN_CREATE_CONTACTS: ReadonlySet<Role> = new Set(['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES']);
+const CAN_CREATE_CONTACTS: ReadonlySet<Role> = new Set([
+  'OWNER',
+  'ADMIN',
+  'SALES_MANAGER',
+  'SALES',
+]);
 
 export function canReadContacts(role: Role): boolean {
   return SEES_ALL_AGENCY_CONTACTS.has(role) || SEES_OWNED_CONTACTS.has(role);

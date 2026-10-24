@@ -29,19 +29,87 @@ const STAFF: Array<{ key: string; name: string; role: Role }> = [
   { key: 'finance', name: 'Tarek Habib', role: 'FINANCE' },
 ];
 
-const LEADS: Array<{ name: string; company?: string; source?: ContactSource; phone?: string; owner: string; days?: number; notes?: string }> = [
-  { name: 'Salma Ibrahim', company: 'Nile Bakery Co.', source: 'REFERRAL', phone: '+20 100 555 0101', owner: 'sales.a', days: 2, notes: 'Wants an online ordering site before Ramadan.' },
-  { name: 'Ahmed Rostom', company: 'Delta Logistics', source: 'WEBSITE', owner: 'sales.a', days: -1, notes: 'Asked for a fleet tracking dashboard quote.' },
-  { name: 'Laila Haddad', company: 'Haddad Dental Clinics', source: 'EVENT', phone: '+20 122 555 0144', owner: 'sales.a' },
-  { name: 'Mostafa Kamel', company: 'Kamel Real Estate', source: 'OUTBOUND', owner: 'sales.a', days: 5 },
-  { name: 'Rana El-Sayed', company: 'Sayed Fashion House', source: 'SOCIAL', owner: 'sales.b', days: 1, notes: 'Instagram shop migration to a full e-commerce site.' },
+const LEADS: Array<{
+  name: string;
+  company?: string;
+  source?: ContactSource;
+  phone?: string;
+  owner: string;
+  days?: number;
+  notes?: string;
+}> = [
+  {
+    name: 'Salma Ibrahim',
+    company: 'Nile Bakery Co.',
+    source: 'REFERRAL',
+    phone: '+20 100 555 0101',
+    owner: 'sales.a',
+    days: 2,
+    notes: 'Wants an online ordering site before Ramadan.',
+  },
+  {
+    name: 'Ahmed Rostom',
+    company: 'Delta Logistics',
+    source: 'WEBSITE',
+    owner: 'sales.a',
+    days: -1,
+    notes: 'Asked for a fleet tracking dashboard quote.',
+  },
+  {
+    name: 'Laila Haddad',
+    company: 'Haddad Dental Clinics',
+    source: 'EVENT',
+    phone: '+20 122 555 0144',
+    owner: 'sales.a',
+  },
+  {
+    name: 'Mostafa Kamel',
+    company: 'Kamel Real Estate',
+    source: 'OUTBOUND',
+    owner: 'sales.a',
+    days: 5,
+  },
+  {
+    name: 'Rana El-Sayed',
+    company: 'Sayed Fashion House',
+    source: 'SOCIAL',
+    owner: 'sales.b',
+    days: 1,
+    notes: 'Instagram shop migration to a full e-commerce site.',
+  },
   { name: 'Youssef Nabil', company: 'Nabil & Partners Law', source: 'REFERRAL', owner: 'sales.b' },
-  { name: 'Dina Samir', company: 'Samir Tours', source: 'PARTNER', phone: '+20 111 555 0177', owner: 'sales.b', days: -3 },
-  { name: 'Hossam Wahba', company: 'Wahba Engineering', source: 'WEBSITE', owner: 'sales.b', days: 7 },
-  { name: 'Mariam Fouad', company: 'Fouad Pharmacies', source: 'EVENT', owner: 'sales.manager', days: 3, notes: 'Loyalty app — needs iOS and Android estimate.' },
+  {
+    name: 'Dina Samir',
+    company: 'Samir Tours',
+    source: 'PARTNER',
+    phone: '+20 111 555 0177',
+    owner: 'sales.b',
+    days: -3,
+  },
+  {
+    name: 'Hossam Wahba',
+    company: 'Wahba Engineering',
+    source: 'WEBSITE',
+    owner: 'sales.b',
+    days: 7,
+  },
+  {
+    name: 'Mariam Fouad',
+    company: 'Fouad Pharmacies',
+    source: 'EVENT',
+    owner: 'sales.manager',
+    days: 3,
+    notes: 'Loyalty app — needs iOS and Android estimate.',
+  },
   { name: 'Sherif Lotfy', source: 'OTHER', owner: 'sales.manager' },
   { name: 'Aya Gaber', company: 'Gaber Furniture', source: 'SOCIAL', owner: 'sales.a', days: 10 },
-  { name: 'Khaled Mahmoud — very long company name test', company: 'Mahmoud International Trading, Import & Export Holding Company', source: 'OUTBOUND', owner: 'sales.b', notes: 'Edge case: long names must wrap without breaking the layout.' },
+  {
+    name: 'Khaled Mahmoud — very long company name test',
+    company: 'Mahmoud International Trading, Import & Export Holding Company',
+    source: 'OUTBOUND',
+    owner: 'sales.b',
+    notes: 'Edge case: long names must wrap without breaking the layout.',
+  },
 ];
 
 const db = createDb(env.DATABASE_URL);
@@ -93,7 +161,10 @@ try {
     for (const [i, lead] of LEADS.entries()) {
       const ownerId = userIds[lead.owner]!;
       const ownerName = STAFF.find((s) => s.key === lead.owner)?.name ?? 'Owner';
-      const slug = lead.name.toLowerCase().split(' ')[0]!.replace(/[^a-z]/g, '');
+      const slug = lead.name
+        .toLowerCase()
+        .split(' ')[0]!
+        .replace(/[^a-z]/g, '');
       const contact = await db.contact.create({
         data: {
           agencyId: agency.id,
@@ -105,7 +176,8 @@ try {
           companyName: lead.company ?? null,
           source: lead.source ?? null,
           notes: lead.notes ?? null,
-          nextActionAt: lead.days === undefined ? null : new Date(Date.now() + lead.days * 86_400_000),
+          nextActionAt:
+            lead.days === undefined ? null : new Date(Date.now() + lead.days * 86_400_000),
           createdAt: new Date(Date.now() - (LEADS.length - i) * 3_600_000),
         },
       });
@@ -131,8 +203,12 @@ try {
     } catch {
       previous = {};
     }
-    writeFileSync(file, JSON.stringify({ ...previous, ...credentials }, null, 2) + '\n', { mode: 0o600 });
-    console.log(`Wrote ${Object.keys(credentials).length} dev credential(s) to apps/api/.dev-credentials.local.json`);
+    writeFileSync(file, JSON.stringify({ ...previous, ...credentials }, null, 2) + '\n', {
+      mode: 0o600,
+    });
+    console.log(
+      `Wrote ${Object.keys(credentials).length} dev credential(s) to apps/api/.dev-credentials.local.json`,
+    );
   }
   console.log(`Seed complete: ${STAFF.length + 1} users, ${await db.contact.count()} contacts.`);
 } finally {

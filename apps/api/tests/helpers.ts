@@ -102,6 +102,7 @@ export async function login(app: Express, email: string, password = PASSWORD) {
     .set('Origin', ORIGIN)
     .set('X-CSRF-Token', pre)
     .send({ email, password });
-  if (res.status !== 200) throw new Error(`login failed: ${res.status} ${JSON.stringify(res.body)}`);
+  if (res.status !== 200)
+    throw new Error(`login failed: ${res.status} ${JSON.stringify(res.body)}`);
   return { agent, csrf: res.body.data.csrfToken as string, res };
 }

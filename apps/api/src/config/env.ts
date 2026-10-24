@@ -7,7 +7,12 @@ const envSchema = z.object({
   APP_ORIGINS: z
     .string()
     .min(1)
-    .transform((v) => v.split(',').map((o) => o.trim()).filter(Boolean))
+    .transform((v) =>
+      v
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    )
     .pipe(z.array(z.string().url()).min(1)),
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),

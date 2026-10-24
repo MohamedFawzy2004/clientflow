@@ -32,6 +32,9 @@ export function toActivityItem(a: ActivityWithActor): ActivityItem {
   };
 }
 
-export function toContactDetail(c: ContactWithOwner, activities: ActivityWithActor[]): ContactDetail {
+export function toContactDetail(
+  c: ContactWithOwner,
+  activities: ActivityWithActor[],
+): ContactDetail {
   return { ...toContactSummary(c), notes: c.notes, activities: activities.map(toActivityItem) };
 }

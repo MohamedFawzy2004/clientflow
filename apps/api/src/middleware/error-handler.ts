@@ -14,7 +14,12 @@ interface BodyParserError extends Error {
 function toAppError(err: unknown): AppError | null {
   if (err instanceof AppError) return err;
   if (err instanceof ZodError) {
-    return new AppError(422, 'VALIDATION_FAILED', 'Some fields need your attention.', zodFieldErrors(err));
+    return new AppError(
+      422,
+      'VALIDATION_FAILED',
+      'Some fields need your attention.',
+      zodFieldErrors(err),
+    );
   }
   const bp = err as BodyParserError;
   if (bp?.type === 'entity.too.large') {

@@ -31,7 +31,12 @@ export function httpLogger(logger: Logger) {
     customProps: (req) => ({ userId: (req as unknown as Express.Request).auth?.user.id }),
     // Query strings can contain search terms with PII, so only the path is logged.
     serializers: {
-      req: (req: { id: string; method: string; url: string; headers: Record<string, unknown> }) => ({
+      req: (req: {
+        id: string;
+        method: string;
+        url: string;
+        headers: Record<string, unknown>;
+      }) => ({
         id: req.id,
         method: req.method,
         path: req.url.split('?')[0],

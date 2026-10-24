@@ -40,7 +40,9 @@ describe('T-AUTH-01 owner bootstrap', () => {
     expect(owner.emailNorm).toBe('owner@lumen.test');
     expect(owner.passwordHash).not.toContain(input.password);
 
-    await expect(bootstrapOwner(db, { ...input, ownerEmail: 'second@lumen.test' })).rejects.toMatchObject({
+    await expect(
+      bootstrapOwner(db, { ...input, ownerEmail: 'second@lumen.test' }),
+    ).rejects.toMatchObject({
       reason: 'already_bootstrapped',
     });
     expect({
@@ -60,7 +62,9 @@ describe('T-AUTH-01 owner bootstrap', () => {
   });
 
   it('rejects weak passwords before writing anything', async () => {
-    await expect(bootstrapOwner(db, { ...input, password: 'short' })).rejects.toBeInstanceOf(BootstrapError);
+    await expect(bootstrapOwner(db, { ...input, password: 'short' })).rejects.toBeInstanceOf(
+      BootstrapError,
+    );
     expect(await db.agency.count()).toBe(0);
   });
 });
@@ -109,7 +113,9 @@ describe('login', () => {
     expect(strip(wrongPassword.body)).toEqual(strip(unknownEmail.body));
     expect(wrongPassword.body.error.message).toBe('Email or password is incorrect.');
 
-    const failures = await db.auditEvent.count({ where: { action: 'auth.login', outcome: 'FAILURE' } });
+    const failures = await db.auditEvent.count({
+      where: { action: 'auth.login', outcome: 'FAILURE' },
+    });
     expect(failures).toBe(2);
   });
 
@@ -191,7 +197,10 @@ describe('T-SEC-01 CSRF and origin checks', () => {
     await seedAgency();
     const { app } = makeApp();
     const { agent } = await login(app, 'owner@agency.test');
-    const missing = await agent.post('/api/v1/contacts').set('Origin', ORIGIN).send({ fullName: 'X' });
+    const missing = await agent
+      .post('/api/v1/contacts')
+      .set('Origin', ORIGIN)
+      .send({ fullName: 'X' });
     expect(missing.status).toBe(403);
     expect(missing.body.error.code).toBe('CSRF_INVALID');
     const wrong = await agent
@@ -213,7 +222,10 @@ describe('T-SEC-01 CSRF and origin checks', () => {
       .set('X-CSRF-Token', csrf)
       .send({ fullName: 'X' });
     expect(foreign.status).toBe(403);
-    const none = await agent.post('/api/v1/contacts').set('X-CSRF-Token', csrf).send({ fullName: 'X' });
+    const none = await agent
+      .post('/api/v1/contacts')
+      .set('X-CSRF-Token', csrf)
+      .send({ fullName: 'X' });
     expect(none.status).toBe(403);
     expect(await db.contact.count()).toBe(0);
   });
@@ -236,7 +248,11 @@ describe('T-AUTH-03 session lifecycle', () => {
     const cookie = (res.headers['set-cookie'] as unknown as string[]).find((c) =>
       c.startsWith('cf_session='),
     )!;
-    await agent.post('/api/v1/auth/logout').set('Origin', ORIGIN).set('X-CSRF-Token', csrf).expect(200);
+    await agent
+      .post('/api/v1/auth/logout')
+      .set('Origin', ORIGIN)
+      .set('X-CSRF-Token', csrf)
+      .expect(200);
 
     // Replaying the old cookie from a different client must fail.
     const replay = await request(app).get('/api/v1/auth/me').set('Cookie', cookie.split(';')[0]!);
@@ -252,7 +268,10 @@ describe('T-AUTH-03 session lifecycle', () => {
     const first = await login(app, 'owner@agency.test');
     // created_at moves too: the schema requires expires_at > created_at.
     await db.session.updateMany({
-      data: { createdAt: new Date(Date.now() - 8 * 86_400_000), expiresAt: new Date(Date.now() - 1000) },
+      data: {
+        createdAt: new Date(Date.now() - 8 * 86_400_000),
+        expiresAt: new Date(Date.now() - 1000),
+      },
     });
     await first.agent.get('/api/v1/auth/me').expect(401);
 

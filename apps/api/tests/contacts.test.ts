@@ -2,7 +2,16 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import type { Db } from '../src/db/client.js';
-import { login, makeApp, ORIGIN, PASSWORD, resetDb, seedAgency, testDb, type SeededAgency } from './helpers.js';
+import {
+  login,
+  makeApp,
+  ORIGIN,
+  PASSWORD,
+  resetDb,
+  seedAgency,
+  testDb,
+  type SeededAgency,
+} from './helpers.js';
 
 const db = testDb();
 let seeded: SeededAgency;
@@ -29,7 +38,10 @@ describe('authentication is required', () => {
   it('returns 401 for every contacts endpoint without a session', async () => {
     await request(app).get('/api/v1/contacts').expect(401);
     await request(app).get('/api/v1/contacts/00000000-0000-0000-0000-000000000000').expect(401);
-    const res = await request(app).post('/api/v1/contacts').set('Origin', ORIGIN).send({ fullName: 'X' });
+    const res = await request(app)
+      .post('/api/v1/contacts')
+      .set('Origin', ORIGIN)
+      .send({ fullName: 'X' });
     expect(res.status).toBe(401);
     expect(await db.contact.count()).toBe(0);
   });
@@ -66,7 +78,11 @@ describe('US-04 create lead', () => {
     const activity = await db.activity.findFirstOrThrow({ where: { entityId: row.id } });
     expect(activity.eventType).toBe('contact.created');
     const audit = await db.auditEvent.findFirstOrThrow({ where: { action: 'contact.create' } });
-    expect(audit).toMatchObject({ targetId: row.id, actorId: seeded.users.salesA!.id, outcome: 'SUCCESS' });
+    expect(audit).toMatchObject({
+      targetId: row.id,
+      actorId: seeded.users.salesA!.id,
+      outcome: 'SUCCESS',
+    });
 
     const detail = await sales.agent.get(`/api/v1/contacts/${row.id}`).expect(200);
     expect(detail.body.data.activities).toHaveLength(1);
@@ -75,10 +91,20 @@ describe('US-04 create lead', () => {
 
   it('returns 422 with field errors and writes nothing for invalid input', async () => {
     const sales = await signedIn('salesA');
-    const res = await sales.create({ fullName: '', email: 'not-an-email', phone: 'abc', notes: 'x'.repeat(5001) });
+    const res = await sales.create({
+      fullName: '',
+      email: 'not-an-email',
+      phone: 'abc',
+      notes: 'x'.repeat(5001),
+    });
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_FAILED');
-    expect(Object.keys(res.body.error.fieldErrors).sort()).toEqual(['email', 'fullName', 'notes', 'phone']);
+    expect(Object.keys(res.body.error.fieldErrors).sort()).toEqual([
+      'email',
+      'fullName',
+      'notes',
+      'phone',
+    ]);
     expect(await db.contact.count()).toBe(0);
   });
 
@@ -126,7 +152,10 @@ describe('US-04 create lead', () => {
 describe('US-05 / T-ACL-01 record scope', () => {
   async function createFor(key: string, fullName: string) {
     const user = await signedIn(key);
-    const res = await user.create({ fullName, email: `${fullName.split(' ')[0]!.toLowerCase()}@x.test` });
+    const res = await user.create({
+      fullName,
+      email: `${fullName.split(' ')[0]!.toLowerCase()}@x.test`,
+    });
     return res.body.data.id as string;
   }
 
@@ -180,7 +209,13 @@ describe('US-05 / T-ACL-01 record scope', () => {
   it('never returns contacts from another agency', async () => {
     const other = await db.agency.create({ data: { name: 'Other Agency', slug: 'other-agency' } });
     const otherOwner = await db.user.create({
-      data: { agencyId: other.id, emailNorm: 'o@other.test', name: 'O', role: 'OWNER', passwordHash: 'x' },
+      data: {
+        agencyId: other.id,
+        emailNorm: 'o@other.test',
+        name: 'O',
+        role: 'OWNER',
+        passwordHash: 'x',
+      },
     });
     const foreign = await db.contact.create({
       data: { agencyId: other.id, ownerId: otherOwner.id, fullName: 'Foreign Lead' },

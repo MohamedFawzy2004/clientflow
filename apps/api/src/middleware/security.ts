@@ -45,7 +45,9 @@ export function originCheck(allowedOrigins: string[]): RequestHandler {
       }
     }
     if (!origin || !allowed.has(origin)) {
-      return next(new AppError(403, 'FORBIDDEN', 'This request was blocked because of its origin.'));
+      return next(
+        new AppError(403, 'FORBIDDEN', 'This request was blocked because of its origin.'),
+      );
     }
     next();
   };

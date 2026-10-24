@@ -2,11 +2,7 @@ import type { RequestHandler } from 'express';
 import type { Role } from '@clientflow/contracts';
 import type { Db } from '../db/client.js';
 import { csrfInvalid, forbidden, unauthenticated } from '../lib/errors.js';
-import {
-  type CookieSettings,
-  resolveSession,
-  verifySessionCsrf,
-} from '../modules/auth/session.js';
+import { type CookieSettings, resolveSession, verifySessionCsrf } from '../modules/auth/session.js';
 import { isSafeMethod } from './security.js';
 
 /** Attaches req.auth when a valid session cookie is present. Never rejects by itself. */

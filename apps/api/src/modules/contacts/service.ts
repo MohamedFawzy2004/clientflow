@@ -1,8 +1,4 @@
-import type {
-  ContactCreate,
-  ContactListQuery,
-  PossibleDuplicate,
-} from '@clientflow/contracts';
+import type { ContactCreate, ContactListQuery, PossibleDuplicate } from '@clientflow/contracts';
 import type { Db } from '../../db/client.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { writeAudit } from '../../lib/audit.js';
