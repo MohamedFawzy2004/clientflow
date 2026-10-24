@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, CircleCheck, Circle, Plus, Users } from 'lucide-react';
-import { LEAD_ROLES } from '../../app/AppShell';
+import { can } from '@clientflow/contracts';
+import { canSeeLeads } from '../../app/AppShell';
 import { Avatar } from '../../components/ui/brand';
 import { Button } from '../../components/ui/button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
@@ -20,7 +21,15 @@ function greeting(timeZone: string) {
 }
 
 /** Every number on this page comes from the API. There are no placeholder KPIs (spec §7.4.11). */
-function LeadsOverview({ timeZone, isSales }: { timeZone: string; isSales: boolean }) {
+function LeadsOverview({
+  timeZone,
+  isSales,
+  canInvite,
+}: {
+  timeZone: string;
+  isSales: boolean;
+  canInvite: boolean;
+}) {
   const [addOpen, setAddOpen] = useState(false);
   const recent = useLeads({ page: 1, limit: 5 });
 
@@ -45,9 +54,18 @@ function LeadsOverview({ timeZone, isSales }: { timeZone: string; isSales: boole
   }
 
   const total = recent.data.meta.total;
-  const steps = [
+  const steps: Array<{ done: boolean; label: string; note?: string; to?: string }> = [
     { done: total > 0, label: 'Add your first lead' },
-    { done: false, label: 'Invite your team', note: 'Coming in the next release' },
+    ...(canInvite
+      ? [
+          {
+            done: false,
+            label: 'Invite your team',
+            note: 'Give each person their own sign-in',
+            to: '/app/team',
+          },
+        ]
+      : []),
     { done: false, label: 'Create a deal from a lead', note: 'Planned' },
   ];
 
@@ -85,9 +103,15 @@ function LeadsOverview({ timeZone, isSales }: { timeZone: string; isSales: boole
                   <Circle aria-hidden className="mt-0.5 size-4 text-border-strong" />
                 )}
                 <span>
-                  <span className={s.done ? 'text-muted line-through' : 'text-text'}>
-                    {s.label}
-                  </span>
+                  {s.to && !s.done ? (
+                    <Link to={s.to} className="font-medium text-primary-strong hover:underline">
+                      {s.label}
+                    </Link>
+                  ) : (
+                    <span className={s.done ? 'text-muted line-through' : 'text-text'}>
+                      {s.label}
+                    </span>
+                  )}
                   <span className="sr-only">{s.done ? ' (done)' : ' (not done)'}</span>
                   {s.note ? <span className="block text-xs text-muted">{s.note}</span> : null}
                 </span>
@@ -161,8 +185,12 @@ export function DashboardPage() {
         Here is what needs your attention at {user.agency.name}.
       </p>
       <div className="mt-6">
-        {LEAD_ROLES.has(user.role) ? (
-          <LeadsOverview timeZone={timeZone} isSales={user.role === 'SALES'} />
+        {canSeeLeads(user.role) ? (
+          <LeadsOverview
+            timeZone={timeZone}
+            isSales={user.role === 'SALES'}
+            canInvite={can(user.role, 'team.invite')}
+          />
         ) : (
           <div className="rounded-lg border border-border bg-surface shadow-card">
             <EmptyState

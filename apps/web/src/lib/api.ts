@@ -130,4 +130,21 @@ export const api = {
   get: <T>(path: string, options?: RequestOptions) => apiRequest<T>('GET', path, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiRequest<T>('POST', path, { ...options, body }),
+  patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    apiRequest<T>('PATCH', path, { ...options, body }),
 };
+
+/** Reads a one-time token from the URL fragment (#token=…). Pure: safe to call twice. */
+export function readTokenFromFragment(): string | null {
+  return /(?:^|[#&])token=([A-Za-z0-9_-]+)/.exec(window.location.hash)?.[1] ?? null;
+}
+
+/**
+ * Removes the fragment from the address bar and history, so the one-time token is not left
+ * behind in the browser or copied into a shared screenshot. Idempotent.
+ */
+export function clearFragment() {
+  if (window.location.hash) {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+}

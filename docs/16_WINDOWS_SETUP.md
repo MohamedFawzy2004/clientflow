@@ -53,7 +53,11 @@ npm run seed:dev
 
 This creates the owner (if the database is empty), six staff users and twelve fictional leads. Generated passwords are written to `apps/api/.dev-credentials.local.json` (gitignored). The seed refuses to run when `NODE_ENV=production`.
 
-## 6. Run
+## 6. Invite your team (M2)
+
+Sign in as the owner, open **Team**, then choose **Invite member**. In development, emails are not sent: they are written as JSON files to `apps/api/.mail-sink/`, and the dialog shows the one-time link so you can open it in another browser. Forgot-password links also land in that folder.
+
+## 7. Run
 
 ```powershell
 npm run dev
@@ -61,7 +65,7 @@ npm run dev
 
 Open <http://localhost:5173>. The web app proxies `/api` to the API on port 4000.
 
-## 7. Checks
+## 8. Checks
 
 ```powershell
 npm run lint
@@ -82,4 +86,5 @@ npm run build
 | `Invalid environment configuration`                                | A value in `.env` is missing or still a placeholder.                                                                                       |
 | Web shows "We could not load your workspace"                       | The API is not running or not ready yet. Start it, then click **Try again**.                                                               |
 | Port 5433/4000/5173 in use                                         | Stop the other process, or change `POSTGRES_PORT` / `API_PORT` in `.env` (then update the Vite proxy target with `VITE_API_PROXY_TARGET`). |
+| Invitation or reset email "never arrives" in development           | Development never sends email. Open the newest file in `apps/api/.mail-sink/`.                                                             |
 | `npm run e2e` times out starting servers                           | Make sure nothing else is using ports 4100/5174, and that Docker is running.                                                               |

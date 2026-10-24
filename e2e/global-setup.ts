@@ -2,7 +2,7 @@
 // real bootstrap CLI, then adds two salespeople. Passwords are random per run and are written
 // to e2e/.auth/credentials.json (gitignored).
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { hash } from '@node-rs/argon2';
 import pg from 'pg';
@@ -76,6 +76,7 @@ export default async function globalSetup() {
   }
   await client.end();
 
+  rmSync('e2e/.mail-sink', { recursive: true, force: true });
   mkdirSync('e2e/.auth', { recursive: true });
   writeFileSync('e2e/.auth/credentials.json', JSON.stringify(creds, null, 2));
 }
