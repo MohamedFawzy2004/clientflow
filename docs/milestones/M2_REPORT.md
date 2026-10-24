@@ -14,7 +14,7 @@
 
 ## Scope and FR/SEC/NFR IDs
 
-- **Newly fully TESTED:** FR-I03, FR-I04, FR-I05, FR-I06, FR-I08, SEC-03, US-03, US-19, T-AUTH-04, plus NFR-11 and T-OPS-02 once CI is green (see _CI evidence_).
+- **Newly fully TESTED:** FR-I03, FR-I04, FR-I05, FR-I06, FR-I08, SEC-03, US-03, US-19, T-AUTH-04, NFR-11 and T-OPS-02 (fresh-checkout CI green on GitHub Actions; see _CI evidence_).
 - **Progressed, still partial (notes in the CSV):** FR-I11, FR-I12, FR-A03, SEC-02, SEC-10, SEC-17, SEC-18, SEC-21, SEC-24, T-ACL-03, NFR-01, NFR-04, NFR-10, NFR-15, T-UX-03.
 
 ## Implemented files / API routes / migrations
@@ -46,15 +46,15 @@ Manual check in the browser pane on the dev DB: a salesperson sees no Team link,
 
 ## Tests actually run (command, environment, pass/fail)
 
-| Command                                       | Windows (local)                                                                                                                          | GitHub Actions    |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `npm run lint` · `typecheck` · `format:check` | **PASS**                                                                                                                                 | see _CI evidence_ |
-| `npm audit --omit=dev --audit-level=high`     | **PASS**, 0 vulnerabilities                                                                                                              | see _CI evidence_ |
-| `npm test` (real Postgres)                    | **PASS**, **131 tests**: unit 28, database 7, auth 18, contacts 20, invitations 22, password reset 10, team 18, role × endpoint matrix 8 | see _CI evidence_ |
-| `npm run test:web`                            | **PASS**, **33 tests**: login 5, leads 13, team 7, auth flows 8                                                                          | see _CI evidence_ |
-| `npm run e2e` (Edge locally, Chromium in CI)  | **PASS**, **12 tests** (M1 7 + M2 5)                                                                                                     | see _CI evidence_ |
-| `npm run build`                               | **PASS**                                                                                                                                 | see _CI evidence_ |
-| gitleaks 8.24.3 (Docker, full history)        | **PASS**, no leaks in 9 commits                                                                                                          | see _CI evidence_ |
+| Command                                       | Windows (local)                                                                                                                          | GitHub Actions      |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `npm run lint` · `typecheck` · `format:check` | **PASS**                                                                                                                                 | **PASS**            |
+| `npm audit --omit=dev --audit-level=high`     | **PASS**, 0 vulnerabilities                                                                                                              | **PASS**            |
+| `npm test` (real Postgres)                    | **PASS**, **131 tests**: unit 28, database 7, auth 18, contacts 20, invitations 22, password reset 10, team 18, role × endpoint matrix 8 | **PASS**            |
+| `npm run test:web`                            | **PASS**, **33 tests**: login 5, leads 13, team 7, auth flows 8                                                                          | **PASS**            |
+| `npm run e2e` (Edge locally, Chromium in CI)  | **PASS**, **12 tests** (M1 7 + M2 5)                                                                                                     | **PASS** (Chromium) |
+| `npm run build`                               | **PASS**                                                                                                                                 | **PASS**            |
+| gitleaks 8.24.3 (Docker, full history)        | **PASS**, no leaks in 9 commits                                                                                                          | **PASS**            |
 
 ## DB-backed user journey demonstrated (E2E, real API + Postgres)
 
@@ -114,7 +114,16 @@ npm run e2e:screenshots   # optional: refresh docs/milestones/*-screenshots
 
 ## CI evidence
 
-CI is defined in `.github/workflows/ci.yml` and runs on every push to `main`/`feat/**` and on PRs. Results for the final M2 commit are recorded in PR #32's checks. The traceability statuses for NFR-11 / T-OPS-02 are set from those results.
+CI is defined in `.github/workflows/ci.yml` and runs on every push to `main`/`feat/**` and on PRs (ubuntu-latest, Node 24, Postgres 17.6 service).
+
+| Job                                     | Result on commit `24f34ab` (GitHub Actions)                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| Lint, typecheck, audit, build           | **PASS**                                                                             |
+| Unit + integration (PostgreSQL)         | **PASS** (131 API + 33 web tests)                                                    |
+| Secret scan (gitleaks 8.24.3)           | **PASS** (after the fixture allowlist; the first two runs failed, see _Fixed in M2_) |
+| End-to-end (Playwright + axe, Chromium) | **PASS** (12 tests; the first run **FAILED** on the quoting bug, fixed in `260eba1`) |
+
+NFR-11 and T-OPS-02 (fresh-checkout install, lint, typecheck, unit/integration, build) are TESTED from the green jobs above.
 
 ## Requirements traceability updates
 

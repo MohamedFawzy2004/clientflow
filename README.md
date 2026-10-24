@@ -2,22 +2,26 @@
 
 A secure **agency operations platform** for a single software & digital agency. It covers the path from lead → deal → versioned proposal → project handoff → tasks and deliverables → change requests → invoice tracking, plus an isolated client portal.
 
-> **Status: M1 (foundation vertical slice) complete on `feat/m1-foundation`.** Sign-in, sessions, CSRF protection, owner bootstrap and scoped lead management run on real PostgreSQL, with 67 API tests, 18 UI tests and 7 end-to-end tests passing. Nothing here is production-ready yet. Each [milestone report](docs/milestones/) states exactly what was implemented, tested, not run or deferred.
+> **Status: M2 (identity & policy) complete on `feat/m2-identity-policy`, stacked on M1.** Owner bootstrap, invitations, password reset, team management, a declarative permission matrix and scoped lead management run on real PostgreSQL. 131 API, 33 UI and 12 end-to-end tests pass locally and in GitHub Actions CI. Nothing here is production-ready yet; see each milestone report.
 
-![Leads list at 1440px](docs/milestones/m1-screenshots/leads-1440.png)
+![Team page at 1440px](docs/milestones/m2-screenshots/team-1440.png)
 
-## What works today (M1)
+## What works today (M1 + M2)
 
 - CLI-only owner bootstrap (refuses a second run). No public sign-up.
 - Email + password sign-in with Argon2id, hashed server sessions, idle and absolute expiry, logout revocation, CSRF + Origin checks, login throttling.
 - Leads: add, list (search, filter, pagination), detail with activity. Salespeople see only their own leads; managers see the whole agency. Enforced on the server and tested with direct API calls.
+- Team page: invite by email with one-time links, change roles, deactivate/reactivate, sign out everywhere. The last owner can never be removed.
+- Forgot/reset password with single-use 30-minute links. Development emails go to a local sink, never sent.
+- Offline breached/weak password check (zxcvbn-ts).
 - Responsive UI from 360px to 1920px, with keyboard support and axe checks.
+- CI on every push: lint, typecheck, dependency audit, tests on Postgres, Playwright E2E, build, secret scan.
 
 ## Docs
 
 - **Product source of truth:** [`CLIENTFLOW_MASTER_SPEC.md`](CLIENTFLOW_MASTER_SPEC.md)
 - **Windows setup:** [`docs/16_WINDOWS_SETUP.md`](docs/16_WINDOWS_SETUP.md)
-- **M1 report:** [`docs/milestones/M1_REPORT.md`](docs/milestones/M1_REPORT.md)
+- **Milestone reports:** [M1](docs/milestones/M1_REPORT.md) · [M2](docs/milestones/M2_REPORT.md)
 - **Requirements traceability:** [`docs/REQUIREMENTS_TRACEABILITY.csv`](docs/REQUIREMENTS_TRACEABILITY.csv)
 - **Architecture decisions:** [`docs/07_ARCHITECTURE_ADRS.md`](docs/07_ARCHITECTURE_ADRS.md)
 - **Risks:** [`docs/RISK_REGISTER.md`](docs/RISK_REGISTER.md)
