@@ -2,7 +2,8 @@ import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
 import type { Logger } from 'pino';
 import type { Db } from './db/client.js';
-import { csrfProtection, loadSession } from './middleware/auth.js';
+import type { Mailer } from './lib/mailer.js';
+import { csrfProtection, loadSession, requireAuth } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { httpLogger } from './middleware/logger.js';
 import {
@@ -16,12 +17,16 @@ import { authRouter } from './modules/auth/routes.js';
 import { cookieSettings } from './modules/auth/session.js';
 import { contactsRouter } from './modules/contacts/routes.js';
 import { healthRouter } from './modules/health/routes.js';
+import { invitationsRouter } from './modules/invitations/routes.js';
+import { teamRouter } from './modules/team/routes.js';
 
 export interface AppConfig {
   isProduction: boolean;
   appOrigins: string[];
   csrfSecret: string;
   trustProxy: number;
+  /** Base URL for links in emails, e.g. https://app.example.com (no trailing slash). */
+  publicUrl: string;
   rateLimits?: Partial<RateLimitConfig>;
 }
 
@@ -29,6 +34,9 @@ export interface AppDeps {
   db: Db;
   logger: Logger;
   config: AppConfig;
+  mailer: Mailer;
+  /** Receives work that continues after a response is sent (tests await it). */
+  background?: (work: Promise<unknown>) => void;
 }
 
 /** Builds the Express app. Pipeline: route → auth → validation → policy → service (spec §11.3). */
@@ -59,6 +67,8 @@ export function createApp(deps: AppDeps): Express {
 
   api.use('/auth', authRouter(deps, limiters));
   api.use('/contacts', contactsRouter(deps));
+  api.use('/invitations', invitationsRouter(deps, limiters));
+  api.use('/users', requireAuth, teamRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', api);

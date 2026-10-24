@@ -1,7 +1,11 @@
 import type { Db } from '../../db/client.js';
 import { writeAudit } from '../../lib/audit.js';
 import { normalizeEmail, slugify } from '../../lib/normalize.js';
-import { checkPasswordPolicy, hashPassword } from '../../lib/password.js';
+import {
+  checkPasswordPolicy,
+  hashPassword,
+  PASSWORD_PROBLEM_MESSAGES,
+} from '../../lib/password.js';
 
 export interface BootstrapInput {
   agencyName: string;
@@ -41,15 +45,8 @@ export async function bootstrapOwner(db: Db, input: BootstrapInput) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm) || emailNorm.length > 254) {
     throw new BootstrapError('invalid_input', 'Owner email is not valid.');
   }
-  const problem = checkPasswordPolicy(input.password);
-  if (problem) {
-    const messages = {
-      too_short: 'Password must be at least 12 characters.',
-      too_long: 'Password must be at most 128 characters.',
-      too_common: 'Password is too common. Choose a longer, less predictable one.',
-    } as const;
-    throw new BootstrapError('invalid_input', messages[problem]);
-  }
+  const problem = checkPasswordPolicy(input.password, { email: emailNorm, name: ownerName });
+  if (problem) throw new BootstrapError('invalid_input', PASSWORD_PROBLEM_MESSAGES[problem]);
 
   // Hash outside the transaction so the lock is held only briefly.
   const passwordHash = await hashPassword(input.password);

@@ -30,7 +30,7 @@ export default async function globalSetup() {
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   await client.query(
-    'TRUNCATE TABLE audit_events, activities, contacts, sessions, users, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE audit_events, activities, contacts, sessions, password_reset_tokens, invitations, users, agencies RESTART IDENTITY CASCADE',
   );
 
   const password = () => randomBytes(18).toString('base64url');
