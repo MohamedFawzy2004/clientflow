@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { shot } from './shot';
 
 const SINK = 'e2e/.mail-sink';
 const SHOTS = 'docs/milestones/m2-screenshots';
@@ -73,14 +74,14 @@ test.describe.serial('M2 identity journey', () => {
     const done = page.getByRole('dialog', { name: 'Invitation created' });
     await expect(done.getByLabel('Invitation link')).toHaveValue(/\/activate-invite#token=/);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.screenshot({ path: `${SHOTS}/invite-created-1440.png` });
+    await shot(page, `${SHOTS}/invite-created-1440.png`);
 
     // The same link was written to the mail sink, so email delivery would carry it too.
     const shown = await done.getByLabel('Invitation link').inputValue();
     expect(latestEmail('invitation', INVITEE.email).text).toContain(new URL(shown).hash);
     await done.getByRole('button', { name: 'Done' }).click();
     await expect(page.getByText(INVITEE.email)).toBeVisible();
-    await page.screenshot({ path: `${SHOTS}/team-1440.png`, fullPage: true });
+    await shot(page, `${SHOTS}/team-1440.png`, { fullPage: true });
   });
 
   test('the invitee accepts, chooses a password and lands signed in', async ({ browser }) => {
@@ -93,7 +94,7 @@ test.describe.serial('M2 identity journey', () => {
     await expect.poll(() => page.evaluate(() => location.hash)).toBe('');
     await noOverflow(page);
     await noSeriousA11y(page);
-    await page.screenshot({ path: `${SHOTS}/activate-invite-360.png`, fullPage: true });
+    await shot(page, `${SHOTS}/activate-invite-360.png`, { fullPage: true });
 
     await page.getByLabel(/^Your name/).fill(INVITEE.name);
     await page.getByLabel(/^Password/).fill('password1234');
@@ -173,7 +174,7 @@ test.describe.serial('M2 identity journey', () => {
     await page.goto(new URL(link).pathname + new URL(link).hash);
     await expect(page.getByRole('heading', { name: 'Choose a new password' })).toBeVisible();
     await noOverflow(page);
-    await page.screenshot({ path: `${SHOTS}/reset-password-360.png`, fullPage: true });
+    await shot(page, `${SHOTS}/reset-password-360.png`, { fullPage: true });
     await page.getByLabel(/^New password/).fill(newPassword);
     await page.getByLabel(/^Confirm new password/).fill(newPassword);
     await page.getByRole('button', { name: 'Set new password' }).click();
@@ -193,6 +194,6 @@ test.describe.serial('M2 identity journey', () => {
     await page.goto('/app/team');
     await expect(page.getByRole('list', { name: 'Team members' })).toContainText(INVITEE.name);
     await noOverflow(page);
-    await page.screenshot({ path: `${SHOTS}/team-360.png`, fullPage: true });
+    await shot(page, `${SHOTS}/team-360.png`, { fullPage: true });
   });
 });
