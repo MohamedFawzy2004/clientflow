@@ -2,11 +2,11 @@
 
 A secure **agency operations platform** for a single software & digital agency. It covers the path from lead → deal → versioned proposal → project handoff → tasks and deliverables → change requests → invoice tracking, plus an isolated client portal.
 
-> **Status: M4 (proposal workflow) complete on `feat/m4-proposals`, stacked on M3, M2 and M1.** Leads, deals, versioned proposals with internal review, and a client portal where customers accept the exact version they were sent, all on real PostgreSQL. 210 API, 41 UI and 24 end-to-end tests pass locally. Nothing here is production-ready yet; see each milestone report.
+> **Status: M5 (sales polished MVP) complete on `feat/m5-sales-mvp`, stacked on M1–M4.** The sales side is feature-complete for a pilot: leads, deals, proposals with client acceptance, a scoped dashboard, reminders, CSV export, PDFs and a production Docker image. 233 API, 46 UI and 30 end-to-end tests pass. **Not deployed yet** and not production-ready (see the M5 report and `docs/17_DEPLOYMENT.md`).
 
-![Client portal proposal at 1440px](docs/milestones/m4-screenshots/portal-proposal-1440.png)
+![Sales dashboard at 1440px](docs/milestones/m5-screenshots/dashboard-1440.png)
 
-## What works today (M1 to M4)
+## What works today (M1 to M5)
 
 - CLI-only owner bootstrap (refuses a second run). No public sign-up.
 - Email + password sign-in with Argon2id, hashed server sessions, idle and absolute expiry, logout revocation, CSRF + Origin checks, login throttling.
@@ -15,6 +15,8 @@ A secure **agency operations platform** for a single software & digital agency. 
 - Follow-ups: overdue, due today, upcoming and no-next-step queues in the agency timezone.
 - Proposals: a service catalog, drafts with exact totals (14% VAT by default, every step explained), internal review before sending, and numbered versions that cannot change once submitted.
 - Client portal: invite people at a customer to their own portal. They see only what was sent to their organization and accept, decline or ask for changes. Accepting wins the deal. It is recorded as operational approval, not an e-signature.
+- Dashboard: pipeline, wins, win rate, proposals and follow-ups for a date range, per currency; managers filter by owner and export deals to CSV. Reminders show what is overdue or waiting on you.
+- Proposal PDFs, agency settings (profile, currency, timezone, working days).
 - Team page: invite by email with one-time links, change roles, deactivate/reactivate, sign out everywhere. The last owner can never be removed.
 - Forgot/reset password with single-use 30-minute links. Development emails go to a local sink, never sent.
 - Offline breached/weak password check (zxcvbn-ts).
@@ -25,7 +27,8 @@ A secure **agency operations platform** for a single software & digital agency. 
 
 - **Product source of truth:** [`CLIENTFLOW_MASTER_SPEC.md`](CLIENTFLOW_MASTER_SPEC.md)
 - **Windows setup:** [`docs/16_WINDOWS_SETUP.md`](docs/16_WINDOWS_SETUP.md)
-- **Milestone reports:** [M1](docs/milestones/M1_REPORT.md) · [M2](docs/milestones/M2_REPORT.md) · [M3](docs/milestones/M3_REPORT.md) · [M4](docs/milestones/M4_REPORT.md)
+- **Deployment (not done yet):** [`docs/17_DEPLOYMENT.md`](docs/17_DEPLOYMENT.md)
+- **Milestone reports:** [M1](docs/milestones/M1_REPORT.md) · [M2](docs/milestones/M2_REPORT.md) · [M3](docs/milestones/M3_REPORT.md) · [M4](docs/milestones/M4_REPORT.md) · [M5](docs/milestones/M5_REPORT.md)
 - **Requirements traceability:** [`docs/REQUIREMENTS_TRACEABILITY.csv`](docs/REQUIREMENTS_TRACEABILITY.csv)
 - **Architecture decisions:** [`docs/07_ARCHITECTURE_ADRS.md`](docs/07_ARCHITECTURE_ADRS.md)
 - **Risks:** [`docs/RISK_REGISTER.md`](docs/RISK_REGISTER.md)
