@@ -8,6 +8,7 @@ import {
   type internalReviewSchema,
   type proposalDraftUpdateSchema,
   proposalReference,
+  PROPOSAL_STATUS_LABELS,
   type Currency,
   type ProposalCreateInput,
   type ProposalDetail,
@@ -24,8 +25,10 @@ import { recordActivity } from '../../lib/timeline.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
 import { dealReadScope } from '../deals/policy.js';
+import { renderProposalPdf } from './pdf.js';
 import {
   contentHash,
+  displayStatus,
   proposalInclude,
   toProposalSummary,
   toVersionContent,
@@ -677,4 +680,50 @@ export async function sendVersion(
     });
   }
   return getProposal(db, actor, id);
+}
+
+// ---------------------------------------------------------------------------
+// PDF (FR-Q06)
+// ---------------------------------------------------------------------------
+
+/** Renders a frozen version for staff. Drafts have no fixed content yet, so they have no PDF. */
+export async function getVersionPdf(db: Db, actor: AuthUser, id: string, versionNo: number) {
+  const p = await findReadable(db, actor, id);
+  const v = await loadVersion(db, p.id, versionNo);
+  if (v.status === 'DRAFT' || !v.contentHash) {
+    throw conflict('Drafts have no PDF. Submit the draft first.');
+  }
+  return pdfFor(db, actor.agencyId, p, v);
+}
+
+export async function pdfFor(
+  db: Db,
+  agencyId: string,
+  p: {
+    id: string;
+    number: number;
+    deal: { contact: { fullName: string; companyName: string | null } };
+  },
+  v: Awaited<ReturnType<typeof loadVersion>>,
+) {
+  const agency = await db.agency.findUniqueOrThrow({ where: { id: agencyId } });
+  const accepted = v.reviews.find((r) => r.kind === 'CLIENT' && r.decision === 'ACCEPTED');
+  const today = agencyToday(new Date(), agency.timezone);
+  const body = await renderProposalPdf({
+    agency: {
+      name: agency.name,
+      contactEmail: agency.contactEmail,
+      phone: agency.phone,
+      address: agency.address,
+    },
+    clientName: p.deal.contact.companyName ?? p.deal.contact.fullName,
+    reference: proposalReference(p.number),
+    content: toVersionContent(v),
+    contentHash: v.contentHash!,
+    statusLabel: PROPOSAL_STATUS_LABELS[displayStatus(v.status, v.expiresOn, today)],
+    sentAt: v.sentAt,
+    acceptance: accepted ? { by: accepted.actor.name, at: accepted.occurredAt } : null,
+    timeZone: agency.timezone,
+  });
+  return { body, filename: `${proposalReference(p.number)}-v${v.versionNo}.pdf` };
 }

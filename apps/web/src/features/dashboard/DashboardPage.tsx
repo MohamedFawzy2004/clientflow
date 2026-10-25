@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight, CircleCheck, Circle, Plus, Users } from 'lucide-react';
-import { can, sumByCurrency, type Currency } from '@clientflow/contracts';
-import { Totals } from '../../components/sales/sales-ui';
-import { useBoard, useFollowUps } from '../deals/api';
+import { CircleCheck, Circle, Plus, Users } from 'lucide-react';
+import { can } from '@clientflow/contracts';
+import { useBoard } from '../deals/api';
+import { RemindersCard, SalesDashboard } from './SalesDashboard';
 import { canSeeLeads } from '../../app/AppShell';
 import { Avatar } from '../../components/ui/brand';
 import { Button } from '../../components/ui/button';
@@ -22,101 +22,8 @@ function greeting(timeZone: string) {
   return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 }
 
-function Kpi({
-  label,
-  children,
-  to,
-  linkLabel,
-  tone,
-}: {
-  label: string;
-  children: React.ReactNode;
-  to: string;
-  linkLabel: string;
-  tone?: 'warning';
-}) {
-  return (
-    <section
-      aria-label={label}
-      className="rounded-lg border border-border bg-surface p-5 shadow-card"
-    >
-      <p className="text-[13px] font-medium text-muted">{label}</p>
-      <div className={tone === 'warning' ? 'mt-2 text-warning' : 'mt-2 text-text'}>{children}</div>
-      <Link
-        to={to}
-        className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary-strong hover:underline"
-      >
-        {linkLabel} <ArrowRight aria-hidden className="size-4" />
-      </Link>
-    </section>
-  );
-}
-
-const BIG = 'text-[32px] font-semibold leading-[38px] tracking-[-0.02em] tabular';
-
-/** Sales KPIs from live queries: follow-ups, open pipeline (per currency), leads. */
-function SalesKpis({ isSales, leadTotal }: { isSales: boolean; leadTotal: number }) {
-  const followUps = useFollowUps();
-  const board = useBoard();
-  const counts = followUps.data?.data.counts;
-  const columns = board.data?.data.columns ?? [];
-  const openDeals = columns.reduce((n, c) => n + c.count, 0);
-  const pipeline = sumByCurrency(
-    columns.flatMap((c) =>
-      (Object.entries(c.totals) as Array<[Currency, string]>).map(([currency, amountMinor]) => ({
-        currency,
-        amountMinor,
-      })),
-    ),
-  );
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <Kpi
-        label="Overdue follow-ups"
-        to="/app/follow-ups"
-        linkLabel="Open follow-ups"
-        tone={counts && counts.overdue > 0 ? 'warning' : undefined}
-      >
-        {followUps.isPending ? (
-          <Skeleton className="h-9 w-16" />
-        ) : (
-          <p className={BIG}>{counts?.overdue ?? '–'}</p>
-        )}
-        {counts ? (
-          <p className="mt-1 text-xs text-muted">
-            {counts.today} due later today · {counts.noNextStep} without a next step
-          </p>
-        ) : null}
-      </Kpi>
-      <Kpi
-        label={isSales ? 'Your open deals' : 'Open deals'}
-        to="/app/deals"
-        linkLabel="Open pipeline"
-      >
-        {board.isPending ? <Skeleton className="h-9 w-16" /> : <p className={BIG}>{openDeals}</p>}
-        <Totals totals={pipeline} className="mt-1 text-xs text-muted" />
-      </Kpi>
-      <Kpi
-        label={isSales ? 'Your leads' : 'Leads in your agency'}
-        to="/app/leads"
-        linkLabel="View all leads"
-      >
-        <p className={BIG}>{leadTotal.toLocaleString()}</p>
-      </Kpi>
-    </div>
-  );
-}
-
 /** Every number on this page comes from the API. There are no placeholder KPIs (spec §7.4.11). */
-function LeadsOverview({
-  timeZone,
-  isSales,
-  canInvite,
-}: {
-  timeZone: string;
-  isSales: boolean;
-  canInvite: boolean;
-}) {
+function LeadsOverview({ timeZone, canInvite }: { timeZone: string; canInvite: boolean }) {
   const [addOpen, setAddOpen] = useState(false);
   const recent = useLeads({ page: 1, limit: 5 });
   const board = useBoard();
@@ -165,9 +72,10 @@ function LeadsOverview({
 
   return (
     <div className="flex flex-col gap-6">
-      <SalesKpis isSales={isSales} leadTotal={total} />
+      <SalesDashboard />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="flex flex-col gap-6">
+          <RemindersCard />
           <section
             aria-label="Getting started"
             className="rounded-lg border border-border bg-surface p-5 shadow-card"
@@ -266,11 +174,7 @@ export function DashboardPage() {
       </p>
       <div className="mt-6">
         {canSeeLeads(user.role) ? (
-          <LeadsOverview
-            timeZone={timeZone}
-            isSales={user.role === 'SALES'}
-            canInvite={can(user.role, 'team.invite')}
-          />
+          <LeadsOverview timeZone={timeZone} canInvite={can(user.role, 'team.invite')} />
         ) : (
           <div className="rounded-lg border border-border bg-surface shadow-card">
             <EmptyState
