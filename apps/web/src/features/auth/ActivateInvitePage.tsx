@@ -18,6 +18,7 @@ import { Button } from '../../components/ui/button';
 import { Banner, EmptyState, ErrorState } from '../../components/ui/feedback';
 import { Field, Input, PasswordInput } from '../../components/ui/form';
 import { AuthCard, useFragmentToken } from './AuthCard';
+import { homeFor } from './LoginPage';
 import { SESSION_KEY, useSession } from './session';
 
 const formSchema = z
@@ -100,7 +101,7 @@ export function ActivateInvitePage() {
       setCsrfToken(res.data.csrfToken);
       qc.setQueryData(SESSION_KEY, res.data.user);
       toast.success(`Welcome to ${res.data.user.agency.name}`);
-      navigate('/app/dashboard', { replace: true });
+      navigate(homeFor(res.data.user.role), { replace: true });
     },
   });
 
@@ -162,13 +163,23 @@ export function ActivateInvitePage() {
 
   return (
     <AuthCard
-      title={`Join ${invite.agencyName}`}
+      title={
+        invite.clientOrgName ? `${invite.agencyName} client portal` : `Join ${invite.agencyName}`
+      }
       subtitle={
-        <>
-          You were invited as{' '}
-          <span className="font-medium text-text">{ROLE_LABELS[invite.role]}</span>. This invitation
-          expires on {formatDate(invite.expiresAt)}.
-        </>
+        invite.clientOrgName ? (
+          <>
+            You were invited to review proposals for{' '}
+            <span className="font-medium text-text">{invite.clientOrgName}</span>. This invitation
+            expires on {formatDate(invite.expiresAt)}.
+          </>
+        ) : (
+          <>
+            You were invited as{' '}
+            <span className="font-medium text-text">{ROLE_LABELS[invite.role]}</span>. This
+            invitation expires on {formatDate(invite.expiresAt)}.
+          </>
+        )
       }
       footer={
         <>

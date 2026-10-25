@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
-import { loginRequestSchema, type LoginRequest } from '@clientflow/contracts';
+import { loginRequestSchema, type LoginRequest, type Role } from '@clientflow/contracts';
 import { FileCheck2, GitBranch, ShieldCheck } from 'lucide-react';
 import { ApiError } from '../../lib/api';
 import { Button } from '../../components/ui/button';
@@ -10,10 +10,19 @@ import { Field, Input, PasswordInput } from '../../components/ui/form';
 import { Wordmark } from '../../components/ui/brand';
 import { useLogin, useSession } from './session';
 
-/** Only internal app paths are accepted, so `next` cannot become an open redirect. */
-export function safeNextPath(next: string | null): string {
-  if (!next || !next.startsWith('/app') || next.startsWith('//') || next.includes('\\'))
-    return '/app/dashboard';
+/** Where each kind of user starts: staff in the app, client portal users in the portal. */
+export function homeFor(role: Role | undefined): string {
+  return role === 'CLIENT' ? '/portal' : '/app/dashboard';
+}
+
+/**
+ * Only internal paths of the user's own area are accepted, so `next` cannot become an open
+ * redirect, and a portal user is never sent into the staff app (or the reverse).
+ */
+export function safeNextPath(next: string | null, role?: Role): string {
+  const area = role === 'CLIENT' ? '/portal' : '/app';
+  if (!next || !next.startsWith(area) || next.startsWith('//') || next.includes('\\'))
+    return homeFor(role);
   return next;
 }
 
@@ -63,7 +72,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const session = useSession();
   const login = useLogin();
-  const next = safeNextPath(params.get('next'));
+  const requested = params.get('next');
   const expired = params.get('expired') === '1';
 
   const form = useForm<LoginRequest>({
@@ -75,11 +84,11 @@ export function LoginPage() {
   });
   const { errors } = form.formState;
 
-  if (session.data) return <Navigate to={next} replace />;
+  if (session.data) return <Navigate to={safeNextPath(requested, session.data.role)} replace />;
 
   const onSubmit = form.handleSubmit((values) =>
     login.mutate(values, {
-      onSuccess: () => navigate(next, { replace: true }),
+      onSuccess: (data) => navigate(safeNextPath(requested, data.user.role), { replace: true }),
       onError: () => form.setValue('password', ''),
     }),
   );
