@@ -1,0 +1,58 @@
+{
+  "name": "clientflow",
+  "private": true,
+  "description": "ClientFlow — agency operations platform",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev -w @clientflow/api\" \"npm run dev -w @clientflow/web\"",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy && prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:test:prepare": "node scripts/with-test-db.mjs prisma migrate deploy",
+    "bootstrap:owner": "npm run bootstrap:owner -w @clientflow/api --",
+    "seed:dev": "npm run seed:dev -w @clientflow/api",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run db:test:prepare && npm run test -w @clientflow/api",
+    "test:web": "npm run test -w @clientflow/web",
+    "e2e": "playwright test",
+    "build": "npm run build -w @clientflow/contracts && npm run build -w @clientflow/api && npm run build -w @clientflow/web",
+    "e2e:screenshots": "node scripts/e2e-screenshots.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@eslint/js": "9.39.5",
+    "@node-rs/argon2": "2.2.2",
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "concurrently": "10.0.6",
+    "dotenv": "18.0.9",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "pg": "8.23.1",
+    "prettier": "3.9.10",
+    "prisma": "7.10.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.10.1": true,
+    "prisma@7.10.1": true,
+    "esbuild@0.28.2": true
+  }
+}

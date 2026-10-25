@@ -1,0 +1,535 @@
+// ClientFlow database schema. TypeScript uses camelCase, PostgreSQL uses snake_case (spec §23.2).
+// Check constraints, the audit append-only trigger and other rules Prisma cannot express
+// are added as SQL inside the migration files.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../apps/api/src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  importFileExtension    = "js"
+  generatedFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  SALES_MANAGER
+  SALES
+  PM
+  MEMBER
+  FINANCE
+  CLIENT
+}
+
+enum ContactLifecycle {
+  LEAD
+  CUSTOMER
+}
+
+enum ContactSource {
+  REFERRAL
+  WEBSITE
+  SOCIAL
+  EVENT
+  OUTBOUND
+  PARTNER
+  OTHER
+}
+
+enum AuditOutcome {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+model Agency {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  name            String   @db.VarChar(200)
+  slug            String   @unique @db.VarChar(80)
+  defaultCurrency String   @default("EGP") @map("default_currency") @db.Char(3)
+  timezone        String   @default("Africa/Cairo") @db.VarChar(64)
+  /// Last proposal reference number issued (P-0001, P-0002, ...). Incremented atomically.
+  proposalSeq     Int      @default(0) @map("proposal_seq")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  users       User[]
+  invitations Invitation[]
+  contacts    Contact[]
+  activities  Activity[]
+  auditEvents AuditEvent[]
+  pipelines   Pipeline[]
+  deals       Deal[]
+
+  clientOrganizations ClientOrganization[]
+  services            ServiceItem[]
+  proposals           Proposal[]
+  proposalVersions    ProposalVersion[]
+  proposalReviews     ProposalReview[]
+
+  @@map("agencies")
+}
+
+model User {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  agencyId     String    @map("agency_id") @db.Uuid
+  emailNorm    String    @map("email_norm") @db.VarChar(254)
+  name         String    @db.VarChar(120)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         Role
+  /// Set for CLIENT users only (DB check): the organization whose published records they may see.
+  clientOrgId  String?   @map("client_org_id") @db.Uuid
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  // Optimistic locking for team edits: stale PATCH requests get 409 (FR-D04 pattern).
+  version      Int       @default(1)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency              Agency               @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  sessions            Session[]
+  ownedContacts       Contact[]            @relation("ContactOwner")
+  activities          Activity[]
+  auditEvents         AuditEvent[]
+  invitationsSent     Invitation[]         @relation("InvitedBy")
+  invitationsAccepted Invitation[]         @relation("AcceptedUser")
+  passwordResetTokens PasswordResetToken[]
+  ownedDeals          Deal[]               @relation("DealOwner")
+  closedDeals         Deal[]               @relation("DealClosedBy")
+  clientOrg           ClientOrganization?  @relation("PortalUsers", fields: [clientOrgId], references: [id], onDelete: Restrict)
+  proposalsCreated    Proposal[]           @relation("ProposalCreatedBy")
+  versionsCreated     ProposalVersion[]    @relation("VersionCreatedBy")
+  proposalReviews     ProposalReview[]
+
+  @@unique([agencyId, emailNorm])
+  // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
+  @@unique([agencyId, id])
+  @@index([emailNorm])
+  @@index([clientOrgId])
+  @@map("users")
+}
+
+model Session {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Contact {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  agencyId     String           @map("agency_id") @db.Uuid
+  ownerId      String           @map("owner_id") @db.Uuid
+  fullName     String           @map("full_name") @db.VarChar(200)
+  emailNorm    String?          @map("email_norm") @db.VarChar(254)
+  phone        String?          @db.VarChar(40)
+  phoneNorm    String?          @map("phone_norm") @db.VarChar(20)
+  companyName  String?          @map("company_name") @db.VarChar(200)
+  /// The customer company this person belongs to; proposals are published to its portal users.
+  clientOrgId  String?          @map("client_org_id") @db.Uuid
+  lifecycle    ContactLifecycle @default(LEAD)
+  source       ContactSource?
+  nextActionAt DateTime?        @map("next_action_at") @db.Timestamptz(3)
+  notes        String?          @db.VarChar(5000)
+  /// When the lead became a customer (FR-C07). Same row, same ID.
+  convertedAt  DateTime?        @map("converted_at") @db.Timestamptz(3)
+  archivedAt   DateTime?        @map("archived_at") @db.Timestamptz(3)
+  version      Int              @default(1)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency    Agency              @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  // Composite FK: the owner must belong to the same agency as the contact.
+  owner     User                @relation("ContactOwner", fields: [agencyId, ownerId], references: [agencyId, id], onDelete: Restrict)
+  deals     Deal[]
+  /// Plain FK (nullable); the service checks that the organization is in the same agency.
+  clientOrg ClientOrganization? @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
+
+  // Target of the deals composite FK (deal and contact in the same agency).
+  @@unique([agencyId, id])
+  @@index([agencyId, ownerId, createdAt(sort: Desc)])
+  @@index([agencyId, nextActionAt])
+  @@index([agencyId, createdAt(sort: Desc)])
+  @@index([agencyId, emailNorm])
+  @@index([agencyId, phoneNorm])
+  @@map("contacts")
+}
+
+model Activity {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  agencyId   String   @map("agency_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  entityType String   @map("entity_type") @db.VarChar(40)
+  entityId   String   @map("entity_id") @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(60)
+  summary    String   @db.VarChar(500)
+  /// Free text for notes and logged calls/emails/meetings (FR-C08). Rendered as text only.
+  body       String?  @db.VarChar(5000)
+  /// When the interaction happened (may be earlier than when it was logged).
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  actor  User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([agencyId, entityType, entityId, occurredAt(sort: Desc)])
+  @@map("activities")
+}
+
+model AuditEvent {
+  id               String       @id @default(uuid(7)) @db.Uuid
+  agencyId         String?      @map("agency_id") @db.Uuid
+  actorId          String?      @map("actor_id") @db.Uuid
+  action           String       @db.VarChar(80)
+  targetType       String?      @map("target_type") @db.VarChar(40)
+  targetId         String?      @map("target_id") @db.Uuid
+  outcome          AuditOutcome
+  requestId        String?      @map("request_id") @db.VarChar(64)
+  metadataRedacted Json?        @map("metadata_redacted")
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency Agency? @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  actor  User?   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([agencyId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_events")
+}
+
+// One-time staff invitation (FR-I04, FR-I05). Only the SHA-256 of the token is stored.
+// State is derived: ACCEPTED (accepted_at), REVOKED (revoked_at), EXPIRED (expires_at past), else PENDING.
+model Invitation {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  agencyId       String    @map("agency_id") @db.Uuid
+  emailNorm      String    @map("email_norm") @db.VarChar(254)
+  role           Role
+  /// Required for CLIENT (portal) invitations, empty for staff invitations (DB check).
+  clientOrgId    String?   @map("client_org_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash") @db.Char(64)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt     DateTime? @map("accepted_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+  invitedById    String    @map("invited_by_id") @db.Uuid
+  acceptedUserId String?   @map("accepted_user_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency       Agency              @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  invitedBy    User                @relation("InvitedBy", fields: [agencyId, invitedById], references: [agencyId, id], onDelete: Restrict)
+  acceptedUser User?               @relation("AcceptedUser", fields: [acceptedUserId], references: [id], onDelete: Restrict)
+  clientOrg    ClientOrganization? @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
+
+  @@index([agencyId, createdAt(sort: Desc)])
+  @@map("invitations")
+}
+
+// Single-use password reset token (FR-I06). Hash only, short expiry.
+model PasswordResetToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+// One pipeline per agency in v1, with stable stage IDs (FR-D02). Stage names and order can change
+// without touching deals, because deals point at stage IDs.
+model Pipeline {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  agencyId  String   @map("agency_id") @db.Uuid
+  name      String   @db.VarChar(120)
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency Agency          @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  stages PipelineStage[]
+  deals  Deal[]
+
+  @@unique([agencyId, id])
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  pipelineId String   @map("pipeline_id") @db.Uuid
+  name       String   @db.VarChar(80)
+  position   Int
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
+  deals    Deal[]
+
+  @@unique([pipelineId, position])
+  // Target of the deals composite FK: a deal's stage must belong to the deal's pipeline.
+  @@unique([pipelineId, id])
+  @@map("pipeline_stages")
+}
+
+// Status (OPEN/WON/LOST) is separate from stage (spec §8.2, §9). Amounts are integer minor
+// units with an ISO currency: never floats, never summed across currencies (FR-F10).
+model Deal {
+  id                        String     @id @default(uuid(7)) @db.Uuid
+  agencyId                  String     @map("agency_id") @db.Uuid
+  contactId                 String     @map("contact_id") @db.Uuid
+  ownerId                   String     @map("owner_id") @db.Uuid
+  pipelineId                String     @map("pipeline_id") @db.Uuid
+  stageId                   String     @map("stage_id") @db.Uuid
+  title                     String     @db.VarChar(200)
+  amountMinor               BigInt     @default(0) @map("amount_minor")
+  currency                  String     @db.Char(3)
+  status                    DealStatus @default(OPEN)
+  expectedCloseOn           DateTime?  @map("expected_close_on") @db.Date
+  nextStep                  String?    @map("next_step") @db.VarChar(300)
+  nextStepAt                DateTime?  @map("next_step_at") @db.Timestamptz(3)
+  closedAt                  DateTime?  @map("closed_at") @db.Timestamptz(3)
+  closedById                String?    @map("closed_by_id") @db.Uuid
+  lostReason                String?    @map("lost_reason") @db.VarChar(500)
+  /// WON without an accepted proposal needs a documented, authorized override (FR-D05).
+  wonOverrideReason         String?    @map("won_override_reason") @db.VarChar(500)
+  archivedAt                DateTime?  @map("archived_at") @db.Timestamptz(3)
+  /// The client-accepted proposal version that won this deal (FR-D05, FR-Q10).
+  acceptedProposalVersionId String?    @unique @map("accepted_proposal_version_id") @db.Uuid
+  version                   Int        @default(1)
+  createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency                  Agency           @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  contact                 Contact          @relation(fields: [agencyId, contactId], references: [agencyId, id], onDelete: Restrict)
+  owner                   User             @relation("DealOwner", fields: [agencyId, ownerId], references: [agencyId, id], onDelete: Restrict)
+  pipeline                Pipeline         @relation(fields: [agencyId, pipelineId], references: [agencyId, id], onDelete: Restrict)
+  stage                   PipelineStage    @relation(fields: [pipelineId, stageId], references: [pipelineId, id], onDelete: Restrict)
+  /// Plain FK: an optional composite relation cannot include the required agency_id. The closer
+  /// is always the acting user, whose agency the service checks.
+  closedBy                User?            @relation("DealClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+  acceptedProposalVersion ProposalVersion? @relation("DealAcceptedVersion", fields: [acceptedProposalVersionId], references: [id], onDelete: Restrict)
+  proposals               Proposal[]
+
+  // Target of the proposals composite FK.
+  @@unique([agencyId, id])
+  @@index([agencyId, status, stageId])
+  @@index([agencyId, ownerId, status])
+  @@index([agencyId, contactId])
+  @@index([agencyId, nextStepAt])
+  @@map("deals")
+}
+
+// M4: client organizations, service catalog and proposals.
+
+// A customer company (spec §8.1 client_organizations). Portal users belong to exactly one.
+model ClientOrganization {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  agencyId   String    @map("agency_id") @db.Uuid
+  name       String    @db.VarChar(200)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency      Agency       @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  contacts    Contact[]
+  portalUsers User[]       @relation("PortalUsers")
+  invitations Invitation[]
+  proposals   Proposal[]
+
+  @@unique([agencyId, id])
+  @@index([agencyId, name])
+  @@map("client_organizations")
+}
+
+// Service catalog entry (FR-Q01). Proposal items copy name and price, so edits here never change
+// a proposal that was already written.
+model ServiceItem {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  agencyId    String    @map("agency_id") @db.Uuid
+  name        String    @db.VarChar(160)
+  description String?   @db.VarChar(2000)
+  unit        String    @db.VarChar(40)
+  rateMinor   BigInt    @map("rate_minor")
+  currency    String    @db.Char(3)
+  archivedAt  DateTime? @map("archived_at") @db.Timestamptz(3)
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency Agency         @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  items  ProposalItem[]
+
+  @@index([agencyId, archivedAt, name])
+  @@map("service_catalog")
+}
+
+enum ProposalStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED_INTERNAL
+  SENT
+  ACCEPTED
+  REJECTED
+  CHANGES_REQUESTED
+  SUPERSEDED
+}
+
+// One proposal per offer on a deal. Content lives in numbered versions (FR-Q04).
+model Proposal {
+  id               String         @id @default(uuid(7)) @db.Uuid
+  agencyId         String         @map("agency_id") @db.Uuid
+  dealId           String         @map("deal_id") @db.Uuid
+  /// Agency-wide reference number, shown as P-0001 (FR-Q06).
+  number           Int
+  /// Mirrors the status of the latest version, for lists and filters.
+  status           ProposalStatus @default(DRAFT)
+  currentVersionNo Int            @default(1) @map("current_version_no")
+  /// The deal contact's organization when a version was last sent; portal access follows it.
+  clientOrgId      String?        @map("client_org_id") @db.Uuid
+  createdById      String         @map("created_by_id") @db.Uuid
+  version          Int            @default(1)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency    Agency              @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  deal      Deal                @relation(fields: [agencyId, dealId], references: [agencyId, id], onDelete: Restrict)
+  createdBy User                @relation("ProposalCreatedBy", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  clientOrg ClientOrganization? @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
+  versions  ProposalVersion[]
+
+  @@unique([agencyId, number])
+  @@unique([agencyId, id])
+  @@index([agencyId, status, updatedAt(sort: Desc)])
+  @@index([agencyId, dealId])
+  @@index([clientOrgId, status])
+  @@map("proposals")
+}
+
+// An immutable snapshot once it leaves DRAFT (FR-Q04): a DB trigger refuses content changes and
+// item changes on non-draft versions. Totals are computed on the server in integer minor units.
+model ProposalVersion {
+  id            String         @id @default(uuid(7)) @db.Uuid
+  agencyId      String         @map("agency_id") @db.Uuid
+  proposalId    String         @map("proposal_id") @db.Uuid
+  versionNo     Int            @map("version_no")
+  status        ProposalStatus @default(DRAFT)
+  title         String         @db.VarChar(200)
+  summary       String?        @db.VarChar(5000)
+  inclusions    String?        @db.VarChar(5000)
+  exclusions    String?        @db.VarChar(5000)
+  assumptions   String?        @db.VarChar(5000)
+  milestones    String?        @db.VarChar(5000)
+  paymentTerms  String?        @map("payment_terms") @db.VarChar(2000)
+  terms         String?        @db.VarChar(10000)
+  /// Staff-only. Never serialized to the client portal or the client print view.
+  internalNotes String?        @map("internal_notes") @db.VarChar(5000)
+  currency      String         @db.Char(3)
+  /// Valid through the end of this day in the agency timezone (FR-Q08).
+  expiresOn     DateTime       @map("expires_on") @db.Date
+  /// Discount and tax in basis points (1400 = 14.00%), applied to the whole proposal.
+  discountBp    Int            @default(0) @map("discount_bp")
+  taxRateBp     Int            @default(1400) @map("tax_rate_bp")
+  taxLabel      String         @default("VAT") @map("tax_label") @db.VarChar(40)
+  subtotalMinor BigInt         @default(0) @map("subtotal_minor")
+  discountMinor BigInt         @default(0) @map("discount_minor")
+  taxMinor      BigInt         @default(0) @map("tax_minor")
+  totalMinor    BigInt         @default(0) @map("total_minor")
+  /// SHA-256 of the client-visible content, fixed when the version leaves DRAFT (FR-Q09).
+  contentHash   String?        @map("content_hash") @db.Char(64)
+  submittedAt   DateTime?      @map("submitted_at") @db.Timestamptz(3)
+  approvedAt    DateTime?      @map("approved_at") @db.Timestamptz(3)
+  sentAt        DateTime?      @map("sent_at") @db.Timestamptz(3)
+  decidedAt     DateTime?      @map("decided_at") @db.Timestamptz(3)
+  createdById   String         @map("created_by_id") @db.Uuid
+  version       Int            @default(1)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency       Agency           @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  proposal     Proposal         @relation(fields: [agencyId, proposalId], references: [agencyId, id], onDelete: Restrict)
+  createdBy    User             @relation("VersionCreatedBy", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  items        ProposalItem[]
+  reviews      ProposalReview[]
+  acceptedDeal Deal?            @relation("DealAcceptedVersion")
+
+  @@unique([proposalId, versionNo])
+  @@unique([agencyId, id])
+  @@index([agencyId, status])
+  @@map("proposal_versions")
+}
+
+model ProposalItem {
+  id             String  @id @default(uuid(7)) @db.Uuid
+  versionId      String  @map("version_id") @db.Uuid
+  position       Int
+  /// Where the line came from, if anywhere. The line keeps its own copy of name and price.
+  serviceId      String? @map("service_id") @db.Uuid
+  name           String  @db.VarChar(200)
+  description    String? @db.VarChar(2000)
+  unit           String  @db.VarChar(40)
+  /// Quantity in hundredths (150 = 1.5), so no binary floats are involved.
+  quantityCenti  Int     @map("quantity_centi")
+  unitPriceMinor BigInt  @map("unit_price_minor")
+  lineTotalMinor BigInt  @map("line_total_minor")
+
+  version ProposalVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  service ServiceItem?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@unique([versionId, position])
+  @@map("proposal_items")
+}
+
+enum ReviewKind {
+  INTERNAL
+  CLIENT
+}
+
+enum ReviewDecision {
+  SUBMITTED
+  APPROVED
+  CHANGES_REQUESTED
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+// Who decided what on which version, and when (spec §8.1 proposal_reviews). One client decision
+// per version (T-PROP-03), and it keeps the hash of the terms that were shown (FR-Q09).
+model ProposalReview {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  agencyId    String         @map("agency_id") @db.Uuid
+  versionId   String         @map("version_id") @db.Uuid
+  actorId     String         @map("actor_id") @db.Uuid
+  kind        ReviewKind
+  decision    ReviewDecision
+  comment     String?        @db.VarChar(2000)
+  contentHash String?        @map("content_hash") @db.Char(64)
+  occurredAt  DateTime       @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  agency  Agency          @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  version ProposalVersion @relation(fields: [agencyId, versionId], references: [agencyId, id], onDelete: Restrict)
+  actor   User            @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([versionId, occurredAt])
+  @@map("proposal_reviews")
+}

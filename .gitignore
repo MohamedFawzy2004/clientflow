@@ -32,3 +32,10 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# local tooling
+.claude/
+
+# dev email sink (contains one-time links)
+.mail-sink/
+e2e/.mail-sink/
