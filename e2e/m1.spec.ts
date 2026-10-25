@@ -162,7 +162,7 @@ test.describe.serial('M1 journey', () => {
     }
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app/dashboard');
-    await expect(page.getByText('Your leads')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Open pipeline' })).toBeVisible();
     await shot(page, `${SHOTS}/dashboard-1440.png`);
   });
 
