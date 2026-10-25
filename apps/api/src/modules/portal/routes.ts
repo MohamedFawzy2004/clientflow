@@ -3,7 +3,13 @@ import { clientDecisionSchema } from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
 import { parseOrThrow } from '../../lib/validation.js';
 import { requirePermission } from '../../middleware/auth.js';
-import { decideOnProposal, getPortalProposal, listPortalProposals } from './service.js';
+import {
+  decideOnProposal,
+  getPortalPdf,
+  getPortalProposal,
+  listPortalProposals,
+} from './service.js';
+import { sendPdf } from '../proposals/routes.js';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap = (fn: Handler) => (req: Request, res: Response, next: (err?: unknown) => void) =>
@@ -27,6 +33,13 @@ export function portalRouter(deps: AppDeps) {
     '/proposals/:id',
     wrap(async (req, res) =>
       ok(req, res, await getPortalProposal(db, req.auth!.user, String(req.params.id))),
+    ),
+  );
+
+  router.get(
+    '/proposals/:id/pdf',
+    wrap(async (req, res) =>
+      sendPdf(res, await getPortalPdf(db, req.auth!.user, String(req.params.id))),
     ),
   );
 

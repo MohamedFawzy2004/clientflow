@@ -1,5 +1,7 @@
 import cookieParser from 'cookie-parser';
-import express, { type Express } from 'express';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import express, { type Express, type Request, type RequestHandler, type Response } from 'express';
 import type { Logger } from 'pino';
 import type { Db } from './db/client.js';
 import type { Mailer } from './lib/mailer.js';
@@ -25,6 +27,7 @@ import { clientOrgsRouter } from './modules/client-orgs/routes.js';
 import { portalRouter } from './modules/portal/routes.js';
 import { proposalsRouter } from './modules/proposals/routes.js';
 import { servicesRouter } from './modules/services/routes.js';
+import { insightsRouter } from './modules/insights/routes.js';
 
 export interface AppConfig {
   isProduction: boolean;
@@ -34,6 +37,8 @@ export interface AppConfig {
   /** Base URL for links in emails, e.g. https://app.example.com (no trailing slash). */
   publicUrl: string;
   rateLimits?: Partial<RateLimitConfig>;
+  /** Built web app (apps/web/dist). When set, this process serves it on the same origin. */
+  webDistDir?: string;
 }
 
 export interface AppDeps {
@@ -58,9 +63,8 @@ export function createApp(deps: AppDeps): Express {
 
   app.use(requestId);
   app.use(httpLogger(logger));
-  app.use(securityHeaders(config.isProduction));
-
-  app.use('/health', healthRouter(db));
+  const apiHeaders = securityHeaders(config.isProduction, 'api');
+  app.use('/health', apiHeaders, healthRouter(db));
 
   const api = express.Router();
   api.use(noStore);
@@ -81,10 +85,39 @@ export function createApp(deps: AppDeps): Express {
   api.use('/portal', portalRouter(deps));
   api.use(salesRouter(deps));
   api.use(clientOrgsRouter(deps));
+  api.use(insightsRouter(deps));
   api.use(notFoundHandler);
 
-  app.use('/api/v1', api);
-  app.use(notFoundHandler);
+  app.use('/api/v1', apiHeaders, api);
+  if (config.webDistDir) app.use(webApp(config.webDistDir, config.isProduction));
+  app.use(apiHeaders, notFoundHandler);
   app.use(errorHandler);
   return app;
+}
+
+/**
+ * Serves the built single-page app (production, ADR-034). Hashed assets are cached for a year;
+ * index.html is never cached so a deploy takes effect at once. Unknown non-API paths get
+ * index.html and the client router decides; /api and /health keep their JSON 404s.
+ */
+function webApp(dir: string, isProduction: boolean): RequestHandler {
+  const root = resolve(dir);
+  const index = join(root, 'index.html');
+  if (!existsSync(index)) throw new Error(`WEB_DIST_DIR has no index.html: ${root}`);
+  const router = express.Router();
+  router.use(securityHeaders(isProduction, 'web'));
+  router.use(
+    '/assets',
+    express.static(join(root, 'assets'), { immutable: true, maxAge: '365d', index: false }),
+    // A missing hashed asset is a 404, not the SPA page (and not an error).
+    (_req: Request, res: Response) => {
+      res.status(404).type('text/plain').send('Not found');
+    },
+  );
+  router.use(express.static(root, { index: false, maxAge: 0 }));
+  router.get(/^\/(?!api\/|health\/).*/, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(index);
+  });
+  return router;
 }

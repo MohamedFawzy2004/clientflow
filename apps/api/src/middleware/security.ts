@@ -2,13 +2,32 @@ import type { RequestHandler } from 'express';
 import helmet from 'helmet';
 import { AppError } from '../lib/errors.js';
 
-/** The API only serves JSON, so the CSP forbids everything (SEC-09). */
-export function securityHeaders(isProduction: boolean): RequestHandler {
+/**
+ * Security headers (SEC-09). The API only serves JSON, so its CSP forbids everything. The built
+ * web app (served by the same process in production) gets a strict same-origin policy: no inline
+ * scripts, no third-party hosts. Inline style attributes stay allowed for component libraries.
+ */
+export function securityHeaders(
+  isProduction: boolean,
+  kind: 'api' | 'web' = 'api',
+): RequestHandler {
+  const directives: Record<string, string[]> =
+    kind === 'api'
+      ? { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"] }
+      : {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:'],
+          fontSrc: ["'self'"],
+          connectSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+          baseUri: ["'none'"],
+          formAction: ["'self'"],
+        };
   return helmet({
-    contentSecurityPolicy: {
-      useDefaults: false,
-      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"] },
-    },
+    contentSecurityPolicy: { useDefaults: false, directives },
     crossOriginResourcePolicy: { policy: 'same-origin' },
     referrerPolicy: { policy: 'no-referrer' },
     // HSTS only after HTTPS is verified in production (SEC-08).

@@ -23,11 +23,15 @@ const app = createApp({
     csrfSecret: env.CSRF_SECRET,
     trustProxy: env.TRUST_PROXY,
     publicUrl: (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, ''),
+    ...(env.WEB_DIST_DIR ? { webDistDir: env.WEB_DIST_DIR } : {}),
   },
 });
 
-const server = app.listen(env.API_PORT, '127.0.0.1', () => {
-  logger.info({ port: env.API_PORT }, 'ClientFlow API listening');
+const server = app.listen(env.API_PORT, env.HOST, () => {
+  logger.info(
+    { host: env.HOST, port: env.API_PORT, web: Boolean(env.WEB_DIST_DIR) },
+    'ClientFlow API listening',
+  );
 });
 
 let shuttingDown = false;
