@@ -27,6 +27,7 @@ import { useSession } from '../auth/session';
 import { useAssignableOwners } from '../deals/api';
 import { DealFormDialog } from '../deals/DealFormDialog';
 import { useLead, useLeadAction } from './api';
+import { ClientPortalCard } from './ClientPortalCard';
 import { EditLeadDialog } from './EditLeadDialog';
 import { NextAction } from './LeadsListPage';
 import { TimelineComposer } from './TimelineComposer';
@@ -323,6 +324,7 @@ function LeadView({ lead, timeZone }: { lead: ContactWithDeals; timeZone: string
               </p>
             )}
           </Card>
+          <ClientPortalCard lead={lead} />
         </div>
 
         <Card title="Activity">
