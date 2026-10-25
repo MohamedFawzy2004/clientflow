@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { ArrowLeft, Printer, SearchX } from 'lucide-react';
+import { ArrowLeft, FileDown, Printer, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   OPERATIONAL_APPROVAL_NOTICE,
@@ -15,6 +15,7 @@ import { Banner, EmptyState, ErrorState, Skeleton } from '../../components/ui/fe
 import { ReasonDialog } from '../../components/sales/sales-ui';
 import {
   Card,
+  PDF_LINK,
   ProposalDocument,
   ProposalStatusBadge,
 } from '../../components/proposals/proposal-ui';
@@ -214,9 +215,14 @@ export function PortalProposalPage() {
           </h1>
           <ProposalStatusBadge status={p.current.displayStatus} />
         </div>
-        <Button variant="secondary" onClick={() => window.print()}>
-          <Printer aria-hidden className="size-4" /> Print
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => window.print()}>
+            <Printer aria-hidden className="size-4" /> Print
+          </Button>
+          <a href={`/api/v1/portal/proposals/${p.id}/pdf`} download className={PDF_LINK}>
+            <FileDown aria-hidden className="size-4" /> Download PDF
+          </a>
+        </div>
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] print:mt-0 print:block">
         <Card className="print:border-0 print:shadow-none">

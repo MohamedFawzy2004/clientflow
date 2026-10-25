@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Settings,
   UserCog,
   Users,
   X,
@@ -18,6 +19,7 @@ import { Avatar, Wordmark } from '../components/ui/brand';
 import { RadixDialog } from '../components/ui/dialog';
 import { cn } from '../lib/format';
 import { useLogout, useSession } from '../features/auth/session';
+import { ReminderBell } from '../features/dashboard/ReminderBell';
 
 /** UI hint only: the API enforces the same matrix on every request (ADR-009). */
 export function canSeeLeads(role: Role) {
@@ -66,7 +68,15 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
   },
   {
     group: 'Workspace',
-    items: [{ to: '/app/team', label: 'Team', icon: UserCog, visible: (r) => can(r, 'team.read') }],
+    items: [
+      { to: '/app/team', label: 'Team', icon: UserCog, visible: (r) => can(r, 'team.read') },
+      {
+        to: '/app/settings',
+        label: 'Settings',
+        icon: Settings,
+        visible: (r) => can(r, 'agency.manage'),
+      },
+    ],
   },
 ];
 
@@ -230,8 +240,11 @@ export function AppShell() {
           </RadixDialog.Portal>
         </RadixDialog.Root>
         <Wordmark />
-        <span className="grid size-11 place-items-center">
-          <Avatar name={user.name} size="sm" />
+        <span className="flex items-center">
+          <ReminderBell />
+          <span className="grid size-11 place-items-center">
+            <Avatar name={user.name} size="sm" />
+          </span>
         </span>
       </header>
 
@@ -246,6 +259,7 @@ export function AppShell() {
               {user.agency.defaultCurrency} · {user.agency.timezone.replace('_', ' ')}
             </span>
           </p>
+          <ReminderBell />
         </header>
         <main
           id="main"
