@@ -28,6 +28,7 @@ import { portalRouter } from './modules/portal/routes.js';
 import { proposalsRouter } from './modules/proposals/routes.js';
 import { servicesRouter } from './modules/services/routes.js';
 import { insightsRouter } from './modules/insights/routes.js';
+import { projectsRouter } from './modules/projects/routes.js';
 
 export interface AppConfig {
   isProduction: boolean;
@@ -46,6 +47,8 @@ export interface AppDeps {
   logger: Logger;
   config: AppConfig;
   mailer: Mailer;
+  /** Test-only fault injection (T-HAND-02). Never set by server.ts. */
+  hooks?: { beforeHandoffCommit?: () => void | Promise<void> };
   /** Receives work that continues after a response is sent (tests await it). */
   background?: (work: Promise<unknown>) => void;
 }
@@ -86,6 +89,7 @@ export function createApp(deps: AppDeps): Express {
   api.use(salesRouter(deps));
   api.use(clientOrgsRouter(deps));
   api.use(insightsRouter(deps));
+  api.use(projectsRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', apiHeaders, api);

@@ -44,6 +44,18 @@ export const PERMISSIONS = {
   'reports.export': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
   /** Edit the agency profile, currency, timezone and working days (FR-I09). */
   'agency.manage': ['OWNER', 'ADMIN'],
+  /** Every project in the agency. */
+  'projects.read.all': ['OWNER', 'ADMIN'],
+  /** Projects the user manages or is a member of (spec §1.1 "P"). */
+  'projects.read.member': ['PM', 'MEMBER'],
+  /** Read-only view of projects made from deals the user can see (spec §1.1 "Read linked"). */
+  'projects.read.linked': ['SALES_MANAGER', 'SALES'],
+  /** Convert a won deal or create a project manually (FR-P01). */
+  'projects.create': ['OWNER', 'ADMIN', 'PM'],
+  /** Change projects: everything for Owner/Admin, the projects they manage for PM. */
+  'projects.manage': ['OWNER', 'ADMIN', 'PM'],
+  /** Delivery dashboard: project and milestone counts in the viewer's scope. */
+  'dashboard.delivery': ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
   /** See team members and invitations. */
   'team.read': ['OWNER', 'ADMIN'],
   'team.invite': ['OWNER', 'ADMIN'],

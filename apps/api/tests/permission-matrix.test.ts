@@ -15,7 +15,14 @@ import {
   testDb,
   type SeededAgency,
 } from './helpers.js';
-import { FIXTURE_HASH, makeClientOrg, makeDeal, makeProposal } from './proposal-fixtures.js';
+import { randomUUID } from 'node:crypto';
+import {
+  FIXTURE_HASH,
+  makeClientOrg,
+  makeDeal,
+  makeProject,
+  makeProposal,
+} from './proposal-fixtures.js';
 
 const db = testDb();
 afterAll(() => db.$disconnect());
@@ -54,6 +61,17 @@ interface Fixtures {
   orgUserToDeactivate: string;
   portalProposal: string;
   clientEmail: string;
+  projRead: string;
+  projPatch: string;
+  projState: string;
+  projMembers: string;
+  projRemove: string;
+  projMilestones: string;
+  projMilestonePatch: { projectId: string; milestoneId: string };
+  projChecklist: { projectId: string; itemId: string };
+  convertDeal: string;
+  pmId: string;
+  memberId: string;
 }
 
 interface Endpoint {
@@ -61,6 +79,7 @@ interface Endpoint {
   method: 'get' | 'post' | 'patch' | 'put';
   path: (f: Fixtures) => string;
   body?: (role: Role, f: Fixtures) => object;
+  headers?: () => Record<string, string>;
   allowed: Role[];
 }
 
@@ -69,6 +88,8 @@ const SALES_SIDE: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES'];
 const SALES_MANAGERS: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER'];
 const TEAM_ADMINS: Role[] = ['OWNER', 'ADMIN'];
 const CLIENT_ONLY: Role[] = ['CLIENT'];
+const PROJECT_READERS: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES', 'PM', 'MEMBER'];
+const PROJECT_MANAGERS: Role[] = ['OWNER', 'ADMIN', 'PM'];
 const EVERYONE: Role[] = [...STAFF, 'CLIENT'];
 
 const ENDPOINTS: Endpoint[] = [
@@ -394,6 +415,96 @@ const ENDPOINTS: Endpoint[] = [
     path: (f) => `/api/v1/portal/proposals/${f.portalProposal}/pdf`,
     allowed: CLIENT_ONLY,
   },
+  // Projects (M6)
+  {
+    name: 'GET /projects',
+    method: 'get',
+    path: () => '/api/v1/projects',
+    allowed: PROJECT_READERS,
+  },
+  {
+    name: 'GET /projects/:id',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.projRead}`,
+    allowed: PROJECT_READERS,
+  },
+  {
+    name: 'POST /projects',
+    method: 'post',
+    path: () => '/api/v1/projects',
+    body: (_r, f) => ({ title: 'Matrix project', managerId: f.pmId, currency: 'EGP' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'PATCH /projects/:id',
+    method: 'patch',
+    path: (f) => `/api/v1/projects/${f.projPatch}`,
+    body: () => ({ version: 1, title: 'Changed' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/state',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.projState}/state`,
+    body: () => ({ version: 1, state: 'ACTIVE' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/members',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.projMembers}/members`,
+    body: (_r, f) => ({ userId: f.memberId }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/members/:userId/remove',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.projRemove}/members/${f.memberId}/remove`,
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/milestones',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.projMilestones}/milestones`,
+    body: () => ({ title: 'Matrix milestone' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'PATCH /projects/:id/milestones/:id',
+    method: 'patch',
+    path: (f) =>
+      `/api/v1/projects/${f.projMilestonePatch.projectId}/milestones/${f.projMilestonePatch.milestoneId}`,
+    body: () => ({ version: 1, status: 'DONE' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/checklist/:id',
+    method: 'post',
+    path: (f) =>
+      `/api/v1/projects/${f.projChecklist.projectId}/checklist/${f.projChecklist.itemId}`,
+    body: () => ({ done: true }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'GET /projects/handoff-queue',
+    method: 'get',
+    path: () => '/api/v1/projects/handoff-queue',
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /deals/:id/convert-to-project',
+    method: 'post',
+    path: (f) => `/api/v1/deals/${f.convertDeal}/convert-to-project`,
+    headers: () => ({ 'Idempotency-Key': randomUUID() }),
+    body: (_r, f) => ({ managerId: f.pmId }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'GET /dashboard/delivery',
+    method: 'get',
+    path: () => '/api/v1/dashboard/delivery',
+    allowed: ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
+  },
   // Client portal (M4)
   {
     name: 'GET /portal/proposals',
@@ -535,7 +646,59 @@ async function freshFixtures(seeded: SeededAgency): Promise<Fixtures> {
   });
   const orgContact = await contact('Org contact');
 
+  const pmId = seeded.users.pm!.id;
+  const memberId = seeded.users.member!.id;
+  const won = async () => {
+    const d = await pdeal();
+    const { versionId } = await makeProposal(db, {
+      agencyId,
+      dealId: d.id,
+      createdById: ownerId,
+      status: 'ACCEPTED',
+    });
+    await db.deal.update({
+      where: { id: d.id },
+      data: {
+        status: 'WON',
+        closedAt: new Date(),
+        closedById: ownerId,
+        acceptedProposalVersionId: versionId,
+      },
+    });
+    return { dealId: d.id, versionId };
+  };
+  const readDeal = await won();
+  const proj = (extra: object = {}) =>
+    makeProject(db, { agencyId, managerId: pmId, createdById: pmId, ...extra });
+  const projRead = await proj({
+    dealId: readDeal.dealId,
+    baselineVersionId: readDeal.versionId,
+    memberIds: [memberId],
+  });
+  const [projPatch, projState, projMembers, projRemove, projMilestones, projMs, projCl] =
+    await Promise.all([
+      proj(),
+      proj(),
+      proj(),
+      proj({ memberIds: [memberId] }),
+      proj(),
+      proj(),
+      proj(),
+    ]);
+  const convertDeal = (await won()).dealId;
+
   return {
+    projRead: projRead.projectId,
+    projPatch: projPatch.projectId,
+    projState: projState.projectId,
+    projMembers: projMembers.projectId,
+    projRemove: projRemove.projectId,
+    projMilestones: projMilestones.projectId,
+    projMilestonePatch: { projectId: projMs.projectId, milestoneId: projMs.milestoneId },
+    projChecklist: { projectId: projCl.projectId, itemId: projCl.checklistItemId },
+    convertDeal,
+    pmId,
+    memberId,
     servicePatch: servicePatch.id,
     serviceArchive: serviceArchive.id,
     proposalDeal: (await pdeal()).id,
@@ -590,6 +753,7 @@ describe('role × endpoint matrix', () => {
     const outcomes: Record<string, number> = {};
     for (const ep of ENDPOINTS) {
       let req = agent[ep.method](ep.path(f)).set('Origin', ORIGIN).set('X-CSRF-Token', csrf);
+      for (const [k, v] of Object.entries(ep.headers?.() ?? {})) req = req.set(k, v);
       if (ep.body) req = req.send(ep.body(role, f));
       const res = await req;
       outcomes[ep.name] = res.status;
@@ -640,7 +804,7 @@ describe('role × endpoint matrix', () => {
     }
     if (!SALES_SIDE.includes(role)) {
       // Denied proposal, catalog and portal-setup calls left everything as it was.
-      expect(await db.proposal.count()).toBe(7);
+      expect(await db.proposal.count()).toBe(9);
       expect(
         await db.proposalVersion.count({
           where: { status: { in: ['IN_REVIEW', 'APPROVED_INTERNAL'] } },
@@ -649,6 +813,13 @@ describe('role × endpoint matrix', () => {
       expect(await db.serviceItem.count({ where: { version: 1, archivedAt: null } })).toBe(2);
       expect(await db.clientOrganization.count()).toBe(2);
       expect(await db.user.count({ where: { role: 'CLIENT', active: true } })).toBe(3);
+    }
+    if (!PROJECT_MANAGERS.includes(role)) {
+      expect(await db.project.count()).toBe(8);
+      expect(await db.project.count({ where: { version: { gt: 1 } } })).toBe(0);
+      expect(await db.projectMilestone.count({ where: { status: { not: 'PLANNED' } } })).toBe(0);
+      expect(await db.handoffChecklistItem.count({ where: { doneAt: { not: null } } })).toBe(0);
+      expect(await db.projectMember.count()).toBe(2);
     }
     if (role === 'SALES') {
       // SALES drafts and sends, but never approves or manages portal access.
@@ -667,6 +838,7 @@ describe('role × endpoint matrix', () => {
     const { app } = makeApp();
     for (const ep of ENDPOINTS) {
       let req = request(app)[ep.method](ep.path(f)).set('Origin', ORIGIN);
+      for (const [k, v] of Object.entries(ep.headers?.() ?? {})) req = req.set(k, v);
       if (ep.body) req = req.send(ep.body('OWNER', f));
       const res = await req;
       expect({ ep: ep.name, status: res.status }).toEqual({ ep: ep.name, status: 401 });

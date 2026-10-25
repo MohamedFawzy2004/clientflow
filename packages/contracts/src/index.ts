@@ -7,3 +7,4 @@ export * from './money.js';
 export * from './crm.js';
 export * from './proposals.js';
 export * from './insights.js';
+export * from './projects.js';
