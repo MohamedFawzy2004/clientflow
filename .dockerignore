@@ -10,6 +10,7 @@ apps/api/src/generated
 !.env.example
 **/*.local.json
 **/.mail-sink
+**/.storage
 e2e/.auth
 test-results
 playwright-report

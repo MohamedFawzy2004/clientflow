@@ -112,6 +112,8 @@ export const projectUpdateSchema = z
     version,
     title: title.optional(),
     managerId: uuid.optional(),
+    /** Only for projects without a deal; a handed-off project keeps the proposal's client. */
+    clientOrgId: z.union([z.null(), uuid]).optional(),
     startOn: clearableDate,
     dueOn: clearableDate,
   })
@@ -208,8 +210,13 @@ export interface ProjectDetail extends ProjectSummary {
   milestoneList: ProjectMilestoneView[];
   checklist: ChecklistItemView[];
   activities: TimelineEntry[];
-  /** What the viewer may do here (the API checks again on every request). */
-  access: { manage: boolean };
+  /** The customer company whose portal users can be given access (FR-X01). */
+  clientOrg: { id: string; name: string } | null;
+  /**
+   * What the viewer may do here (the API checks again on every request). `work`: tasks, own
+   * time, files and deliverables (project manager, members, Owner, Admin).
+   */
+  access: { manage: boolean; work: boolean };
 }
 
 /** A won deal with an accepted proposal that has no project yet. */
@@ -234,6 +241,18 @@ export interface DeliveryDashboard {
   projects: Record<ProjectState, number>;
   milestones: { overdue: number; dueIn7Days: number };
   handoffWaiting: number | null;
+  /** Deliverables waiting for a client decision, and how many are past their review date. */
+  deliverables: { awaitingClient: number; overdue: number };
+  /** The viewer's own open tasks, soonest due first. */
+  myTasks: Array<{
+    id: string;
+    title: string;
+    projectId: string;
+    projectTitle: string;
+    status: string;
+    dueOn: string | null;
+    overdue: boolean;
+  }>;
   upcoming: Array<{
     projectId: string;
     projectTitle: string;

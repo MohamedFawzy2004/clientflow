@@ -4,10 +4,12 @@ import {
   convertDealSchema,
   idempotencyKeySchema,
   milestoneCreateSchema,
+  milestoneMoveSchema,
   milestoneUpdateSchema,
   projectCreateSchema,
   projectListQuerySchema,
   projectMemberSchema,
+  projectShareSchema,
   projectStateSchema,
   projectUpdateSchema,
 } from '@clientflow/contracts';
@@ -24,9 +26,14 @@ import {
   getDeliveryDashboard,
   getHandoffQueue,
   getProject,
+  listClientOrgOptions,
   listDeliveryStaff,
   listProjects,
+  listShares,
+  moveMilestone,
   removeMember,
+  revokeShare,
+  shareProject,
   toggleChecklist,
   updateMilestone,
   updateProject,
@@ -78,6 +85,12 @@ export function projectsRouter(deps: AppDeps) {
     '/projects/staff',
     requirePermission('projects.create', 'projects.manage'),
     wrap(async (req, res) => ok(req, res, await listDeliveryStaff(db, req.auth!.user))),
+  );
+
+  router.get(
+    '/projects/client-orgs',
+    manage,
+    wrap(async (req, res) => ok(req, res, await listClientOrgOptions(db, req.auth!.user))),
   );
 
   router.get(
@@ -181,6 +194,46 @@ export function projectsRouter(deps: AppDeps) {
         await updateMilestone(db, req.auth!.user, p(req, 'id'), p(req, 'milestoneId'), input),
       );
     }),
+  );
+
+  router.post(
+    '/projects/:id/milestones/:milestoneId/move',
+    manage,
+    wrap(async (req, res) => {
+      const { direction } = parseOrThrow(milestoneMoveSchema, req.body);
+      ok(
+        req,
+        res,
+        await moveMilestone(db, req.auth!.user, p(req, 'id'), p(req, 'milestoneId'), direction),
+      );
+    }),
+  );
+
+  router.get(
+    '/projects/:id/shares',
+    manage,
+    wrap(async (req, res) => ok(req, res, await listShares(db, req.auth!.user, p(req, 'id')))),
+  );
+
+  router.post(
+    '/projects/:id/shares',
+    manage,
+    wrap(async (req, res) => {
+      const { userId } = parseOrThrow(projectShareSchema, req.body);
+      ok(req, res, await shareProject(db, req.auth!.user, p(req, 'id'), userId, req.requestId));
+    }),
+  );
+
+  router.post(
+    '/projects/:id/shares/:userId/revoke',
+    manage,
+    wrap(async (req, res) =>
+      ok(
+        req,
+        res,
+        await revokeShare(db, req.auth!.user, p(req, 'id'), p(req, 'userId'), req.requestId),
+      ),
+    ),
   );
 
   router.post(

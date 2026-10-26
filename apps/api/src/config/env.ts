@@ -29,6 +29,25 @@ const envSchema = z.object({
    */
   MAIL_TRANSPORT: z.enum(['dev-sink', 'disabled']).default('dev-sink'),
   MAIL_SINK_DIR: z.string().min(1).default('.mail-sink'),
+  /** Private upload storage (encrypted files). Never inside the web root; a volume in containers. */
+  FILE_STORAGE_DIR: z.string().min(1).default('.storage'),
+  /** 32 random bytes as 64 hex characters: the AES-256-GCM key for stored files (SEC-12). */
+  FILE_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/i, 'FILE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)'),
+  /** Largest accepted upload. Default 25 MB, at most 100 MB (the database ceiling). */
+  FILE_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .max(100 * 1024 * 1024)
+    .default(25 * 1024 * 1024),
+  /** Total stored per project. Default 2 GB. */
+  FILE_PROJECT_QUOTA_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024 * 1024)
+    .default(2 * 1024 * 1024 * 1024),
   /**
    * Test/development only: raise the per-IP limits for sign-in and one-time-token endpoints
    * (the E2E suite signs in many times from one address). Refused in production.
@@ -50,14 +69,13 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment configuration: ${issues}`);
   }
   const env = parsed.data;
-  const secrets = [env.CSRF_SECRET, env.DATABASE_URL];
+  const secrets = [env.CSRF_SECRET, env.DATABASE_URL, env.FILE_ENCRYPTION_KEY];
   if (secrets.some((s) => PLACEHOLDER_MARKERS.some((m) => s.includes(m)))) {
     throw new Error('Environment still contains placeholder secrets from .env.example.');
   }
   if (env.NODE_ENV === 'production' && env.APP_ORIGINS.some((o) => !o.startsWith('https://'))) {
     throw new Error('APP_ORIGINS must use https:// in production.');
   }
-  // The dev sink writes tokens to disk in plain text: never acceptable in production.
   if (
     env.NODE_ENV === 'production' &&
     (env.LOGIN_RATE_LIMIT_PER_IP !== undefined ||
@@ -66,6 +84,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   ) {
     throw new Error('Rate-limit overrides are for tests only and are not allowed in production.');
   }
+  // The dev sink writes tokens to disk in plain text: never acceptable in production.
   if (env.NODE_ENV === 'production' && env.MAIL_TRANSPORT === 'dev-sink') {
     throw new Error('MAIL_TRANSPORT=dev-sink is not allowed in production.');
   }

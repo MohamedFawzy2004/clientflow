@@ -118,6 +118,17 @@ model User {
   createdProjects     Project[]              @relation("ProjectCreatedBy")
   projectMemberships  ProjectMember[]
   checklistDone       HandoffChecklistItem[] @relation("ChecklistDoneBy")
+  tasksAssigned       Task[]                 @relation("TaskAssignee")
+  tasksCreated        Task[]                 @relation("TaskCreatedBy")
+  timeEntries         TimeEntry[]            @relation("TimeEntries")
+  filesUploaded       StoredFile[]           @relation("FilesUploaded")
+  deliverablesCreated Deliverable[]          @relation("DeliverablesCreated")
+  versionsSubmitted   DeliverableVersion[]   @relation("DeliverableVersionsCreated")
+  versionsPublished   DeliverableVersion[]   @relation("DeliverableVersionsPublished")
+  deliverableReviews  DeliverableReview[]    @relation("DeliverableReviews")
+  projectShares       ProjectShare[]         @relation("ProjectSharesReceived")
+  sharesGranted       ProjectShare[]         @relation("ProjectSharesGranted")
+  sharesRevoked       ProjectShare[]         @relation("ProjectSharesRevoked")
 
   @@unique([agencyId, emailNorm])
   // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
@@ -597,17 +608,23 @@ model Project {
   createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  agency          Agency                 @relation(fields: [agencyId], references: [id], onDelete: Restrict)
-  manager         User                   @relation("ProjectManager", fields: [agencyId, managerId], references: [agencyId, id], onDelete: Restrict)
-  createdBy       User                   @relation("ProjectCreatedBy", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  agency              Agency                 @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  manager             User                   @relation("ProjectManager", fields: [agencyId, managerId], references: [agencyId, id], onDelete: Restrict)
+  createdBy           User                   @relation("ProjectCreatedBy", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
   /// Plain FKs (nullable); the service checks they belong to the same agency (ADR-025 pattern).
-  deal            Deal?                  @relation(fields: [dealId], references: [id], onDelete: Restrict)
-  baselineVersion ProposalVersion?       @relation(fields: [baselineVersionId], references: [id], onDelete: Restrict)
-  contact         Contact?               @relation(fields: [contactId], references: [id], onDelete: Restrict)
-  clientOrg       ClientOrganization?    @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
-  members         ProjectMember[]
-  milestones      ProjectMilestone[]
-  checklist       HandoffChecklistItem[]
+  deal                Deal?                  @relation(fields: [dealId], references: [id], onDelete: Restrict)
+  baselineVersion     ProposalVersion?       @relation(fields: [baselineVersionId], references: [id], onDelete: Restrict)
+  contact             Contact?               @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  clientOrg           ClientOrganization?    @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
+  members             ProjectMember[]
+  milestones          ProjectMilestone[]
+  checklist           HandoffChecklistItem[]
+  tasks               Task[]
+  timeEntries         TimeEntry[]
+  files               StoredFile[]
+  deliverables        Deliverable[]
+  deliverableVersions DeliverableVersion[]
+  shares              ProjectShare[]
 
   @@unique([agencyId, id])
   @@index([agencyId, state, updatedAt(sort: Desc)])
@@ -642,7 +659,9 @@ model ProjectMilestone {
   createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  project Project @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Cascade)
+  project      Project       @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Cascade)
+  tasks        Task[]
+  deliverables Deliverable[]
 
   @@unique([projectId, sequence])
   @@index([agencyId, dueOn])
@@ -681,4 +700,263 @@ model IdempotencyRecord {
 
   @@unique([agencyId, scope, key])
   @@map("idempotency_records")
+}
+
+// M7: tasks, time entries, private files, deliverables and portal project sharing.
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  IN_REVIEW
+  DONE
+  CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// A unit of delivery work inside a project (FR-P05). The milestone and assignee are plain FKs
+// (nullable, ADR-025); the service checks they belong to the same project and agency.
+model Task {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  agencyId        String       @map("agency_id") @db.Uuid
+  projectId       String       @map("project_id") @db.Uuid
+  milestoneId     String?      @map("milestone_id") @db.Uuid
+  assigneeId      String?      @map("assignee_id") @db.Uuid
+  createdById     String       @map("created_by_id") @db.Uuid
+  title           String       @db.VarChar(200)
+  description     String?      @db.VarChar(5000)
+  status          TaskStatus   @default(TODO)
+  priority        TaskPriority @default(MEDIUM)
+  dueOn           DateTime?    @map("due_on") @db.Date
+  estimateMinutes Int?         @map("estimate_minutes")
+  /// Set when the task reaches DONE, cleared when it leaves DONE (DB check).
+  completedAt     DateTime?    @map("completed_at") @db.Timestamptz(3)
+  version         Int          @default(1)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  project     Project           @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Restrict)
+  milestone   ProjectMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
+  assignee    User?             @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  createdBy   User              @relation("TaskCreatedBy", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  /// Tasks this task waits for (FR-P06).
+  blockedBy   TaskDependency[]  @relation("DependentTask")
+  /// Tasks waiting for this one.
+  blocking    TaskDependency[]  @relation("BlockingTask")
+  timeEntries TimeEntry[]
+
+  @@unique([agencyId, id])
+  // Target of the dependency and time entry FKs: both tasks / the task stay in one project.
+  @@unique([projectId, id])
+  @@index([projectId, status])
+  @@index([agencyId, assigneeId, status])
+  @@index([agencyId, dueOn])
+  @@map("tasks")
+}
+
+// "task waits for depends_on" (FR-P06). Both tasks are in the same project (composite FKs); the
+// service refuses cycles under a project row lock, and the DB refuses self-links.
+model TaskDependency {
+  projectId   String   @map("project_id") @db.Uuid
+  taskId      String   @map("task_id") @db.Uuid
+  dependsOnId String   @map("depends_on_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  task      Task @relation("DependentTask", fields: [projectId, taskId], references: [projectId, id], onDelete: Cascade)
+  dependsOn Task @relation("BlockingTask", fields: [projectId, dependsOnId], references: [projectId, id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnId])
+  @@index([dependsOnId])
+  @@map("task_dependencies")
+}
+
+// Time worked on a task (FR-P08). Cost rates arrive with finance (M9, FR-F06), so none is stored.
+model TimeEntry {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  agencyId  String   @map("agency_id") @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  workedOn  DateTime @map("worked_on") @db.Date
+  minutes   Int
+  billable  Boolean  @default(true)
+  /// Internal only: never shown in the client portal.
+  note      String?  @db.VarChar(1000)
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  project Project @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Restrict)
+  task    Task    @relation(fields: [projectId, taskId], references: [projectId, id], onDelete: Restrict)
+  user    User    @relation("TimeEntries", fields: [agencyId, userId], references: [agencyId, id], onDelete: Restrict)
+
+  @@index([taskId])
+  @@index([agencyId, projectId, workedOn])
+  @@index([agencyId, userId, workedOn])
+  @@map("time_entries")
+}
+
+enum FileScanStatus {
+  /// Stored but not checked yet. Never downloadable or publishable.
+  PENDING
+  CLEAN
+  /// A scanner flagged it after storage. Never downloadable or publishable.
+  QUARANTINED
+}
+
+// Metadata of a private uploaded file (spec §8.1 files, SEC-12). The bytes live in storage under
+// a random key, encrypted; the original name is kept for display only and never used as a path.
+model StoredFile {
+  id           String         @id @default(uuid(7)) @db.Uuid
+  agencyId     String         @map("agency_id") @db.Uuid
+  projectId    String         @map("project_id") @db.Uuid
+  uploadedById String         @map("uploaded_by_id") @db.Uuid
+  storageKey   String         @unique @map("storage_key") @db.VarChar(100)
+  /// Sanitized display name, e.g. "Homepage design.pdf".
+  originalName String         @map("original_name") @db.VarChar(255)
+  extension    String         @db.VarChar(10)
+  /// Decided by the server from the allowlist, never taken from the browser.
+  mimeType     String         @map("mime_type") @db.VarChar(120)
+  sizeBytes    Int            @map("size_bytes")
+  /// SHA-256 of the plain content.
+  sha256       String         @db.Char(64)
+  scanStatus   FileScanStatus @default(PENDING) @map("scan_status")
+  scanDetail   String?        @map("scan_detail") @db.VarChar(200)
+  scannedAt    DateTime?      @map("scanned_at") @db.Timestamptz(3)
+  /// AES-256-GCM nonce and tag used by the local encrypted storage adapter.
+  encIv        Bytes?         @map("enc_iv")
+  encTag       Bytes?         @map("enc_tag")
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  project            Project             @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Restrict)
+  uploadedBy         User                @relation("FilesUploaded", fields: [agencyId, uploadedById], references: [agencyId, id], onDelete: Restrict)
+  deliverableVersion DeliverableVersion?
+
+  @@unique([agencyId, id])
+  // Target of the deliverable version FK: a version's file must be in the deliverable's project.
+  @@unique([projectId, id])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("files")
+}
+
+enum DeliverableStatus {
+  DRAFT
+  READY
+  PUBLISHED
+  REVISION_REQUESTED
+  APPROVED
+  ARCHIVED
+}
+
+enum DeliverableDecision {
+  APPROVED
+  REVISION_REQUESTED
+  REJECTED
+}
+
+// Something the client reviews (FR-S06). Private until the project manager publishes a version.
+model Deliverable {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  agencyId         String            @map("agency_id") @db.Uuid
+  projectId        String            @map("project_id") @db.Uuid
+  milestoneId      String?           @map("milestone_id") @db.Uuid
+  title            String            @db.VarChar(200)
+  description      String?           @db.VarChar(2000)
+  status           DeliverableStatus @default(DRAFT)
+  /// The client is asked to decide by the end of this day, agency timezone (FR-S09).
+  reviewDueOn      DateTime?         @map("review_due_on") @db.Date
+  currentVersionNo Int               @default(0) @map("current_version_no")
+  publishedAt      DateTime?         @map("published_at") @db.Timestamptz(3)
+  createdById      String            @map("created_by_id") @db.Uuid
+  version          Int               @default(1)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  project   Project              @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Restrict)
+  milestone ProjectMilestone?    @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
+  createdBy User                 @relation("DeliverablesCreated", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  versions  DeliverableVersion[]
+
+  @@unique([agencyId, id])
+  @@unique([projectId, id])
+  @@index([projectId, status])
+  @@index([agencyId, status, reviewDueOn])
+  @@map("deliverables")
+}
+
+// One file submitted for review (FR-S08). Immutable once published (DB trigger).
+model DeliverableVersion {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  agencyId      String    @map("agency_id") @db.Uuid
+  projectId     String    @map("project_id") @db.Uuid
+  deliverableId String    @map("deliverable_id") @db.Uuid
+  versionNo     Int       @map("version_no")
+  fileId        String    @map("file_id") @db.Uuid
+  note          String?   @db.VarChar(2000)
+  /// Copy of the file hash when the version was made: what the client reviews.
+  fileSha256    String    @map("file_sha256") @db.Char(64)
+  createdById   String    @map("created_by_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(3)
+  publishedById String?   @map("published_by_id") @db.Uuid
+
+  project     Project            @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Restrict)
+  deliverable Deliverable        @relation(fields: [projectId, deliverableId], references: [projectId, id], onDelete: Restrict)
+  file        StoredFile         @relation(fields: [projectId, fileId], references: [projectId, id], onDelete: Restrict)
+  createdBy   User               @relation("DeliverableVersionsCreated", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  publishedBy User?              @relation("DeliverableVersionsPublished", fields: [publishedById], references: [id], onDelete: Restrict)
+  review      DeliverableReview?
+
+  @@unique([deliverableId, versionNo])
+  @@unique([agencyId, id])
+  // A file is reviewed in at most one version.
+  @@unique([projectId, fileId])
+  @@map("deliverable_versions")
+}
+
+// The client's decision on a published version (FR-S07, US-13). One per version; append-only.
+model DeliverableReview {
+  id         String              @id @default(uuid(7)) @db.Uuid
+  agencyId   String              @map("agency_id") @db.Uuid
+  versionId  String              @map("version_id") @db.Uuid
+  actorId    String              @map("actor_id") @db.Uuid
+  decision   DeliverableDecision
+  reason     String?             @db.VarChar(2000)
+  fileSha256 String              @map("file_sha256") @db.Char(64)
+  occurredAt DateTime            @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  version DeliverableVersion @relation(fields: [agencyId, versionId], references: [agencyId, id], onDelete: Restrict)
+  actor   User               @relation("DeliverableReviews", fields: [agencyId, actorId], references: [agencyId, id], onDelete: Restrict)
+
+  // One client decision per version.
+  @@unique([agencyId, versionId])
+  @@map("deliverable_reviews")
+}
+
+// A project explicitly shared with one client portal user (FR-X01, spec §8.1 client_project_shares).
+// A DB trigger checks that the user is a CLIENT of the project's client organization.
+model ProjectShare {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  agencyId    String    @map("agency_id") @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  sharedById  String    @map("shared_by_id") @db.Uuid
+  sharedAt    DateTime  @default(now()) @map("shared_at") @db.Timestamptz(3)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedById String?   @map("revoked_by_id") @db.Uuid
+
+  project   Project @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Restrict)
+  user      User    @relation("ProjectSharesReceived", fields: [agencyId, userId], references: [agencyId, id], onDelete: Restrict)
+  sharedBy  User    @relation("ProjectSharesGranted", fields: [agencyId, sharedById], references: [agencyId, id], onDelete: Restrict)
+  revokedBy User?   @relation("ProjectSharesRevoked", fields: [revokedById], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, userId])
+  @@index([agencyId, userId])
+  @@map("project_portal_shares")
 }

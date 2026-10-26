@@ -41,7 +41,7 @@ function useInvalidate() {
   const key = useUserKey();
   return () =>
     Promise.all(
-      ['projects', 'project', 'handoff', 'delivery', 'deal', 'deals', 'board'].map((k) =>
+      ['projects', 'project', 'handoff', 'delivery', 'deal', 'deals', 'board', 'shares'].map((k) =>
         qc.invalidateQueries({ queryKey: [...key, k] }),
       ),
     );
@@ -96,6 +96,19 @@ export function useDeliveryStaff(enabled = true) {
   });
 }
 
+export function useClientOrgOptions(enabled: boolean) {
+  const key = useUserKey();
+  return useQuery({
+    queryKey: [...key, 'client-org-options'],
+    enabled,
+    staleTime: 60_000,
+    queryFn: ({ signal }) =>
+      api.get<ApiSuccess<Array<{ id: string; name: string }>>>('/api/v1/projects/client-orgs', {
+        signal,
+      }),
+  });
+}
+
 export function useDeliveryDashboard() {
   const key = useUserKey();
   const { delivery } = useProjectPermissions();
@@ -145,6 +158,7 @@ export type ProjectAction =
       milestoneId: string;
       body: { version: number; title?: string; dueOn?: string | null; status?: MilestoneStatus };
     }
+  | { kind: 'move-milestone'; milestoneId: string; direction: 'up' | 'down' }
   | { kind: 'checklist'; itemId: string; done: boolean };
 
 export function useProjectAction(id: string) {
@@ -175,6 +189,11 @@ export function useProjectAction(id: string) {
           return api.patch<ApiSuccess<ProjectDetail>>(
             `${base}/milestones/${encodeURIComponent(a.milestoneId)}`,
             a.body,
+          );
+        case 'move-milestone':
+          return api.post<ApiSuccess<ProjectDetail>>(
+            `${base}/milestones/${encodeURIComponent(a.milestoneId)}/move`,
+            { direction: a.direction },
           );
         case 'checklist':
           return api.post<ApiSuccess<ProjectDetail>>(

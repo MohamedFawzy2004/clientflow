@@ -1,8 +1,9 @@
-import { Link, Outlet, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar } from '../components/ui/brand';
 import { useLogout, useSession } from '../features/auth/session';
+import { cn } from '../lib/format';
 
 /**
  * Client portal frame: no staff navigation, no internal data. Everything shown comes from the
@@ -53,6 +54,33 @@ export function PortalShell() {
             </button>
           </div>
         </div>
+        <nav aria-label="Portal" className="mx-auto w-full max-w-[1100px] px-4 md:px-6">
+          <ul className="-mb-px flex gap-1">
+            {[
+              { to: '/portal', label: 'Proposals', end: true },
+              { to: '/portal/projects', label: 'Projects', end: false },
+            ].map((l) => (
+              <li key={l.to}>
+                <NavLink
+                  to={l.to}
+                  end={l.end}
+                  className={({ isActive }) =>
+                    cn(
+                      'inline-flex h-11 items-center border-b-2 px-3 text-sm font-medium',
+                      isActive ||
+                        (l.end && location.pathname.startsWith('/portal/proposals')) ||
+                        (!l.end && location.pathname.startsWith('/portal/deliverables'))
+                        ? 'border-primary text-primary-strong'
+                        : 'border-transparent text-muted hover:text-text',
+                    )
+                  }
+                >
+                  {l.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </header>
       <main
         id="main"
