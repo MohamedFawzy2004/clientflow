@@ -14,6 +14,7 @@ import {
   type milestoneCreateSchema,
   type milestoneUpdateSchema,
   type ProjectDetail,
+  type ProjectShares,
   type ProjectState,
   type ProjectSummary,
   type projectCreateSchema,
@@ -29,48 +30,21 @@ import { conflict, forbidden, notFound, staleVersion, validationFailed } from '.
 import { actorSelect, recordActivity, toTimelineEntry } from '../../lib/timeline.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
-import { dealReadScope } from '../deals/policy.js';
+import {
+  canManage,
+  canWork,
+  findManageable,
+  findReadable,
+  lockProject,
+  projectReadScope,
+  type Tx,
+} from './access.js';
 
-type Tx = Prisma.TransactionClient;
+export { projectReadScope } from './access.js';
+
 const MANAGER_ROLES = ['OWNER', 'ADMIN', 'PM'] as const;
 const MEMBER_ROLES = ['OWNER', 'ADMIN', 'PM', 'MEMBER'] as const;
 const CONVERT_SCOPE = 'deal.convert_to_project';
-
-// ---------------------------------------------------------------------------
-// Policy (spec §1.1: A for Owner/Admin, P for PM/members, "Read linked" for sales)
-// ---------------------------------------------------------------------------
-
-export function projectReadScope(actor: AuthUser): Prisma.ProjectWhereInput {
-  const base = { agencyId: actor.agencyId };
-  if (can(actor.role, 'projects.read.all')) return base;
-  if (can(actor.role, 'projects.read.member')) {
-    return { ...base, OR: [{ managerId: actor.id }, { members: { some: { userId: actor.id } } }] };
-  }
-  if (can(actor.role, 'projects.read.linked')) return { ...base, deal: dealReadScope(actor) };
-  throw forbidden('Your role does not have access to projects.');
-}
-
-/** Owners/Admins manage every project; a PM manages the projects they lead. Sales read only. */
-function canManage(actor: AuthUser, project: { managerId: string }) {
-  if (!can(actor.role, 'projects.manage')) return false;
-  return can(actor.role, 'projects.read.all') || project.managerId === actor.id;
-}
-
-async function findReadable(db: Db | Tx, actor: AuthUser, id: string) {
-  if (!UUID_PATTERN.test(id)) throw notFound();
-  const p = await db.project.findFirst({ where: { AND: [projectReadScope(actor), { id }] } });
-  if (!p) throw notFound();
-  return p;
-}
-
-/** Loads a project the actor may change. Archived projects are history: read-only (FR-P11). */
-async function findManageable(db: Db | Tx, actor: AuthUser, id: string) {
-  const p = await findReadable(db, actor, id);
-  if (!canManage(actor, p))
-    throw forbidden('Only the project manager or an admin can change this project.');
-  if (p.state === 'ARCHIVED') throw conflict('Archived projects are read-only.');
-  return p;
-}
 
 async function assertManagerCandidate(db: Db | Tx, agencyId: string, userId: string) {
   const u = await db.user.findFirst({
@@ -89,7 +63,7 @@ const summaryInclude = {
   manager: { select: { id: true, name: true } },
   deal: { select: { id: true, title: true } },
   contact: { select: { id: true, fullName: true, companyName: true } },
-  clientOrg: { select: { name: true } },
+  clientOrg: { select: { id: true, name: true } },
   milestones: { select: { status: true } },
 } as const satisfies Prisma.ProjectInclude;
 type SummaryRow = Prisma.ProjectGetPayload<{ include: typeof summaryInclude }>;
@@ -203,7 +177,8 @@ export async function getProject(db: Db, actor: AuthUser, id: string): Promise<P
       doneBy: c.doneBy ? { id: c.doneBy.id, name: c.doneBy.name } : null,
     })),
     activities: activities.map(toTimelineEntry),
-    access: { manage: canManage(actor, p) && p.state !== 'ARCHIVED' },
+    clientOrg: p.clientOrg ? { id: p.clientOrg.id, name: p.clientOrg.name } : null,
+    access: { manage: canManage(actor, p) && p.state !== 'ARCHIVED', work: canWork(actor) },
   };
 }
 
@@ -516,6 +491,25 @@ export async function updateProject(
       }
       await assertManagerCandidate(tx, actor.agencyId, input.managerId);
     }
+    const clientOrgChanged = input.clientOrgId !== undefined && input.clientOrgId !== p.clientOrgId;
+    if (clientOrgChanged) {
+      if (p.dealId) {
+        throw conflict('A handed-off project keeps the client of its accepted proposal.');
+      }
+      if (input.clientOrgId) {
+        const org = await tx.clientOrganization.findFirst({
+          where: { id: input.clientOrgId, agencyId: actor.agencyId, archivedAt: null },
+          select: { id: true },
+        });
+        if (!org)
+          throw validationFailed({ clientOrgId: ['Choose an active client organization.'] });
+      }
+      // Portal access belonged to the old organization's people: end it (FR-X01).
+      await tx.projectShare.updateMany({
+        where: { projectId: p.id, revokedAt: null },
+        data: { revokedAt: new Date(), revokedById: actor.id },
+      });
+    }
     const startOn =
       input.startOn === undefined ? p.startOn : input.startOn ? parseDateOnly(input.startOn) : null;
     const dueOn =
@@ -526,17 +520,18 @@ export async function updateProject(
     await bump(tx, p.id, input.version, {
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.managerId !== undefined ? { managerId: input.managerId } : {}),
+      ...(clientOrgChanged ? { clientOrgId: input.clientOrgId ?? null } : {}),
       startOn,
       dueOn,
     });
-    const changed = (['title', 'managerId', 'startOn', 'dueOn'] as const).filter(
+    const changed = (['title', 'managerId', 'clientOrgId', 'startOn', 'dueOn'] as const).filter(
       (k) => input[k] !== undefined,
     );
     await recordActivity(tx, actor, {
       entityType: 'project',
       entityId: p.id,
       eventType: 'project.updated',
-      summary: `${actor.name} updated ${changed.join(', ').replace('managerId', 'manager') || 'the project'}`,
+      summary: `${actor.name} updated ${changed.join(', ').replace('managerId', 'manager').replace('clientOrgId', 'client organization') || 'the project'}`,
     });
     await writeAudit(tx, {
       agencyId: actor.agencyId,
@@ -647,6 +642,11 @@ export async function removeMember(
     const p = await findManageable(tx, actor, id);
     const res = await tx.projectMember.deleteMany({ where: { projectId: p.id, userId } });
     if (res.count === 0) return;
+    // Their open tasks go back to the manager's queue: they can no longer see the project.
+    await tx.task.updateMany({
+      where: { projectId: p.id, assigneeId: userId, status: { notIn: ['DONE', 'CANCELED'] } },
+      data: { assigneeId: null, version: { increment: 1 } },
+    });
     const u = await tx.user.findUnique({ where: { id: userId }, select: { name: true } });
     await recordActivity(tx, actor, {
       entityType: 'project',
@@ -677,7 +677,7 @@ export async function addMilestone(
   await db.$transaction(async (tx) => {
     const p = await findManageable(tx, actor, id);
     // Serialize sequence allocation per project.
-    await tx.$queryRaw`SELECT id FROM projects WHERE id = CAST(${p.id} AS uuid) FOR UPDATE`;
+    await lockProject(tx, p.id);
     const last = await tx.projectMilestone.aggregate({
       where: { projectId: p.id },
       _max: { sequence: true },
@@ -737,6 +737,183 @@ export async function updateMilestone(
   return getProject(db, actor, id);
 }
 
+/** Swaps a milestone with its neighbour (closes M6 open item O24). The first/last stays put. */
+export async function moveMilestone(
+  db: Db,
+  actor: AuthUser,
+  id: string,
+  milestoneId: string,
+  direction: 'up' | 'down',
+) {
+  if (!UUID_PATTERN.test(milestoneId)) throw notFound();
+  await db.$transaction(async (tx) => {
+    const p = await findManageable(tx, actor, id);
+    await lockProject(tx, p.id);
+    const m = await tx.projectMilestone.findFirst({ where: { id: milestoneId, projectId: p.id } });
+    if (!m) throw notFound();
+    const neighbour = await tx.projectMilestone.findFirst({
+      where: {
+        projectId: p.id,
+        sequence: direction === 'up' ? { lt: m.sequence } : { gt: m.sequence },
+      },
+      orderBy: { sequence: direction === 'up' ? 'desc' : 'asc' },
+    });
+    if (!neighbour) return;
+    // (project_id, sequence) is unique, so park one row on a free number first.
+    const last = await tx.projectMilestone.aggregate({
+      where: { projectId: p.id },
+      _max: { sequence: true },
+    });
+    const parked = (last._max.sequence ?? 0) + 1;
+    await tx.projectMilestone.update({ where: { id: m.id }, data: { sequence: parked } });
+    await tx.projectMilestone.update({
+      where: { id: neighbour.id },
+      data: { sequence: m.sequence, version: { increment: 1 } },
+    });
+    await tx.projectMilestone.update({
+      where: { id: m.id },
+      data: { sequence: neighbour.sequence, version: { increment: 1 } },
+    });
+    await recordActivity(tx, actor, {
+      entityType: 'project',
+      entityId: p.id,
+      eventType: 'milestone.moved',
+      summary: `Milestone “${m.title}” moved ${direction} by ${actor.name}`,
+    });
+  });
+  return getProject(db, actor, id);
+}
+
+// ---------------------------------------------------------------------------
+// Portal sharing (FR-X01): named client users of the project's client organization
+// ---------------------------------------------------------------------------
+
+export async function listShares(db: Db, actor: AuthUser, id: string): Promise<ProjectShares> {
+  const p = await findReadable(db, actor, id);
+  if (!canManage(actor, p))
+    throw forbidden('Only the project manager or an admin can share this project.');
+  if (!p.clientOrgId) return { clientOrg: null, people: [] };
+  const [org, users, shares] = await Promise.all([
+    db.clientOrganization.findUniqueOrThrow({
+      where: { id: p.clientOrgId },
+      select: { id: true, name: true },
+    }),
+    db.user.findMany({
+      where: { agencyId: actor.agencyId, role: 'CLIENT', clientOrgId: p.clientOrgId },
+      select: { id: true, name: true, emailNorm: true, active: true },
+      orderBy: { name: 'asc' },
+    }),
+    db.projectShare.findMany({ where: { projectId: p.id, revokedAt: null } }),
+  ]);
+  const active = new Map(shares.map((s) => [s.userId, s]));
+  return {
+    clientOrg: org,
+    people: users.map((u) => ({
+      user: { id: u.id, name: u.name, email: u.emailNorm, active: u.active },
+      shared: active.has(u.id),
+      sharedAt: active.get(u.id)?.sharedAt.toISOString() ?? null,
+    })),
+  };
+}
+
+export async function shareProject(
+  db: Db,
+  actor: AuthUser,
+  id: string,
+  userId: string,
+  requestId: string,
+) {
+  await db.$transaction(async (tx) => {
+    const p = await findManageable(tx, actor, id);
+    if (!p.clientOrgId) {
+      throw conflict('Link the project to a client organization before sharing it.');
+    }
+    const u = await tx.user.findFirst({
+      where: {
+        id: userId,
+        agencyId: actor.agencyId,
+        role: 'CLIENT',
+        clientOrgId: p.clientOrgId,
+        active: true,
+      },
+      select: { id: true, name: true },
+    });
+    if (!u) {
+      throw validationFailed({
+        userId: ["Choose an active portal user of the project's client organization."],
+      });
+    }
+    const existing = await tx.projectShare.findUnique({
+      where: { projectId_userId: { projectId: p.id, userId: u.id } },
+    });
+    if (existing && !existing.revokedAt) return; // already shared: idempotent
+    if (existing) {
+      await tx.projectShare.update({
+        where: { id: existing.id },
+        data: { revokedAt: null, revokedById: null, sharedAt: new Date(), sharedById: actor.id },
+      });
+    } else {
+      await tx.projectShare.create({
+        data: { agencyId: actor.agencyId, projectId: p.id, userId: u.id, sharedById: actor.id },
+      });
+    }
+    await recordActivity(tx, actor, {
+      entityType: 'project',
+      entityId: p.id,
+      eventType: 'project.shared',
+      summary: `${actor.name} shared the project with ${u.name} (client portal)`,
+    });
+    await writeAudit(tx, {
+      agencyId: actor.agencyId,
+      actorId: actor.id,
+      action: 'project.share',
+      outcome: 'SUCCESS',
+      targetType: 'project',
+      targetId: p.id,
+      requestId,
+      metadata: { userId: u.id },
+    });
+  });
+  return listShares(db, actor, id);
+}
+
+/** Ends a client's access at once: the next portal request no longer sees the project. */
+export async function revokeShare(
+  db: Db,
+  actor: AuthUser,
+  id: string,
+  userId: string,
+  requestId: string,
+) {
+  if (!UUID_PATTERN.test(userId)) throw notFound();
+  await db.$transaction(async (tx) => {
+    const p = await findManageable(tx, actor, id);
+    const res = await tx.projectShare.updateMany({
+      where: { projectId: p.id, userId, revokedAt: null },
+      data: { revokedAt: new Date(), revokedById: actor.id },
+    });
+    if (res.count === 0) return; // not shared: idempotent
+    const u = await tx.user.findUnique({ where: { id: userId }, select: { name: true } });
+    await recordActivity(tx, actor, {
+      entityType: 'project',
+      entityId: p.id,
+      eventType: 'project.unshared',
+      summary: `${actor.name} removed portal access for ${u?.name ?? 'a client user'}`,
+    });
+    await writeAudit(tx, {
+      agencyId: actor.agencyId,
+      actorId: actor.id,
+      action: 'project.unshare',
+      outcome: 'SUCCESS',
+      targetType: 'project',
+      targetId: p.id,
+      requestId,
+      metadata: { userId },
+    });
+  });
+  return listShares(db, actor, id);
+}
+
 export async function toggleChecklist(
   db: Db,
   actor: AuthUser,
@@ -779,37 +956,61 @@ export async function getDeliveryDashboard(
     throw forbidden('Your role has no delivery dashboard.');
   const scope = projectReadScope(actor);
   const today = agencyToday(new Date(), timeZone);
+  const liveProject: Prisma.ProjectWhereInput = {
+    AND: [scope, { state: { in: ['PLANNED', 'ACTIVE', 'ON_HOLD'] } }],
+  };
   const openMilestone: Prisma.ProjectMilestoneWhereInput = {
     status: { not: 'DONE' },
     dueOn: { not: null },
-    project: { AND: [scope, { state: { in: ['PLANNED', 'ACTIVE', 'ON_HOLD'] } }] },
+    project: liveProject,
   };
-  const [byState, overdue, soon, upcoming, waiting] = await Promise.all([
-    db.project.groupBy({ by: ['state'], where: scope, _count: { _all: true } }),
-    db.projectMilestone.count({ where: { ...openMilestone, dueOn: { lt: parseDateOnly(today) } } }),
-    db.projectMilestone.count({
-      where: {
-        ...openMilestone,
-        dueOn: { gte: parseDateOnly(today), lte: parseDateOnly(addDays(today, 7)) },
-      },
-    }),
-    db.projectMilestone.findMany({
-      where: openMilestone,
-      include: { project: { select: { id: true, title: true } } },
-      orderBy: { dueOn: 'asc' },
-      take: 10,
-    }),
-    can(actor.role, 'projects.create')
-      ? db.deal.count({
-          where: {
-            agencyId: actor.agencyId,
-            status: 'WON',
-            acceptedProposalVersionId: { not: null },
-            project: null,
-          },
-        })
-      : Promise.resolve(null),
-  ]);
+  const [byState, overdue, soon, upcoming, waiting, awaitingClient, reviewsOverdue, myTasks] =
+    await Promise.all([
+      db.project.groupBy({ by: ['state'], where: scope, _count: { _all: true } }),
+      db.projectMilestone.count({
+        where: { ...openMilestone, dueOn: { lt: parseDateOnly(today) } },
+      }),
+      db.projectMilestone.count({
+        where: {
+          ...openMilestone,
+          dueOn: { gte: parseDateOnly(today), lte: parseDateOnly(addDays(today, 7)) },
+        },
+      }),
+      db.projectMilestone.findMany({
+        where: openMilestone,
+        include: { project: { select: { id: true, title: true } } },
+        orderBy: { dueOn: 'asc' },
+        take: 10,
+      }),
+      can(actor.role, 'projects.create')
+        ? db.deal.count({
+            where: {
+              agencyId: actor.agencyId,
+              status: 'WON',
+              acceptedProposalVersionId: { not: null },
+              project: null,
+            },
+          })
+        : Promise.resolve(null),
+      db.deliverable.count({ where: { status: 'PUBLISHED', project: liveProject } }),
+      db.deliverable.count({
+        where: {
+          status: 'PUBLISHED',
+          reviewDueOn: { lt: parseDateOnly(today) },
+          project: liveProject,
+        },
+      }),
+      db.task.findMany({
+        where: {
+          assigneeId: actor.id,
+          status: { notIn: ['DONE', 'CANCELED'] },
+          project: liveProject,
+        },
+        include: { project: { select: { id: true, title: true } } },
+        orderBy: [{ dueOn: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
+        take: 10,
+      }),
+    ]);
   const projects = { PLANNED: 0, ACTIVE: 0, ON_HOLD: 0, COMPLETED: 0, ARCHIVED: 0 } as Record<
     ProjectState,
     number
@@ -819,6 +1020,16 @@ export async function getDeliveryDashboard(
     projects,
     milestones: { overdue, dueIn7Days: soon },
     handoffWaiting: waiting,
+    deliverables: { awaitingClient, overdue: reviewsOverdue },
+    myTasks: myTasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      projectId: t.project.id,
+      projectTitle: t.project.title,
+      status: t.status,
+      dueOn: t.dueOn ? formatDateOnly(t.dueOn) : null,
+      overdue: t.dueOn ? formatDateOnly(t.dueOn) < today : false,
+    })),
     upcoming: upcoming.map((m) => ({
       projectId: m.project.id,
       projectTitle: m.project.title,
