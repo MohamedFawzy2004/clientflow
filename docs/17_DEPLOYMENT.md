@@ -23,18 +23,21 @@ Any platform that runs a container and a managed PostgreSQL 17 works: Render, Ra
 
 Set these as secrets in the platform. Never put them in the image or the repository.
 
-| Variable            | Required | Example / rule                                                                                                  |
-| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`          | set      | `production` (already set in the image)                                                                         |
-| `DATABASE_URL`      | yes      | `postgresql://clientflow_app:…@db-host:5432/clientflow?sslmode=require`                                         |
-| `APP_ORIGINS`       | yes      | `https://crm.youragency.com` (exact origin, https only, comma-separated if several)                             |
-| `APP_PUBLIC_URL`    | no       | Base URL for emailed links; defaults to the first origin                                                        |
-| `CSRF_SECRET`       | yes      | 32+ random characters, e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`    |
-| `TRUST_PROXY`       | yes      | Number of proxies in front (usually `1`), so rate limits see the real client IP                                 |
-| `HOST` / `API_PORT` | set      | `0.0.0.0` / `4000` (already set in the image)                                                                   |
-| `WEB_DIST_DIR`      | set      | `/app/apps/web/dist` (already set in the image)                                                                 |
-| `MAIL_TRANSPORT`    | set      | `disabled` (already set). There is no real provider yet: invitation links are shown on screen to copy (risk O9) |
-| `LOG_LEVEL`         | no       | `info`                                                                                                          |
+| Variable                                      | Required | Example / rule                                                                                                                                                      |
+| --------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                    | set      | `production` (already set in the image)                                                                                                                             |
+| `DATABASE_URL`                                | yes      | `postgresql://clientflow_app:…@db-host:5432/clientflow?sslmode=require`                                                                                             |
+| `APP_ORIGINS`                                 | yes      | `https://crm.youragency.com` (exact origin, https only, comma-separated if several)                                                                                 |
+| `APP_PUBLIC_URL`                              | no       | Base URL for emailed links; defaults to the first origin                                                                                                            |
+| `CSRF_SECRET`                                 | yes      | 32+ random characters, e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`                                                        |
+| `FILE_ENCRYPTION_KEY`                         | yes      | 64 hex characters (32 bytes): `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Back it up with the files: without it they cannot be read |
+| `FILE_STORAGE_DIR`                            | no       | Default `/data/files` in the image. Mount a persistent volume there and include it in backups                                                                       |
+| `FILE_MAX_BYTES` / `FILE_PROJECT_QUOTA_BYTES` | no       | Defaults 25 MB per file and 2 GB per project                                                                                                                        |
+| `TRUST_PROXY`                                 | yes      | Number of proxies in front (usually `1`), so rate limits see the real client IP                                                                                     |
+| `HOST` / `API_PORT`                           | set      | `0.0.0.0` / `4000` (already set in the image)                                                                                                                       |
+| `WEB_DIST_DIR`                                | set      | `/app/apps/web/dist` (already set in the image)                                                                                                                     |
+| `MAIL_TRANSPORT`                              | set      | `disabled` (already set). There is no real provider yet: invitation links are shown on screen to copy (risk O9)                                                     |
+| `LOG_LEVEL`                                   | no       | `info`                                                                                                                                                              |
 
 The app **refuses to start** with placeholder secrets, an `http://` origin, or the development mail sink.
 

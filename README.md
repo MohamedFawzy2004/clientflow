@@ -2,11 +2,11 @@
 
 A secure **agency operations platform** for a single software & digital agency. It covers the path from lead → deal → versioned proposal → project handoff → tasks and deliverables → change requests → invoice tracking, plus an isolated client portal.
 
-> **Status: M6 (project handoff) complete on `feat/m6-project-handoff`, stacked on M1–M5.** Sales (leads, deals, proposals, client acceptance) now hands off to delivery: a won deal becomes a project with the accepted proposal as its scope baseline, milestones and a handoff checklist. 249 API, 50 UI and 34 end-to-end tests pass. **Not deployed yet** and not production-ready (see the reports and `docs/17_DEPLOYMENT.md`).
+> **Status: M7 (delivery and portal) complete on `feat/m7-delivery-portal`, stacked on M1–M6.** Projects now run delivery: tasks with dependencies on a board, time entries, encrypted private files, and deliverables the client reviews in the portal. 278 API, 55 UI and 41 end-to-end tests pass. **Not deployed yet** and not production-ready (no antivirus engine yet; see the reports and `docs/17_DEPLOYMENT.md`).
 
-![Project overview at 1440px](docs/milestones/m6-screenshots/project-1440.png)
+![Task board at 1440px](docs/milestones/m7-screenshots/board-pm-1440.png)
 
-## What works today (M1 to M6)
+## What works today (M1 to M7)
 
 - CLI-only owner bootstrap (refuses a second run). No public sign-up.
 - Email + password sign-in with Argon2id, hashed server sessions, idle and absolute expiry, logout revocation, CSRF + Origin checks, login throttling.
@@ -17,6 +17,10 @@ A secure **agency operations platform** for a single software & digital agency. 
 - Client portal: invite people at a customer to their own portal. They see only what was sent to their organization and accept, decline or ask for changes. Accepting wins the deal. It is recorded as operational approval, not an e-signature.
 - Dashboard: pipeline, wins, win rate, proposals and follow-ups for a date range, per currency; managers filter by owner and export deals to CSV. Reminders show what is overdue or waiting on you.
 - Projects: convert a client-accepted deal into a project in one safe step (retries never create duplicates), with the accepted scope as baseline, milestones, a handoff checklist, a team and project states. PMs and members see only their projects; sales see theirs read-only.
+- Delivery: a task board (status select on every card, no drag needed), dependencies without loops, assignees who move only their own tasks, and time entries (members see their own, the manager sees all).
+- Files: uploads are checked by type, file signature, active content and size, stored encrypted, and downloaded through 5-minute links bound to the user.
+- Deliverables: private until the project manager publishes a version; the client approves, asks for a revision or rejects with a reason, once per version. History cannot be changed.
+- Client portal for projects: shared per person; clients see status, milestones and published deliverables only, and anything else is a logged "not found".
 - Proposal PDFs, agency settings (profile, currency, timezone, working days).
 - Team page: invite by email with one-time links, change roles, deactivate/reactivate, sign out everywhere. The last owner can never be removed.
 - Forgot/reset password with single-use 30-minute links. Development emails go to a local sink, never sent.
@@ -29,7 +33,7 @@ A secure **agency operations platform** for a single software & digital agency. 
 - **Product source of truth:** [`CLIENTFLOW_MASTER_SPEC.md`](CLIENTFLOW_MASTER_SPEC.md)
 - **Windows setup:** [`docs/16_WINDOWS_SETUP.md`](docs/16_WINDOWS_SETUP.md)
 - **Deployment (not done yet):** [`docs/17_DEPLOYMENT.md`](docs/17_DEPLOYMENT.md)
-- **Milestone reports:** [M1](docs/milestones/M1_REPORT.md) · [M2](docs/milestones/M2_REPORT.md) · [M3](docs/milestones/M3_REPORT.md) · [M4](docs/milestones/M4_REPORT.md) · [M5](docs/milestones/M5_REPORT.md) · [M6](docs/milestones/M6_REPORT.md)
+- **Milestone reports:** [M1](docs/milestones/M1_REPORT.md) · [M2](docs/milestones/M2_REPORT.md) · [M3](docs/milestones/M3_REPORT.md) · [M4](docs/milestones/M4_REPORT.md) · [M5](docs/milestones/M5_REPORT.md) · [M6](docs/milestones/M6_REPORT.md) · [M7](docs/milestones/M7_REPORT.md)
 - **Requirements traceability:** [`docs/REQUIREMENTS_TRACEABILITY.csv`](docs/REQUIREMENTS_TRACEABILITY.csv)
 - **Architecture decisions:** [`docs/07_ARCHITECTURE_ADRS.md`](docs/07_ARCHITECTURE_ADRS.md)
 - **Risks:** [`docs/RISK_REGISTER.md`](docs/RISK_REGISTER.md)
