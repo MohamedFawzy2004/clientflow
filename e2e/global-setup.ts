@@ -41,6 +41,8 @@ export default async function globalSetup() {
     salesB: { email: 'sales.b@e2e.test', password: password() },
     // Owned by the M2 password-reset test, which changes this user's password.
     resetUser: { email: 'reset.user@e2e.test', password: password() },
+    pm: { email: 'pm@e2e.test', password: password() },
+    member: { email: 'member@e2e.test', password: password() },
   };
 
   run(
@@ -61,10 +63,12 @@ export default async function globalSetup() {
 
   const { rows } = await client.query<{ id: string }>('SELECT id FROM agencies LIMIT 1');
   const agencyId = rows[0]!.id;
-  for (const [key, name] of [
-    ['salesA', 'Sami Ahmed'],
-    ['salesB', 'Basma Nabil'],
-    ['resetUser', 'Rana Fathy'],
+  for (const [key, name, role] of [
+    ['salesA', 'Sami Ahmed', 'SALES'],
+    ['salesB', 'Basma Nabil', 'SALES'],
+    ['resetUser', 'Rana Fathy', 'SALES'],
+    ['pm', 'Pat Morgan', 'PM'],
+    ['member', 'Mina Adel', 'MEMBER'],
   ] as const) {
     const passwordHash = await hash(creds[key].password, {
       algorithm: 2,
@@ -74,8 +78,8 @@ export default async function globalSetup() {
     });
     await client.query(
       `INSERT INTO users (id, agency_id, email_norm, name, password_hash, role, updated_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, 'SALES', now())`,
-      [agencyId, creds[key].email, name, passwordHash],
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, now())`,
+      [agencyId, creds[key].email, name, passwordHash, role],
     );
   }
   await client.end();
