@@ -54,6 +54,11 @@ export const PERMISSIONS = {
   'projects.create': ['OWNER', 'ADMIN', 'PM'],
   /** Change projects: everything for Owner/Admin, the projects they manage for PM. */
   'projects.manage': ['OWNER', 'ADMIN', 'PM'],
+  /**
+   * Delivery work on projects the user takes part in: tasks, own time, files and deliverables.
+   * Sales see linked projects read-only and none of this (spec §1.1 "Read linked").
+   */
+  'delivery.work': ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
   /** Delivery dashboard: project and milestone counts in the viewer's scope. */
   'dashboard.delivery': ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
   /** See team members and invitations. */
