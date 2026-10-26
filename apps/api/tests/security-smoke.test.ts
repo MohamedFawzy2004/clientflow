@@ -121,6 +121,7 @@ describe('API responses', () => {
       NODE_ENV: 'production',
       DATABASE_URL: 'postgresql://u:p@db:5432/clientflow',
       CSRF_SECRET: 'a-long-random-value-that-is-not-a-placeholder-123',
+      FILE_ENCRYPTION_KEY: 'cd'.repeat(32),
       MAIL_TRANSPORT: 'disabled',
     };
     expect(() => loadEnv({ ...base, APP_ORIGINS: 'http://app.example.test' })).toThrow(/https/);

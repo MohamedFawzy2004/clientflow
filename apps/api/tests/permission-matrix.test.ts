@@ -72,6 +72,37 @@ interface Fixtures {
   convertDeal: string;
   pmId: string;
   memberId: string;
+  d: DeliveryFixtures;
+}
+
+/** M7: tasks, time, files, deliverables, shares and the portal for projects. */
+interface DeliveryFixtures {
+  project: string;
+  taskRead: string;
+  taskPatch: string;
+  taskStatus: string;
+  taskDep: string;
+  taskDepTarget: string;
+  taskDepRemove: string;
+  taskTime: string;
+  entryPatch: string;
+  entryDelete: string;
+  fileLink: string;
+  fileDelete: string;
+  fileForVersion: string;
+  delivRead: string;
+  delivPatch: string;
+  delivVersion: string;
+  delivPublish: { id: string; version: number };
+  delivArchive: string;
+  milestone: string;
+  shareProject: string;
+  revokeProject: string;
+  shareUser: string;
+  portalProject: string;
+  portalDeliverable: string;
+  portalDecide: { id: string; versionId: string };
+  portalFile: string;
 }
 
 interface Endpoint {
@@ -80,6 +111,8 @@ interface Endpoint {
   path: (f: Fixtures) => string;
   body?: (role: Role, f: Fixtures) => object;
   headers?: () => Record<string, string>;
+  /** Raw request body (file uploads). */
+  raw?: Buffer;
   allowed: Role[];
 }
 
@@ -90,6 +123,9 @@ const TEAM_ADMINS: Role[] = ['OWNER', 'ADMIN'];
 const CLIENT_ONLY: Role[] = ['CLIENT'];
 const PROJECT_READERS: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES', 'PM', 'MEMBER'];
 const PROJECT_MANAGERS: Role[] = ['OWNER', 'ADMIN', 'PM'];
+/** Delivery work: tasks, own time, files and deliverables (spec §1.1 P / Assigned / Own). */
+const DELIVERY: Role[] = ['OWNER', 'ADMIN', 'PM', 'MEMBER'];
+const PDF = Buffer.from('%PDF-1.4\n%matrix\n%%EOF\n');
 const EVERYONE: Role[] = [...STAFF, 'CLIENT'];
 
 const ENDPOINTS: Endpoint[] = [
@@ -511,6 +547,185 @@ const ENDPOINTS: Endpoint[] = [
     path: () => '/api/v1/dashboard/delivery',
     allowed: ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
   },
+  // Delivery (M7). GET /files/download/:token is not role-gated (the token names the user);
+  // it is covered by the signed-out check below and by delivery-portal.test.ts.
+  {
+    name: 'GET /projects/:id/tasks',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.d.project}/tasks`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /projects/:id/tasks',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.d.project}/tasks`,
+    body: (r) => ({ title: `Task by ${r}` }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'GET /tasks/:id',
+    method: 'get',
+    path: (f) => `/api/v1/tasks/${f.d.taskRead}`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'PATCH /tasks/:id',
+    method: 'patch',
+    path: (f) => `/api/v1/tasks/${f.d.taskPatch}`,
+    body: () => ({ version: 1, title: 'Changed task' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /tasks/:id/status (assignee)',
+    method: 'post',
+    path: (f) => `/api/v1/tasks/${f.d.taskStatus}/status`,
+    body: () => ({ version: 1, status: 'IN_PROGRESS' }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /tasks/:id/dependencies',
+    method: 'post',
+    path: (f) => `/api/v1/tasks/${f.d.taskDep}/dependencies`,
+    body: (_r, f) => ({ dependsOnId: f.d.taskDepTarget }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /tasks/:id/dependencies/:id/remove',
+    method: 'post',
+    path: (f) => `/api/v1/tasks/${f.d.taskDepRemove}/dependencies/${f.d.taskDepTarget}/remove`,
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'GET /tasks/:id/time',
+    method: 'get',
+    path: (f) => `/api/v1/tasks/${f.d.taskTime}/time`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /tasks/:id/time',
+    method: 'post',
+    path: (f) => `/api/v1/tasks/${f.d.taskTime}/time`,
+    body: () => ({ workedOn: '2026-10-01', minutes: 15 }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'PATCH /time-entries/:id (own)',
+    method: 'patch',
+    path: (f) => `/api/v1/time-entries/${f.d.entryPatch}`,
+    body: () => ({ version: 1, minutes: 20 }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /time-entries/:id/delete (own)',
+    method: 'post',
+    path: (f) => `/api/v1/time-entries/${f.d.entryDelete}/delete`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'GET /projects/:id/time',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.d.project}/time`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'GET /projects/:id/files',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.d.project}/files`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /projects/:id/files',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.d.project}/files`,
+    headers: () => ({ 'X-File-Name': 'matrix.pdf', 'Content-Type': 'application/octet-stream' }),
+    raw: PDF,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /files/:id/download-url',
+    method: 'post',
+    path: (f) => `/api/v1/files/${f.d.fileLink}/download-url`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /files/:id/delete',
+    method: 'post',
+    path: (f) => `/api/v1/files/${f.d.fileDelete}/delete`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'GET /projects/:id/deliverables',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.d.project}/deliverables`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /projects/:id/deliverables',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.d.project}/deliverables`,
+    body: (r) => ({ title: `Deliverable by ${r}` }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'GET /deliverables/:id',
+    method: 'get',
+    path: (f) => `/api/v1/deliverables/${f.d.delivRead}`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'PATCH /deliverables/:id',
+    method: 'patch',
+    path: (f) => `/api/v1/deliverables/${f.d.delivPatch}`,
+    body: () => ({ version: 1, title: 'Changed deliverable' }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /deliverables/:id/versions',
+    method: 'post',
+    path: (f) => `/api/v1/deliverables/${f.d.delivVersion}/versions`,
+    body: (_r, f) => ({ fileId: f.d.fileForVersion }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /deliverables/:id/publish',
+    method: 'post',
+    path: (f) => `/api/v1/deliverables/${f.d.delivPublish.id}/publish`,
+    body: (_r, f) => ({ version: f.d.delivPublish.version }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /deliverables/:id/archive',
+    method: 'post',
+    path: (f) => `/api/v1/deliverables/${f.d.delivArchive}/archive`,
+    body: () => ({ version: 1 }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/milestones/:id/move',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.d.project}/milestones/${f.d.milestone}/move`,
+    body: () => ({ direction: 'down' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'GET /projects/:id/shares',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.d.shareProject}/shares`,
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/shares',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.d.shareProject}/shares`,
+    body: (_r, f) => ({ userId: f.d.shareUser }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /projects/:id/shares/:userId/revoke',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.d.revokeProject}/shares/${f.d.shareUser}/revoke`,
+    allowed: PROJECT_MANAGERS,
+  },
   // Client portal (M4)
   {
     name: 'GET /portal/proposals',
@@ -535,6 +750,38 @@ const ENDPOINTS: Endpoint[] = [
     }),
     allowed: CLIENT_ONLY,
   },
+  // Client portal for projects (M7)
+  {
+    name: 'GET /portal/projects',
+    method: 'get',
+    path: () => '/api/v1/portal/projects',
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/projects/:id',
+    method: 'get',
+    path: (f) => `/api/v1/portal/projects/${f.d.portalProject}`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/deliverables/:id',
+    method: 'get',
+    path: (f) => `/api/v1/portal/deliverables/${f.d.portalDeliverable}`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'POST /portal/deliverables/:id/decision',
+    method: 'post',
+    path: (f) => `/api/v1/portal/deliverables/${f.d.portalDecide.id}/decision`,
+    body: (_r, f) => ({ versionId: f.d.portalDecide.versionId, decision: 'APPROVE' }),
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'POST /portal/files/:id/download-url',
+    method: 'post',
+    path: (f) => `/api/v1/portal/files/${f.d.portalFile}/download-url`,
+    allowed: CLIENT_ONLY,
+  },
 ];
 
 const KEY_FOR_ROLE: Record<string, string> = {
@@ -548,7 +795,7 @@ const KEY_FOR_ROLE: Record<string, string> = {
 };
 
 /** Sales records are owned by salesA, so SALES (salesA) is in scope and managers see them too. */
-async function freshFixtures(seeded: SeededAgency): Promise<Fixtures> {
+async function freshFixtures(seeded: SeededAgency, role?: Role): Promise<Fixtures> {
   const { agencyId } = seeded;
   const ownerId = seeded.users.salesA!.id;
   const passwordHash = await hashPassword(PASSWORD);
@@ -692,8 +939,10 @@ async function freshFixtures(seeded: SeededAgency): Promise<Fixtures> {
       proj(),
     ]);
   const convertDeal = (await won()).dealId;
+  const d = await deliveryFixtures(seeded, role, portal.orgId, portal.clientUserId);
 
   return {
+    d,
     projRead: projRead.projectId,
     projPatch: projPatch.projectId,
     projState: projState.projectId,
@@ -740,11 +989,151 @@ async function freshFixtures(seeded: SeededAgency): Promise<Fixtures> {
   };
 }
 
+/**
+ * M7 fixtures on projects managed by pm with member on the team. Time entries for the "own"
+ * endpoints are written by the user of the role under test, so each delivery role edits its own.
+ */
+async function deliveryFixtures(
+  seeded: SeededAgency,
+  role: Role | undefined,
+  orgId: string,
+  clientUserId: string,
+): Promise<DeliveryFixtures> {
+  const { agencyId } = seeded;
+  const pmId = seeded.users.pm!.id;
+  const memberId = seeded.users.member!.id;
+  const author = role && DELIVERY.includes(role) ? seeded.users[KEY_FOR_ROLE[role]!]!.id : memberId;
+  const proj = async () =>
+    (
+      await makeProject(db, {
+        agencyId,
+        managerId: pmId,
+        createdById: pmId,
+        memberIds: [memberId],
+        clientOrgId: orgId,
+      })
+    ).projectId;
+  const project = await proj();
+  const ms = await db.projectMilestone.findFirstOrThrow({ where: { projectId: project } });
+  await db.projectMilestone.create({
+    data: { agencyId, projectId: project, title: 'Second', sequence: 1 },
+  });
+  const task = (title: string, projectId = project) =>
+    db.task.create({
+      data: { agencyId, projectId, title, assigneeId: memberId, createdById: pmId },
+    });
+  const [taskRead, taskPatch, taskStatus, taskDep, taskDepTarget, taskDepRemove, taskTime] =
+    await Promise.all(
+      ['read', 'patch', 'status', 'dep', 'target', 'remove', 'time'].map((t) => task(t)),
+    );
+  await db.taskDependency.create({
+    data: { projectId: project, taskId: taskDepRemove!.id, dependsOnId: taskDepTarget!.id },
+  });
+  const entry = () =>
+    db.timeEntry.create({
+      data: {
+        agencyId,
+        projectId: project,
+        taskId: taskTime!.id,
+        userId: author,
+        workedOn: new Date('2026-10-01'),
+        minutes: 30,
+      },
+    });
+  const [entryPatch, entryDelete] = [await entry(), await entry()];
+  const file = (projectId = project) =>
+    db.storedFile.create({
+      data: {
+        agencyId,
+        projectId,
+        uploadedById: memberId,
+        storageKey: randomUUID(),
+        originalName: 'fixture.pdf',
+        extension: 'pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 10,
+        sha256: 'b'.repeat(64),
+        scanStatus: 'CLEAN',
+        scannedAt: new Date(),
+      },
+    });
+  const [fileLink, fileDelete, fileForVersion] = [await file(), await file(), await file()];
+  const deliverable = (title: string, projectId = project, extra: object = {}) =>
+    db.deliverable.create({
+      data: { agencyId, projectId, title, createdById: memberId, ...extra },
+    });
+  const withVersion = async (title: string, projectId: string, publishedAt: Date | null) => {
+    const f = await file(projectId);
+    const dl = await deliverable(title, projectId, {
+      status: publishedAt ? 'PUBLISHED' : 'READY',
+      currentVersionNo: 1,
+      publishedAt,
+    });
+    const v = await db.deliverableVersion.create({
+      data: {
+        agencyId,
+        projectId,
+        deliverableId: dl.id,
+        versionNo: 1,
+        fileId: f.id,
+        fileSha256: f.sha256,
+        createdById: memberId,
+        publishedAt,
+        publishedById: publishedAt ? pmId : null,
+      },
+    });
+    return { deliverable: dl, version: v, file: f };
+  };
+  const [delivRead, delivPatch, delivVersion, delivArchive] = await Promise.all(
+    ['read', 'patch', 'version', 'archive'].map((t) => deliverable(`Deliverable ${t}`)),
+  );
+  const publish = await withVersion('To publish', project, null);
+
+  // Sharing: one project not shared yet, one shared (to revoke), one shared for the portal.
+  const [shareProject, revokeProject, portalProject] = [await proj(), await proj(), await proj()];
+  for (const projectId of [revokeProject, portalProject]) {
+    await db.projectShare.create({
+      data: { agencyId, projectId, userId: clientUserId, sharedById: pmId },
+    });
+  }
+  const now = new Date();
+  const portalRead = await withVersion('Portal read', portalProject, now);
+  const portalDecide = await withVersion('Portal decide', portalProject, now);
+  return {
+    project,
+    taskRead: taskRead!.id,
+    taskPatch: taskPatch!.id,
+    taskStatus: taskStatus!.id,
+    taskDep: taskDep!.id,
+    taskDepTarget: taskDepTarget!.id,
+    taskDepRemove: taskDepRemove!.id,
+    taskTime: taskTime!.id,
+    entryPatch: entryPatch.id,
+    entryDelete: entryDelete.id,
+    fileLink: fileLink.id,
+    fileDelete: fileDelete.id,
+    fileForVersion: fileForVersion.id,
+    delivRead: delivRead!.id,
+    delivPatch: delivPatch!.id,
+    delivVersion: delivVersion!.id,
+    delivPublish: { id: publish.deliverable.id, version: publish.deliverable.version },
+    delivArchive: delivArchive!.id,
+    milestone: ms.id,
+    shareProject,
+    revokeProject,
+    shareUser: clientUserId,
+    portalProject,
+    portalDeliverable: portalRead.deliverable.id,
+    portalDecide: { id: portalDecide.deliverable.id, versionId: portalDecide.version.id },
+    portalFile: portalRead.file.id,
+  };
+}
+
 describe('role × endpoint matrix', () => {
   it.each(EVERYONE)('%s gets exactly the access spec §1.1 grants', async (role) => {
     await resetDb();
     const seeded = await seedAgency();
-    const f = await freshFixtures(seeded);
+    const f = await freshFixtures(seeded, role);
     const { app } = makeApp();
     const email = role === 'CLIENT' ? f.clientEmail : seeded.users[KEY_FOR_ROLE[role]!]!.email;
     const { agent, csrf } = await login(app, email);
@@ -761,6 +1150,7 @@ describe('role × endpoint matrix', () => {
       let req = agent[ep.method](ep.path(f)).set('Origin', ORIGIN).set('X-CSRF-Token', csrf);
       for (const [k, v] of Object.entries(ep.headers?.() ?? {})) req = req.set(k, v);
       if (ep.body) req = req.send(ep.body(role, f));
+      if (ep.raw) req = req.send(ep.raw);
       const res = await req;
       outcomes[ep.name] = res.status;
     }
@@ -821,11 +1211,41 @@ describe('role × endpoint matrix', () => {
       expect(await db.user.count({ where: { role: 'CLIENT', active: true } })).toBe(3);
     }
     if (!PROJECT_MANAGERS.includes(role)) {
-      expect(await db.project.count()).toBe(8);
+      expect(await db.project.count()).toBe(12);
       expect(await db.project.count({ where: { version: { gt: 1 } } })).toBe(0);
       expect(await db.projectMilestone.count({ where: { status: { not: 'PLANNED' } } })).toBe(0);
       expect(await db.handoffChecklistItem.count({ where: { doneAt: { not: null } } })).toBe(0);
-      expect(await db.projectMember.count()).toBe(2);
+      expect(await db.projectMember.count()).toBe(6);
+    }
+    if (!DELIVERY.includes(role)) {
+      expect(await db.task.count({ where: { version: { gt: 1 } } })).toBe(0);
+      expect(await db.task.count()).toBe(7);
+      expect(await db.taskDependency.count()).toBe(1);
+      expect(await db.timeEntry.count()).toBe(2);
+      expect(await db.storedFile.count()).toBe(6);
+      // The client's own decision is the one allowed change (checked below).
+      expect(await db.deliverable.count({ where: { version: { gt: 1 } } })).toBe(
+        role === 'CLIENT' ? 1 : 0,
+      );
+      expect(await db.deliverable.count()).toBe(7);
+      expect(await db.deliverableVersion.count({ where: { publishedAt: { not: null } } })).toBe(2);
+      expect(await db.projectShare.count({ where: { revokedAt: null } })).toBe(2);
+    }
+    if (role === 'MEMBER') {
+      // Members work on tasks but never edit them, change dependencies, publish or share.
+      expect((await db.task.findUniqueOrThrow({ where: { id: f.d.taskPatch } })).title).toBe(
+        'patch',
+      );
+      expect(await db.taskDependency.count()).toBe(1);
+      expect(
+        (await db.deliverable.findUniqueOrThrow({ where: { id: f.d.delivPublish.id } })).status,
+      ).toBe('READY');
+      expect(await db.projectShare.count({ where: { revokedAt: null } })).toBe(2);
+    }
+    if (role === 'CLIENT') {
+      expect(await db.deliverableReview.count()).toBe(1);
+    } else {
+      expect(await db.deliverableReview.count()).toBe(0);
     }
     if (role === 'SALES') {
       // SALES drafts and sends, but never approves or manages portal access.
@@ -846,6 +1266,7 @@ describe('role × endpoint matrix', () => {
       let req = request(app)[ep.method](ep.path(f)).set('Origin', ORIGIN);
       for (const [k, v] of Object.entries(ep.headers?.() ?? {})) req = req.set(k, v);
       if (ep.body) req = req.send(ep.body('OWNER', f));
+      if (ep.raw) req = req.send(ep.raw);
       const res = await req;
       expect({ ep: ep.name, status: res.status }).toEqual({ ep: ep.name, status: 401 });
     }

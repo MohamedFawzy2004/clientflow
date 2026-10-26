@@ -1,3 +1,7 @@
+import { randomBytes } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import request from 'supertest';
 import type { Express } from 'express';
@@ -8,10 +12,17 @@ import { createLogger } from '../src/middleware/logger.js';
 import { bootstrapOwner } from '../src/modules/auth/bootstrap.js';
 import { hashPassword } from '../src/lib/password.js';
 import { MemoryMailer } from '../src/lib/mailer.js';
+import { LocalEncryptedStorage } from '../src/modules/files/storage.js';
 
 export const ORIGIN = 'http://localhost:5173';
 export const CSRF_SECRET = 'test-csrf-secret-that-is-long-enough-1234567890';
 export const PASSWORD = 'correct horse battery staple';
+/** Upload limit in tests: small, so the size checks run fast. */
+export const TEST_FILE_MAX_BYTES = 256 * 1024;
+
+/** One throwaway encrypted store per test process (never the developer's .storage folder). */
+export const STORAGE_DIR = mkdtempSync(join(tmpdir(), 'clientflow-files-'));
+export const storage = new LocalEncryptedStorage(STORAGE_DIR, randomBytes(32));
 
 let sharedDb: Db | undefined;
 export function testDb(): Db {
@@ -22,7 +33,7 @@ export function testDb(): Db {
 /** TRUNCATE skips row-level triggers, so the append-only audit table can still be reset. */
 export async function resetDb(db = testDb()) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE audit_events, activities, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE audit_events, activities, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 }
 
@@ -52,6 +63,7 @@ export function makeApp(
     db,
     logger: createLogger('info', sink),
     mailer,
+    storage,
     background: (work) => pending.push(work),
     ...extra,
     config: {
@@ -60,6 +72,7 @@ export function makeApp(
       csrfSecret: CSRF_SECRET,
       trustProxy: 0,
       publicUrl: ORIGIN,
+      files: { maxBytes: TEST_FILE_MAX_BYTES },
       ...overrides,
     },
   });
