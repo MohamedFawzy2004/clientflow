@@ -24,6 +24,7 @@ import {
   getDeliveryDashboard,
   getHandoffQueue,
   getProject,
+  listDeliveryStaff,
   listProjects,
   removeMember,
   toggleChecklist,
@@ -71,6 +72,12 @@ export function projectsRouter(deps: AppDeps) {
       const project = await getProject(db, req.auth!.user, result.projectId);
       ok(req, res, { project, replayed: result.replayed }, result.replayed ? 200 : 201);
     }),
+  );
+
+  router.get(
+    '/projects/staff',
+    requirePermission('projects.create', 'projects.manage'),
+    wrap(async (req, res) => ok(req, res, await listDeliveryStaff(db, req.auth!.user))),
   );
 
   router.get(

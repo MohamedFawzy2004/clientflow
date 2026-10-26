@@ -828,3 +828,15 @@ export async function getDeliveryDashboard(
     })),
   };
 }
+
+/** People who can lead or join projects, for the manager and member pickers. */
+export async function listDeliveryStaff(db: Db, actor: AuthUser) {
+  if (!can(actor.role, 'projects.create') && !can(actor.role, 'projects.manage')) {
+    throw forbidden('Your role cannot staff projects.');
+  }
+  return db.user.findMany({
+    where: { agencyId: actor.agencyId, active: true, role: { in: [...MEMBER_ROLES] } },
+    select: { id: true, name: true, role: true },
+    orderBy: { name: 'asc' },
+  });
+}
