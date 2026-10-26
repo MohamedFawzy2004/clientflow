@@ -112,6 +112,7 @@ async function findReadable(db: Db | Tx, actor: AuthUser, id: string) {
       acceptedProposalVersion: {
         select: { versionNo: true, proposal: { select: { id: true, number: true } } },
       },
+      project: { select: { id: true, title: true } },
     },
   });
   if (!deal) throw notFound();
@@ -465,6 +466,11 @@ export async function reopenDeal(
     if (deal.status === 'OPEN') {
       if (deal.version !== version) throw staleVersion();
       return;
+    }
+    // Same lock as the project handoff, so a reopen and a conversion cannot interleave (M6).
+    await tx.$queryRaw`SELECT id FROM deals WHERE id = CAST(${deal.id} AS uuid) FOR UPDATE`;
+    if (await tx.project.findUnique({ where: { dealId: deal.id }, select: { id: true } })) {
+      throw conflict('This deal was handed off to a project, so it can no longer be reopened.');
     }
     const count = await updateVersioned(tx, deal, version, {
       status: 'OPEN',

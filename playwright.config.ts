@@ -40,6 +40,11 @@ export default defineConfig({
         NODE_ENV: 'test',
         LOG_LEVEL: 'warn',
         MAIL_TRANSPORT: 'dev-sink',
+        // The suite signs in ~50 times from 127.0.0.1 within one 15-minute window. Per-email
+        // failure limits stay at their defaults; production refuses these overrides.
+        LOGIN_RATE_LIMIT_PER_IP: '500',
+        TOKEN_RATE_LIMIT_PER_IP: '200',
+        API_RATE_LIMIT_PER_IP: '20000',
         // Separate sink so E2E never reads or deletes development emails.
         MAIL_SINK_DIR: E2E_MAIL_SINK,
       },

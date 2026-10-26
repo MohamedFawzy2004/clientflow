@@ -199,3 +199,48 @@ Only `reports.export` holders (Owner, Admin, Sales manager) can export, and only
 ## ADR-037 — Route-level code splitting with React Router `lazy` (ACCEPTED, M5)
 
 Every screen is its own chunk, loaded on first visit. Sign-in and the two shells stay in the main bundle, so the first paint does not wait for a second request. The main bundle went from 790 kB to 299 kB (228 kB → 93 kB gzip). Shared form and validation code (about 240 kB) loads with the first app screen. Shared UI modules are kept out of page files: the portal page imports shared components, never a staff page.
+
+## ADR-038 — Idempotent handoff: the result is stored in the same transaction (ACCEPTED, M6)
+
+`POST /deals/:id/convert-to-project` requires an `Idempotency-Key` (a UUID). `idempotency_records` holds one row per `(agency, scope, key)`, with the SHA-256 of the request (deal, manager, title, dates), the actor and the resulting project ID. That row is written **inside** the conversion transaction, so it exists only if the project does.
+
+The handler checks for a stored result twice: before starting, and again after taking the deal's row lock, because a concurrent request with the same key may have committed while it waited.
+
+| Situation                                           | Result                                   |
+| --------------------------------------------------- | ---------------------------------------- |
+| Same key, same request, same user                   | 200, the same project, `replayed: true`  |
+| Same key, different request or different user       | 409                                      |
+| Different key for a deal that already has a project | 409                                      |
+| A unique-index race the lock did not prevent        | Answered from whatever the winner stored |
+
+The web dialog creates one key when it opens and reuses it on retry, so a lost response cannot create a second project.
+
+**Fault injection (T-HAND-02):** `AppDeps.hooks.beforeHandoffCommit` is a test-only fault-injection point. `server.ts` never sets it.
+
+## ADR-039 — The project points at the accepted version; the budget excludes tax (ACCEPTED, M6)
+
+The scope baseline is `projects.baseline_version_id`, the client-accepted proposal version. Versions are immutable (ADR-030), so the project references the version instead of copying it. A DB check keeps `deal_id` and `baseline_version_id` both set or both empty.
+
+The budget baseline is `subtotal − discount` in the proposal's currency, excluding VAT: what the agency earns for the work. The accepted total including tax is shown next to it.
+
+Milestones are seeded from the proposal's milestones text: one per line, or per "·", ";" or "|", at most 20. Without any, the defaults are Kick-off, Delivery and Handover.
+
+## ADR-040 — Who sees and changes projects (ACCEPTED, M6)
+
+Following spec §1.1:
+
+- **Owner and Admin:** all projects.
+- **PM and Member:** projects they manage or belong to.
+- **Sales Manager and Sales:** "read linked", i.e. projects made from deals they can read, read-only.
+- **Finance:** nothing until billing views exist (M9).
+- **Client:** nothing; portal project sharing comes in M7.
+
+Changing a project needs `projects.manage`, plus being its manager unless the user is Owner or Admin. Only Owner and Admin can change the manager. Members can join only if they have a delivery role (Owner, Admin, PM, Member). Anything out of scope answers 404.
+
+## ADR-041 — Deals won by override are not converted; and handed-off deals stay won (ACCEPTED, M6)
+
+A deal won by manager override (ADR-024) has no agreed scope, so conversion returns 409 and points to manual project creation (Owner, Admin, PM). Once a deal has a project, reopening it returns 409. The reopen takes the same `deals` row lock as the conversion, so the two cannot interleave.
+
+## ADR-042 — Test-only rate-limit overrides (ACCEPTED, M6)
+
+The E2E suite grew past the per-IP limits (about 50 sign-ins and more than 1,000 API calls in 15 minutes from 127.0.0.1). `LOGIN_RATE_LIMIT_PER_IP`, `TOKEN_RATE_LIMIT_PER_IP` and `API_RATE_LIMIT_PER_IP` raise them for the E2E server. `loadEnv` refuses them when `NODE_ENV=production` (tested). Per-email limits are not configurable.

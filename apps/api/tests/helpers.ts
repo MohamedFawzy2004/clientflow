@@ -2,7 +2,7 @@ import { Writable } from 'node:stream';
 import request from 'supertest';
 import type { Express } from 'express';
 import type { Role } from '@clientflow/contracts';
-import { createApp, type AppConfig } from '../src/app.js';
+import { createApp, type AppConfig, type AppDeps } from '../src/app.js';
 import { createDb, type Db } from '../src/db/client.js';
 import { createLogger } from '../src/middleware/logger.js';
 import { bootstrapOwner } from '../src/modules/auth/bootstrap.js';
@@ -22,7 +22,7 @@ export function testDb(): Db {
 /** TRUNCATE skips row-level triggers, so the append-only audit table can still be reset. */
 export async function resetDb(db = testDb()) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE audit_events, activities, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE audit_events, activities, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 }
 
@@ -34,7 +34,11 @@ export interface TestApp {
   settled: () => Promise<void>;
 }
 
-export function makeApp(overrides: Partial<AppConfig> = {}, db: Db = testDb()): TestApp {
+export function makeApp(
+  overrides: Partial<AppConfig> = {},
+  db: Db = testDb(),
+  extra: Pick<AppDeps, 'hooks'> = {},
+): TestApp {
   const logs: string[] = [];
   const sink = new Writable({
     write(chunk, _enc, cb) {
@@ -49,6 +53,7 @@ export function makeApp(overrides: Partial<AppConfig> = {}, db: Db = testDb()): 
     logger: createLogger('info', sink),
     mailer,
     background: (work) => pending.push(work),
+    ...extra,
     config: {
       isProduction: false,
       appOrigins: [ORIGIN],

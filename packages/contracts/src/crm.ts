@@ -254,6 +254,8 @@ export interface DealDetail extends DealSummary {
   closedBy: { id: string; name: string } | null;
   /** Set when the deal was won by a client accepting a proposal version (M4). */
   acceptedProposal: { id: string; reference: string; versionNo: number } | null;
+  /** The delivery project this deal was handed off to (M6). */
+  project: { id: string; title: string } | null;
   activities: TimelineEntry[];
 }
 

@@ -130,6 +130,9 @@ describe('API responses', () => {
     expect(() =>
       loadEnv({ ...base, APP_ORIGINS: 'https://app.example.test', CSRF_SECRET: 'short' }),
     ).toThrow();
+    expect(() =>
+      loadEnv({ ...base, APP_ORIGINS: 'https://app.example.test', LOGIN_RATE_LIMIT_PER_IP: '500' }),
+    ).toThrow(/tests only/);
     expect(loadEnv({ ...base, APP_ORIGINS: 'https://app.example.test' }).HOST).toBe('127.0.0.1');
   });
 });

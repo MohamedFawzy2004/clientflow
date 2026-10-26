@@ -5,7 +5,7 @@ import type { AuthUser } from '../types/express.js';
 type Tx = Pick<Prisma.TransactionClient, 'activity'>;
 
 export interface TimelineInput {
-  entityType: 'contact' | 'deal';
+  entityType: 'contact' | 'deal' | 'project';
   entityId: string;
   eventType: string;
   summary: string;
