@@ -7,6 +7,34 @@ type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap = (fn: Handler) => (req: Request, res: Response, next: (err?: unknown) => void) =>
   fn(req, res).catch(next);
 
+/**
+ * Reads and drops what is left of a refused upload, so the client receives the error instead of
+ * a reset connection. Past `cap` bytes it stops and the connection is closed after the answer.
+ */
+function discardBody(req: Request, res: Response, cap: number): Promise<void> {
+  if (req.complete || req.readableEnded || req.destroyed) return Promise.resolve();
+  return new Promise((resolve) => {
+    let seen = 0;
+    const finish = () => {
+      req.off('data', onData);
+      resolve();
+    };
+    const onData = (chunk: Buffer) => {
+      seen += chunk.length;
+      if (seen > cap) {
+        res.setHeader('Connection', 'close');
+        req.pause();
+        finish();
+      }
+    };
+    req.on('data', onData);
+    req.once('end', finish);
+    req.once('error', finish);
+    req.once('close', finish);
+    req.resume();
+  });
+}
+
 /** Mounted at the API root: `/projects/:id/files`, `/files/...`. */
 export function filesRouter(deps: AppDeps) {
   const router = Router();
@@ -25,9 +53,14 @@ export function filesRouter(deps: AppDeps) {
   router.post(
     '/projects/:id/files',
     work,
-    wrap(async (req, res) =>
-      ok(req, res, await uploadFile(deps, req.auth!.user, p(req, 'id'), req), 201),
-    ),
+    wrap(async (req, res) => {
+      try {
+        ok(req, res, await uploadFile(deps, req.auth!.user, p(req, 'id'), req), 201);
+      } catch (err) {
+        await discardBody(req, res, 2 * (deps.config.files?.maxBytes ?? 0));
+        throw err;
+      }
+    }),
   );
 
   router.post(

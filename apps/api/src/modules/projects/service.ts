@@ -564,6 +564,17 @@ export async function changeProjectState(
         `A ${PROJECT_STATE_LABELS[p.state].toLowerCase()} project cannot become ${PROJECT_STATE_LABELS[next].toLowerCase()}.`,
       );
     }
+    // Spec §9: completion waits for open client approvals; archiving a deliverable waives it.
+    if (next === 'COMPLETED') {
+      const waiting = await tx.deliverable.count({
+        where: { projectId: p.id, status: 'PUBLISHED' },
+      });
+      if (waiting > 0) {
+        throw conflict(
+          `${waiting === 1 ? 'A deliverable is' : `${waiting} deliverables are`} still waiting for the client's decision. Wait for it, or archive it to waive the approval.`,
+        );
+      }
+    }
     await bump(tx, p.id, version, { state: next });
     await recordActivity(tx, actor, {
       entityType: 'project',

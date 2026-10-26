@@ -153,10 +153,7 @@ export async function uploadFile(
   try {
     meta = await storage.put(key, tapped(req, inspector));
   } catch (err) {
-    if (err instanceof TooLargeError) {
-      req.resume(); // drain the rest so the client gets the answer
-      throw tooLarge(maxBytes);
-    }
+    if (err instanceof TooLargeError) throw tooLarge(maxBytes);
     throw err;
   }
   const result = inspector.finish();
@@ -224,9 +221,12 @@ export async function uploadFile(
   }
 }
 
-/** Passes the request body to storage, checking every chunk on the way. */
+/**
+ * Passes the request body to storage, checking every chunk on the way. Stopping early must not
+ * destroy the request: the route drains it so the client still receives the error response.
+ */
 async function* tapped(req: Request, inspector: ContentInspector) {
-  for await (const chunk of req) {
+  for await (const chunk of req.iterator({ destroyOnReturn: false })) {
     const buf = chunk as Buffer;
     inspector.update(buf);
     yield buf;

@@ -1,6 +1,7 @@
 // M7: private files, deliverables, explicit publish, portal sharing and client decisions
 // (FR-S06 – FR-S10, FR-X01 – FR-X07, SEC-12, SEC-13, US-13, US-20, T-ACL-02, T-FILE-01/02).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { CSRF_SECRET } from './helpers.js';
@@ -206,6 +207,44 @@ describe('file uploads (SEC-12, FR-X06, FR-X07, T-FILE-02)', () => {
       'pixel.png',
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]),
     ).expect(201);
+  });
+
+  it('a streamed upload without Content-Length is cut off at the limit with a clean 413', async () => {
+    const server = app.listen(0);
+    try {
+      const { port } = server.address() as AddressInfo;
+      const cookie = ([] as string[])
+        .concat(member.res.headers['set-cookie'] ?? [])
+        .map((c) => c.split(';')[0])
+        .join('; ');
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(PDF));
+          controller.enqueue(new Uint8Array(TEST_FILE_MAX_BYTES));
+          controller.close();
+        },
+      });
+      const before = storedObjects().length;
+      const res = await fetch(`http://127.0.0.1:${port}/api/v1/projects/${projectId}/files`, {
+        method: 'POST',
+        body,
+        duplex: 'half',
+        headers: {
+          Origin: ORIGIN,
+          Cookie: cookie,
+          'X-CSRF-Token': member.csrf,
+          'X-File-Name': 'stream.pdf',
+          'Content-Type': 'application/octet-stream',
+        },
+      } as RequestInit);
+      expect(res.status).toBe(413);
+      const json = (await res.json()) as { error: { code: string } };
+      expect(json.error.code).toBe('PAYLOAD_TOO_LARGE');
+      expect(await db.storedFile.count()).toBe(0);
+      expect(storedObjects().length).toBe(before);
+    } finally {
+      server.close();
+    }
   });
 
   it('download links are short-lived, bound to one user and checked again (SEC-13)', async () => {
@@ -420,6 +459,26 @@ describe('deliverables and the client portal (FR-S06 – FR-S10, US-13, US-20)',
     });
     const dash = await get(pm, '/dashboard/delivery').expect(200);
     expect(dash.body.data.deliverables).toEqual({ awaitingClient: 1, overdue: 1 });
+  });
+
+  it('a project cannot be completed while a deliverable waits for the client (spec §9)', async () => {
+    const { id } = await published();
+    await db.project.update({ where: { id: projectId }, data: { state: 'ACTIVE' } });
+    const state = async () =>
+      (await db.project.findUniqueOrThrow({ where: { id: projectId } })).version;
+    const refused = await send(pm, 'post', `/projects/${projectId}/state`, {
+      version: await state(),
+      state: 'COMPLETED',
+    });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.message).toMatch(/waiting for the client/);
+    // Archiving the deliverable is the authorized waiver.
+    const d = await db.deliverable.findUniqueOrThrow({ where: { id } });
+    await send(pm, 'post', `/deliverables/${id}/archive`, { version: d.version }).expect(200);
+    await send(pm, 'post', `/projects/${projectId}/state`, {
+      version: await state(),
+      state: 'COMPLETED',
+    }).expect(200);
   });
 
   it('publishing needs a client organization; a quarantined file never reaches the client', async () => {
