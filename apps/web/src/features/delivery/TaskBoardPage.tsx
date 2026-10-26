@@ -81,23 +81,18 @@ function TaskCard({
             id={`status-${t.id}`}
             value={t.status}
             disabled={action.isPending}
-            onChange={(e) =>
+            onChange={(e) => {
+              // Read it now: the select snaps back to the saved status until the server answers.
+              const next = e.target.value as TaskStatus;
               action.mutate(
-                {
-                  kind: 'status',
-                  taskId: t.id,
-                  version: t.version,
-                  status: e.target.value as TaskStatus,
-                },
+                { kind: 'status', taskId: t.id, version: t.version, status: next },
                 {
                   onSuccess: () =>
-                    toast.success(
-                      `“${t.title}” is now ${TASK_STATUS_LABELS[e.target.value as TaskStatus].toLowerCase()}`,
-                    ),
+                    toast.success(`“${t.title}” is now ${TASK_STATUS_LABELS[next].toLowerCase()}`),
                   onError: (err) => toast.error(deliveryMessage(err)),
                 },
-              )
-            }
+              );
+            }}
           >
             {statusOptions(t, manager).map((s) => (
               <option key={s} value={s}>

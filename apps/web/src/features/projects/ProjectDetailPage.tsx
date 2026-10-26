@@ -215,9 +215,11 @@ export function ProjectDetailPage() {
         <Banner tone="info" title="Archived" className="mt-4">
           This project is kept for history and can no longer change.
         </Banner>
-      ) : !manage && !p.access.work ? (
+      ) : !manage ? (
         <p className="mt-4 text-[13px] text-muted">
-          You can view this project. Only its manager or an admin can change it.
+          {p.access.work
+            ? 'You work on its tasks, files, deliverables and your own time. Only its manager or an admin can change it.'
+            : 'You can view this project. Only its manager or an admin can change it.'}
         </p>
       ) : null}
       <ProjectTabs id={p.id} work={p.access.work} />

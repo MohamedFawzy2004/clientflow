@@ -67,7 +67,9 @@ export function PortalShell() {
                   className={({ isActive }) =>
                     cn(
                       'inline-flex h-11 items-center border-b-2 px-3 text-sm font-medium',
-                      isActive || (l.end && location.pathname.startsWith('/portal/proposals'))
+                      isActive ||
+                        (l.end && location.pathname.startsWith('/portal/proposals')) ||
+                        (!l.end && location.pathname.startsWith('/portal/deliverables'))
                         ? 'border-primary text-primary-strong'
                         : 'border-transparent text-muted hover:text-text',
                     )
