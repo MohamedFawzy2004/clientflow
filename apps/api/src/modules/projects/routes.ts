@@ -26,6 +26,7 @@ import {
   getDeliveryDashboard,
   getHandoffQueue,
   getProject,
+  listClientOrgOptions,
   listDeliveryStaff,
   listProjects,
   listShares,
@@ -84,6 +85,12 @@ export function projectsRouter(deps: AppDeps) {
     '/projects/staff',
     requirePermission('projects.create', 'projects.manage'),
     wrap(async (req, res) => ok(req, res, await listDeliveryStaff(db, req.auth!.user))),
+  );
+
+  router.get(
+    '/projects/client-orgs',
+    manage,
+    wrap(async (req, res) => ok(req, res, await listClientOrgOptions(db, req.auth!.user))),
   );
 
   router.get(

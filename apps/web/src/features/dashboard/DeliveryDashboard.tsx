@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { ArrowRight } from 'lucide-react';
-import { PROJECT_STATE_LABELS } from '@clientflow/contracts';
+import { PROJECT_STATE_LABELS, TASK_STATUS_LABELS, type TaskStatus } from '@clientflow/contracts';
 import { cn, formatDate } from '../../lib/format';
 import { ErrorState, Skeleton } from '../../components/ui/feedback';
 import { useSession } from '../auth/session';
@@ -77,13 +77,60 @@ export function DeliveryDashboardSection() {
           </section>
         ) : null}
         <section
-          aria-label="Completed projects"
+          aria-label="Waiting for the client"
           className="rounded-lg border border-border bg-surface p-5 shadow-card"
         >
-          <p className="text-[13px] font-medium text-muted">Completed</p>
-          <p className={cn('mt-2 text-text', BIG)}>{d.projects.COMPLETED}</p>
+          <p className="text-[13px] font-medium text-muted">Deliverables waiting for the client</p>
+          <p className={cn('mt-2 text-text', BIG)}>{d.deliverables.awaitingClient}</p>
+          <p
+            className={cn(
+              'mt-1 text-xs',
+              d.deliverables.overdue > 0 ? 'font-medium text-danger' : 'text-muted',
+            )}
+          >
+            {d.deliverables.overdue} past the review date · {d.projects.COMPLETED} projects
+            completed
+          </p>
         </section>
       </div>
+      {d.myTasks.length > 0 ? (
+        <section
+          aria-label="My tasks"
+          className="rounded-lg border border-border bg-surface shadow-card"
+        >
+          <h3 className="border-b border-border px-5 py-3.5 text-[15px] font-semibold text-text">
+            My open tasks
+          </h3>
+          <ul className="divide-y divide-border">
+            {d.myTasks.map((t) => (
+              <li key={t.id}>
+                <Link
+                  to={`/app/projects/${t.projectId}/board`}
+                  className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-surface-alt/50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-text">{t.title}</span>
+                    <span className="block truncate text-xs text-muted">
+                      {t.projectTitle} · {TASK_STATUS_LABELS[t.status as TaskStatus]}
+                    </span>
+                  </span>
+                  {t.dueOn ? (
+                    <span
+                      className={cn(
+                        'shrink-0 text-xs',
+                        t.overdue ? 'font-medium text-danger' : 'text-muted',
+                      )}
+                    >
+                      {t.overdue ? 'Overdue · ' : ''}
+                      {formatDate(`${t.dueOn}T12:00:00Z`, timeZone)}
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {d.upcoming.length > 0 ? (
         <section
           aria-label="Next milestones"

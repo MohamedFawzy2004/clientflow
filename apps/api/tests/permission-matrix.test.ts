@@ -528,6 +528,12 @@ const ENDPOINTS: Endpoint[] = [
     allowed: PROJECT_MANAGERS,
   },
   {
+    name: 'GET /projects/client-orgs',
+    method: 'get',
+    path: () => '/api/v1/projects/client-orgs',
+    allowed: PROJECT_MANAGERS,
+  },
+  {
     name: 'GET /projects/handoff-queue',
     method: 'get',
     path: () => '/api/v1/projects/handoff-queue',

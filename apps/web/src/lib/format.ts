@@ -27,6 +27,21 @@ export function formatDateTime(iso: string, timeZone = DEFAULT_TIMEZONE) {
   }).format(new Date(iso));
 }
 
+/** A date-only value (YYYY-MM-DD) shown in the agency timezone. */
+export function formatDay(date: string, timeZone = DEFAULT_TIMEZONE) {
+  return formatDate(`${date}T12:00:00Z`, timeZone);
+}
+
+/** Today as YYYY-MM-DD in the agency timezone (for date inputs). */
+export function todayIn(timeZone = DEFAULT_TIMEZONE, now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
 const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
 /** "today", "tomorrow", "in 3 days", "2 days ago". Day boundaries use the agency timezone. */

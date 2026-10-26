@@ -17,6 +17,8 @@ export class ApiError extends Error {
 }
 
 const TIMEOUT_MS = 15_000;
+/** Uploads stream the whole file, so they get longer than ordinary requests. */
+const UPLOAD_TIMEOUT_MS = 120_000;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 // Held in memory only. CSRF tokens are never written to localStorage (spec §11.4).
@@ -44,8 +46,11 @@ async function rawRequest<T>(
   body?: unknown,
   headers: Record<string, string> = {},
   signal?: AbortSignal,
+  timeoutMs = TIMEOUT_MS,
 ): Promise<T> {
-  const timeout = AbortSignal.timeout(TIMEOUT_MS);
+  const timeout = AbortSignal.timeout(timeoutMs);
+  // A file is sent as-is; everything else is JSON.
+  const raw = typeof Blob !== 'undefined' && body instanceof Blob;
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let res: Response;
   try {
@@ -54,10 +59,10 @@ async function rawRequest<T>(
       credentials: 'same-origin',
       headers: {
         Accept: 'application/json',
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(body !== undefined && !raw ? { 'Content-Type': 'application/json' } : {}),
         ...headers,
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: raw ? (body as Blob) : body !== undefined ? JSON.stringify(body) : undefined,
       signal: combined,
     });
   } catch (err) {
@@ -101,6 +106,7 @@ export interface RequestOptions {
   skipAuthRedirect?: boolean;
   /** Extra request headers, e.g. Idempotency-Key. */
   headers?: Record<string, string>;
+  timeoutMs?: number;
 }
 
 export async function apiRequest<T>(
@@ -111,7 +117,7 @@ export async function apiRequest<T>(
   const send = async () => {
     const headers: Record<string, string> = { ...options.headers };
     if (MUTATING.has(method)) headers['X-CSRF-Token'] = csrfToken ?? (await fetchCsrfToken());
-    return rawRequest<T>(method, path, options.body, headers, options.signal);
+    return rawRequest<T>(method, path, options.body, headers, options.signal, options.timeoutMs);
   };
   try {
     return await send();
@@ -136,6 +142,16 @@ export const api = {
     apiRequest<T>('PUT', path, { ...options, body }),
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiRequest<T>('PATCH', path, { ...options, body }),
+  /** Streams one file as the raw body; the server checks type, size and content (SEC-12). */
+  upload: <T>(path: string, file: File) =>
+    apiRequest<T>('POST', path, {
+      body: file,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'X-File-Name': encodeURIComponent(file.name),
+      },
+      timeoutMs: UPLOAD_TIMEOUT_MS,
+    }),
 };
 
 /** Reads a one-time token from the URL fragment (#token=…). Pure: safe to call twice. */

@@ -1040,6 +1040,17 @@ export async function getDeliveryDashboard(
   };
 }
 
+/** Client organizations a manual project can be linked to (names only). */
+export async function listClientOrgOptions(db: Db, actor: AuthUser) {
+  if (!can(actor.role, 'projects.manage')) throw forbidden('Your role cannot change projects.');
+  return db.clientOrganization.findMany({
+    where: { agencyId: actor.agencyId, archivedAt: null },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+    take: 500,
+  });
+}
+
 /** People who can lead or join projects, for the manager and member pickers. */
 export async function listDeliveryStaff(db: Db, actor: AuthUser) {
   if (!can(actor.role, 'projects.create') && !can(actor.role, 'projects.manage')) {
