@@ -1,6 +1,6 @@
 # ClientFlow Milestone M7 Report
 
-**Milestone:** M7 — Delivery and portal · **Date:** 2026-10-26 · **Branch:** `feat/m7-delivery-portal` (PR stacked on M6 #70 → M5 #62 → M4 #52 → M3 #43 → M2 #32 → M1 #22)
+**Milestone:** M7 — Delivery and portal · **Date:** 2026-10-26 · **Branch:** `feat/m7-delivery-portal` (PR #79, stacked on M6 #70 → M5 #62 → M4 #52 → M3 #43 → M2 #32 → M1 #22)
 **Environments:** Windows 11 (Node 24.19.0, Docker 29.9.2, Postgres 17.6, Edge) and GitHub Actions `ubuntu-latest`.
 
 ## Status summary
@@ -194,11 +194,11 @@ npm run e2e:screenshots   # optional
 
 ## CI evidence
 
-Filled in from the PR check list after pushing (see below).
+The branch was pushed with all local checks green (above). When this report was written, the 5 CI jobs on PR #79 (lint/typecheck/audit/build, API + web tests on Postgres, E2E on Chromium, image smoke, secret scan) had just started. Pushing this report re-runs them on the same code; the final result is the PR #79 check list.
 
 ## Requirements traceability updates
 
-`docs/REQUIREMENTS_TRACEABILITY.csv` is updated for 28 IDs. ADR-043 to ADR-049 are added. The risk register updates R5 and adds R25–R27. GitHub: issues #71–#78 are linked to the PR, and epic #7 ticks the fully tested IDs.
+`docs/REQUIREMENTS_TRACEABILITY.csv` is updated for 28 IDs. ADR-043 to ADR-049 are added. The risk register updates R5 and adds R25–R27. GitHub: issues #71–#78 are closed by PR #79, and epic #7 ticks the 22 fully tested IDs (including FR-P01–P04 and US-10 from M6).
 
 ## Next milestone plan / decisions needed
 
