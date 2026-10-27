@@ -63,6 +63,18 @@ export const PERMISSIONS = {
   'changes.approve': ['OWNER', 'ADMIN'],
   /** Delivery dashboard: project and milestone counts in the viewer's scope. */
   'dashboard.delivery': ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
+  /** Every invoice in the agency, finance reports and export (spec §1.1 'Manage invoice state'). */
+  'invoices.read.all': ['OWNER', 'ADMIN', 'FINANCE'],
+  /** Invoices of projects the user manages or works on, read-only (spec §1.1 PM 'Read P'). */
+  'invoices.read.project': ['PM'],
+  /** Create and edit drafts, issue, publish and void invoices. */
+  'invoices.manage': ['OWNER', 'ADMIN', 'FINANCE'],
+  /** FR-F04: only Finance and the Owner change payment status. */
+  'payments.record': ['OWNER', 'FINANCE'],
+  /** Finance report, project money with rates and margins, cost rate list. */
+  'finance.view': ['OWNER', 'ADMIN', 'FINANCE'],
+  /** Set internal cost rates (owner decision pending; default Owner and Admin, ADR-056). */
+  'costs.manage': ['OWNER', 'ADMIN'],
   /** See team members and invitations. */
   'team.read': ['OWNER', 'ADMIN'],
   'team.invite': ['OWNER', 'ADMIN'],

@@ -33,6 +33,7 @@ import {
   portalListComments,
   portalUpdateComment,
 } from '../comments/service.js';
+import { getPortalInvoice, listPortalInvoices } from '../invoices/service.js';
 import {
   decideOnDeliverable,
   getPortalDeliverable,
@@ -240,6 +241,23 @@ export function portalRouter(deps: AppDeps) {
         req,
         res,
         await portalCommentHistory(db, req.auth!.user, String(req.params.id), req.requestId),
+      ),
+    ),
+  );
+
+  // Published invoices of the client's own organization (M9, FR-X03).
+  router.get(
+    '/invoices',
+    wrap(async (req, res) => ok(req, res, await listPortalInvoices(db, req.auth!.user))),
+  );
+
+  router.get(
+    '/invoices/:id',
+    wrap(async (req, res) =>
+      ok(
+        req,
+        res,
+        await getPortalInvoice(db, req.auth!.user, String(req.params.id), req.requestId),
       ),
     ),
   );

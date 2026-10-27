@@ -59,6 +59,7 @@ export function PortalShell() {
             {[
               { to: '/portal', label: 'Proposals', end: true },
               { to: '/portal/projects', label: 'Projects', end: false },
+              { to: '/portal/invoices', label: 'Invoices', end: false },
             ].map((l) => (
               <li key={l.to}>
                 <NavLink
@@ -69,7 +70,9 @@ export function PortalShell() {
                       'inline-flex h-11 items-center border-b-2 px-3 text-sm font-medium',
                       isActive ||
                         (l.end && location.pathname.startsWith('/portal/proposals')) ||
-                        (!l.end && location.pathname.startsWith('/portal/deliverables'))
+                        (l.to === '/portal/projects' &&
+                          (location.pathname.startsWith('/portal/deliverables') ||
+                            location.pathname.startsWith('/portal/changes')))
                         ? 'border-primary text-primary-strong'
                         : 'border-transparent text-muted hover:text-text',
                     )

@@ -34,6 +34,7 @@ import { filesRouter } from './modules/files/routes.js';
 import { deliverablesRouter } from './modules/deliverables/routes.js';
 import { changesRouter } from './modules/changes/routes.js';
 import { commentsRouter } from './modules/comments/routes.js';
+import { invoicesRouter } from './modules/invoices/routes.js';
 import type { FileStorage } from './modules/files/storage.js';
 
 export interface AppConfig {
@@ -92,6 +93,7 @@ export function createApp(deps: AppDeps): Express {
   api.use('/contacts', contactsRouter(deps));
   api.use('/deals', dealsRouter(deps));
   api.use('/invitations', invitationsRouter(deps, limiters));
+  api.use(invoicesRouter(deps));
   api.use('/users', requireAuth, teamRouter(deps));
   api.use('/proposals', proposalsRouter(deps));
   api.use('/services', servicesRouter(deps));
