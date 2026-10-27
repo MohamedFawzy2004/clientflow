@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   can,
+  changeReference,
   DEFAULT_HANDOFF_CHECKLIST,
   formatQuantity,
   parseMoneyToMinor,
@@ -116,6 +117,26 @@ export async function getProject(db: Db, actor: AuthUser, id: string): Promise<P
       },
     },
   });
+  // US-12: the agreed scope is the accepted proposal plus every accepted change.
+  const acceptedChanges = await db.changeRequest.findMany({
+    where: { projectId: p.id, status: 'ACCEPTED' },
+    include: { acceptedVersion: { include: { decision: true } } },
+    orderBy: { number: 'asc' },
+  });
+  const added = acceptedChanges.reduce((sum, c) => sum + (c.acceptedVersion?.priceMinor ?? 0n), 0n);
+  const scopeHistory = {
+    originalBudgetMinor: (p.budgetMinor - added).toString(),
+    currentBudgetMinor: p.budgetMinor.toString(),
+    currency: p.currency as Currency,
+    changes: acceptedChanges.map((c) => ({
+      id: c.id,
+      reference: changeReference(c.number),
+      title: c.title,
+      priceMinor: (c.acceptedVersion?.priceMinor ?? 0n).toString(),
+      acceptedAt: (c.acceptedVersion?.decision?.occurredAt ?? c.updatedAt).toISOString(),
+      newDueOn: c.acceptedVersion?.newDueOn ? formatDateOnly(c.acceptedVersion.newDueOn) : null,
+    })),
+  };
   const activities = await db.activity.findMany({
     where: { agencyId: actor.agencyId, entityType: 'project', entityId: p.id },
     include: actorSelect,
@@ -177,6 +198,7 @@ export async function getProject(db: Db, actor: AuthUser, id: string): Promise<P
       doneBy: c.doneBy ? { id: c.doneBy.id, name: c.doneBy.name } : null,
     })),
     activities: activities.map(toTimelineEntry),
+    scopeHistory,
     clientOrg: p.clientOrg ? { id: p.clientOrg.id, name: p.clientOrg.name } : null,
     access: { manage: canManage(actor, p) && p.state !== 'ARCHIVED', work: canWork(actor) },
   };
@@ -572,6 +594,14 @@ export async function changeProjectState(
       if (waiting > 0) {
         throw conflict(
           `${waiting === 1 ? 'A deliverable is' : `${waiting} deliverables are`} still waiting for the client's decision. Wait for it, or archive it to waive the approval.`,
+        );
+      }
+      const changes = await tx.changeRequest.count({
+        where: { projectId: p.id, status: 'AWAITING_CLIENT' },
+      });
+      if (changes > 0) {
+        throw conflict(
+          'A change request is waiting for the client. Wait for their decision, or withdraw it.',
         );
       }
     }

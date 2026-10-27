@@ -1,6 +1,9 @@
 // Tasks, dependencies and time entries (FR-P05 – FR-P09, US-11).
 import {
   ASSIGNEE_STATUSES,
+  changeReference,
+  TASK_SCOPE_LABELS,
+  type TaskScope,
   TASK_STATUS_LABELS,
   type ProjectTime,
   type TaskBoard,
@@ -46,6 +49,7 @@ const taskInclude = {
   assignee: { select: { id: true, name: true } },
   milestone: { select: { id: true, title: true } },
   blockedBy: { include: { dependsOn: { select: { id: true, title: true, status: true } } } },
+  changeRequest: { select: { id: true, number: true } },
 } as const satisfies Prisma.TaskInclude;
 type TaskRow = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 
@@ -77,6 +81,11 @@ function toView(t: TaskRow, ctx: ViewContext): TaskView {
     overdue: dueOn !== null && dueOn < ctx.today && !CLOSED.includes(t.status),
     estimateMinutes: t.estimateMinutes,
     loggedMinutes: ctx.logged.get(t.id) ?? 0,
+    scope: t.scope,
+    change: t.changeRequest
+      ? { id: t.changeRequest.id, reference: changeReference(t.changeRequest.number) }
+      : null,
+    scopeNote: t.scopeNote,
     openBlockers: t.blockedBy
       .map((d) => d.dependsOn)
       .filter((d) => !CLOSED.includes(d.status))
@@ -132,6 +141,37 @@ async function assertAssignable(
       assigneeId: ['Assign the task to the project manager or a project member.'],
     });
   }
+}
+
+/**
+ * FR-S05: extra work names an accepted change of this project, or a written exception (which
+ * is audited). Original-scope tasks carry neither. The DB enforces the same rules.
+ */
+async function scopeFields(
+  tx: Db | Tx,
+  projectId: string,
+  input: { scope?: TaskScope; changeRequestId?: string | null; scopeNote?: string | null },
+) {
+  if (input.scope === 'CHANGE') {
+    const c = await tx.changeRequest.findFirst({
+      where: { id: input.changeRequestId ?? undefined, projectId, status: 'ACCEPTED' },
+      select: { id: true },
+    });
+    if (!c) {
+      throw validationFailed({
+        changeRequestId: ['Choose a change request of this project that the client accepted.'],
+      });
+    }
+    return { scope: 'CHANGE' as const, changeRequestId: c.id, scopeNote: null };
+  }
+  if (input.scope === 'EXCEPTION') {
+    return {
+      scope: 'EXCEPTION' as const,
+      changeRequestId: null,
+      scopeNote: input.scopeNote ?? null,
+    };
+  }
+  return { scope: 'BASELINE' as const, changeRequestId: null, scopeNote: null };
 }
 
 async function assertMilestone(db: Db | Tx, projectId: string, milestoneId: string) {
@@ -267,8 +307,10 @@ export async function createTask(
     const p = await findManageable(tx, actor, projectId);
     if (input.assigneeId) await assertAssignable(tx, p, input.assigneeId);
     if (input.milestoneId) await assertMilestone(tx, p.id, input.milestoneId);
+    const scope = await scopeFields(tx, p.id, input);
     const t = await tx.task.create({
       data: {
+        ...scope,
         agencyId: actor.agencyId,
         projectId: p.id,
         title: input.title,
@@ -295,6 +337,7 @@ export async function createTask(
       targetType: 'task',
       targetId: t.id,
       requestId,
+      metadata: { scope: scope.scope },
     });
     return t.id;
   });
@@ -318,9 +361,11 @@ export async function updateTask(
     if (t.version !== input.version) throw staleVersion();
     if (input.assigneeId) await assertAssignable(tx, t.project, input.assigneeId);
     if (input.milestoneId) await assertMilestone(tx, t.projectId, input.milestoneId);
+    const scope = input.scope !== undefined ? await scopeFields(tx, t.projectId, input) : null;
     const res = await tx.task.updateMany({
       where: { id: t.id, version: input.version },
       data: {
+        ...(scope ?? {}),
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
         ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId } : {}),
@@ -334,6 +379,15 @@ export async function updateTask(
       },
     });
     if (res.count === 0) throw staleVersion();
+    if (scope && scope.scope !== t.scope) {
+      await recordActivity(tx, actor, {
+        entityType: 'project',
+        entityId: t.projectId,
+        eventType: 'task.scope',
+        summary: `${actor.name} marked “${input.title ?? t.title}” as ${TASK_SCOPE_LABELS[scope.scope].toLowerCase()}`,
+        body: scope.scopeNote,
+      });
+    }
     if (input.assigneeId !== undefined && input.assigneeId !== t.assigneeId) {
       const who = input.assigneeId
         ? (await tx.user.findUniqueOrThrow({ where: { id: input.assigneeId } })).name
@@ -653,7 +707,16 @@ export async function getProjectTime(
       billableMinutes: billableOf.get(r.userId) ?? 0,
     }))
     .sort((a, b) => b.minutes - a.minutes);
+  const scoped = await db.$queryRaw<Array<{ scope: TaskScope; minutes: bigint }>>`
+    SELECT t.scope AS scope, COALESCE(SUM(e.minutes), 0)::bigint AS minutes
+    FROM time_entries e JOIN tasks t ON t.id = e.task_id
+    WHERE e.project_id = CAST(${p.id} AS uuid)
+      AND (${scope.userId ?? null}::uuid IS NULL OR e.user_id = ${scope.userId ?? null}::uuid)
+    GROUP BY t.scope`;
+  const byScope: Record<TaskScope, number> = { BASELINE: 0, CHANGE: 0, EXCEPTION: 0 };
+  for (const r of scoped) byScope[r.scope] = Number(r.minutes);
   return {
+    byScope,
     scope: canManage(actor, p) ? 'all' : 'own',
     totals: {
       minutes: byPerson.reduce((s, r) => s + r.minutes, 0),
