@@ -38,6 +38,10 @@ const send = (
   headers: Record<string, string> = {},
 ) => {
   let r = a.agent[method](`/api/v1${path}`).set('Origin', ORIGIN).set('X-CSRF-Token', a.csrf);
+  // Creating a draft needs an Idempotency-Key (O31); tests that check the key pass their own.
+  if (method === 'post' && path === '/invoices' && !headers['Idempotency-Key']) {
+    r = r.set('Idempotency-Key', randomUUID());
+  }
   for (const [k, v] of Object.entries(headers)) r = r.set(k, v);
   return r.send(body);
 };

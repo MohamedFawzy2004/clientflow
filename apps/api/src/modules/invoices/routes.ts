@@ -64,8 +64,17 @@ export function invoicesRouter(deps: AppDeps) {
     '/invoices',
     manage,
     wrap(async (req, res) => {
+      const parsedKey = idempotencyKeySchema.safeParse(req.get('idempotency-key'));
+      if (!parsedKey.success) {
+        throw validationFailed({
+          'Idempotency-Key': [
+            'Send an Idempotency-Key header with a UUID, so a double click cannot create two drafts.',
+          ],
+        });
+      }
       const input = parseOrThrow(invoiceCreateSchema, req.body);
-      ok(req, res, await createInvoice(db, req.auth!.user, input, req.requestId), 201);
+      const result = await createInvoice(db, req.auth!.user, input, parsedKey.data, req.requestId);
+      ok(req, res, result.invoice, result.replayed ? 200 : 201);
     }),
   );
 

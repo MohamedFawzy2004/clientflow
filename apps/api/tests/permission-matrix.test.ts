@@ -874,6 +874,7 @@ const ENDPOINTS: Endpoint[] = [
     name: 'POST /invoices',
     method: 'post',
     path: () => '/api/v1/invoices',
+    headers: () => ({ 'Idempotency-Key': randomUUID() }),
     body: (_r, f) => ({ clientOrgId: f.m9.orgId, dueOn: '2027-01-31' }),
     allowed: INVOICE_MANAGERS,
   },
