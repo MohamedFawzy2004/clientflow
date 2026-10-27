@@ -14,7 +14,7 @@ import { cn, formatDate } from '../../lib/format';
 import { Button } from '../../components/ui/button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
 import { Select } from '../../components/ui/form';
-import { OverdueBadge, PriorityBadge } from '../../components/projects/delivery-ui';
+import { OverdueBadge, PriorityBadge, TaskScopeBadge } from '../../components/projects/delivery-ui';
 import { useSession } from '../auth/session';
 import { useProjectContext } from '../projects/ProjectOverview';
 import { useTaskAction, useTasks } from './api';
@@ -57,6 +57,7 @@ function TaskCard({
       </button>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={t.priority} />
+        <TaskScopeBadge scope={t.scope} reference={t.change?.reference} />
         {t.overdue ? <OverdueBadge /> : null}
         {t.openBlockers.length > 0 ? (
           <span className="inline-flex items-center gap-1 text-xs text-muted">
@@ -84,14 +85,15 @@ function TaskCard({
             onChange={(e) => {
               // Read it now: the select snaps back to the saved status until the server answers.
               const next = e.target.value as TaskStatus;
-              action.mutate(
-                { kind: 'status', taskId: t.id, version: t.version, status: next },
-                {
-                  onSuccess: () =>
+              // The card moves to another column (a new component) once the board refreshes,
+              // and per-call callbacks of an unmounted component never run: use the promise.
+              action
+                .mutateAsync({ kind: 'status', taskId: t.id, version: t.version, status: next })
+                .then(
+                  () =>
                     toast.success(`“${t.title}” is now ${TASK_STATUS_LABELS[next].toLowerCase()}`),
-                  onError: (err) => toast.error(deliveryMessage(err)),
-                },
-              );
+                  (err: unknown) => toast.error(deliveryMessage(err)),
+                );
             }}
           >
             {statusOptions(t, manager).map((s) => (

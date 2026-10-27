@@ -24,7 +24,7 @@ export function portalProjectScope(actor: AuthUser): Prisma.ProjectWhereInput {
 export async function logPortalDenied(
   db: Db,
   actor: AuthUser,
-  targetType: 'project' | 'deliverable' | 'file',
+  targetType: 'project' | 'deliverable' | 'file' | 'change' | 'comment',
   targetId: string,
   requestId: string,
 ) {

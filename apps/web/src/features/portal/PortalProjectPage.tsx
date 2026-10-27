@@ -8,6 +8,7 @@ import { MilestoneStatusBadge, ProjectStateBadge } from '../../components/projec
 import { OverdueBadge, PortalDeliverableBadge } from '../../components/projects/delivery-ui';
 import { useSession } from '../auth/session';
 import { usePortalProject } from './api';
+import { PortalChangesCard } from './PortalChanges';
 
 /** One shared project: status, milestones and the published deliverables (FR-X03). */
 export function PortalProjectPage() {
@@ -131,6 +132,9 @@ export function PortalProjectPage() {
             </ol>
           )}
         </Card>
+        <div className="min-w-0 lg:col-span-2">
+          <PortalChangesCard projectId={p.id} />
+        </div>
       </div>
     </>
   );

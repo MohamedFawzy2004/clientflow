@@ -23,6 +23,7 @@ import { EditProjectDialog, projectMessage as message } from './ProjectOverview'
 function ProjectTabs({ id, work }: { id: string; work: boolean }) {
   const tabs = [
     { to: '', label: 'Overview', end: true },
+    { to: 'changes', label: 'Changes', end: false },
     ...(work
       ? [
           { to: 'board', label: 'Tasks', end: false },
@@ -32,7 +33,6 @@ function ProjectTabs({ id, work }: { id: string; work: boolean }) {
         ]
       : []),
   ];
-  if (tabs.length === 1) return null;
   return (
     <nav aria-label="Project sections" className="mt-6 border-b border-border">
       {/* Scrolls on its own at 360px, so the page itself never scrolls sideways. */}

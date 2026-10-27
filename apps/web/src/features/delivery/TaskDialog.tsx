@@ -4,9 +4,12 @@ import {
   formatMinutes,
   TASK_PRIORITIES,
   TASK_PRIORITY_LABELS,
+  TASK_SCOPE_LABELS,
+  TASK_SCOPES,
   type ProjectDetail,
   type TaskDetail,
   type TaskPriority,
+  type TaskScope,
 } from '@clientflow/contracts';
 import { formatDay, todayIn } from '../../lib/format';
 import { Button } from '../../components/ui/button';
@@ -16,8 +19,10 @@ import { Field, Input, Select, Textarea } from '../../components/ui/form';
 import {
   OverdueBadge,
   PriorityBadge,
+  TaskScopeBadge,
   TaskStatusBadge,
 } from '../../components/projects/delivery-ui';
+import { useChanges } from '../changes/api';
 import { useSession } from '../auth/session';
 import { useTask, useTaskAction, useTasks } from './api';
 import { deliveryMessage } from './TaskBoardPage';
@@ -54,8 +59,20 @@ export function TaskFormDialog({
   const [estimate, setEstimate] = useState(
     task?.estimateMinutes ? String(task.estimateMinutes / 60) : '',
   );
+  // FR-S05: extra work needs an accepted change of this project or a written exception.
+  const [scope, setScope] = useState<TaskScope>(task?.scope ?? 'BASELINE');
+  const [changeRequestId, setChangeRequestId] = useState(task?.change?.id ?? '');
+  const [scopeNote, setScopeNote] = useState(task?.scopeNote ?? '');
+  const changes = useChanges(project.id);
+  const accepted = (changes.data?.data.changes ?? []).filter((c) => c.status === 'ACCEPTED');
   const [touched, setTouched] = useState(false);
   const estimateMinutes = hoursToMinutes(estimate);
+  const changeError =
+    touched && scope === 'CHANGE' && !changeRequestId ? 'Choose the accepted change.' : undefined;
+  const noteError =
+    touched && scope === 'EXCEPTION' && scopeNote.trim().length < 10
+      ? 'Explain in a sentence why this work is done without a change request.'
+      : undefined;
   const titleError = touched && !title.trim() ? 'Give the task a name.' : undefined;
   const estimateError = estimateMinutes === undefined ? 'Use hours, e.g. 4 or 1.5.' : undefined;
 
@@ -63,6 +80,8 @@ export function TaskFormDialog({
     e.preventDefault();
     setTouched(true);
     if (!title.trim() || estimateMinutes === undefined) return;
+    if (scope === 'CHANGE' && !changeRequestId) return;
+    if (scope === 'EXCEPTION' && scopeNote.trim().length < 10) return;
     const fields = {
       title: title.trim(),
       description: description.trim() || null,
@@ -71,6 +90,9 @@ export function TaskFormDialog({
       dueOn: dueOn || null,
       priority,
       estimateMinutes,
+      scope,
+      changeRequestId: scope === 'CHANGE' ? changeRequestId : null,
+      scopeNote: scope === 'EXCEPTION' ? scopeNote.trim() : null,
     };
     action.mutate(
       task
@@ -172,6 +194,48 @@ export function TaskFormDialog({
             />
           )}
         </Field>
+        <Field label="Scope" required hint="Work beyond the agreed scope needs a reason.">
+          {(fp) => (
+            <Select {...fp} value={scope} onChange={(e) => setScope(e.target.value as TaskScope)}>
+              {TASK_SCOPES.map((sc) => (
+                <option key={sc} value={sc}>
+                  {TASK_SCOPE_LABELS[sc]}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        {scope === 'CHANGE' ? (
+          <Field label="Accepted change" required error={changeError}>
+            {(fp) => (
+              <Select
+                {...fp}
+                value={changeRequestId}
+                onChange={(e) => setChangeRequestId(e.target.value)}
+              >
+                <option value="">{accepted.length ? 'Choose…' : 'No accepted changes yet'}</option>
+                {accepted.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.reference} {c.title}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        ) : scope === 'EXCEPTION' ? (
+          <Field label="Why without a change request" required error={noteError}>
+            {(fp) => (
+              <Input
+                {...fp}
+                maxLength={500}
+                value={scopeNote}
+                onChange={(e) => setScopeNote(e.target.value)}
+              />
+            )}
+          </Field>
+        ) : (
+          <div aria-hidden />
+        )}
         <Field
           label="Details"
           className="sm:col-span-2"
@@ -364,8 +428,12 @@ export function TaskDialog({
           <div className="flex flex-wrap items-center gap-2">
             <TaskStatusBadge status={t.status} />
             <PriorityBadge priority={t.priority} />
+            <TaskScopeBadge scope={t.scope} reference={t.change?.reference} />
             {t.overdue ? <OverdueBadge /> : null}
           </div>
+          {t.scope === 'EXCEPTION' && t.scopeNote ? (
+            <p className="text-sm text-muted">Outside the agreed scope because: {t.scopeNote}</p>
+          ) : null}
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs text-muted">Assignee</dt>

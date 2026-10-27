@@ -18,6 +18,7 @@ import { Card } from '../../components/proposals/proposal-ui';
 import { OverdueBadge, PortalDeliverableBadge } from '../../components/projects/delivery-ui';
 import { useSession } from '../auth/session';
 import { startDownload } from '../delivery/FilesPage';
+import { CommentsThread } from '../changes/CommentsThread';
 import { useDeliverableDecision, usePortalDeliverable } from './api';
 
 type Decision = DeliverableDecisionInput['decision'];
@@ -235,6 +236,7 @@ export function PortalDeliverablePage() {
                 : 'You will see the next version here when it is ready.'}
             </Banner>
           )}
+          <CommentsThread thread={{ entityType: 'deliverable', entityId: d.id }} />
         </div>
       </div>
     </>
