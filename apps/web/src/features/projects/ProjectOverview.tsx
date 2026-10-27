@@ -21,6 +21,8 @@ import { Card } from '../../components/proposals/proposal-ui';
 import { MilestoneStatusBadge } from '../../components/projects/project-ui';
 import { useSession } from '../auth/session';
 import { PortalAccessCard } from '../delivery/PortalAccessCard';
+import { useFinancePermissions } from '../invoices/api';
+import { ProjectMoney } from '../invoices/ProjectMoney';
 import { useClientOrgOptions, useDeliveryStaff, useProjectAction } from './api';
 
 export function projectMessage(err: unknown) {
@@ -515,12 +517,13 @@ export function EditProjectDialog({ p, onClose }: { p: ProjectDetail; onClose: (
   );
 }
 
-/** Overview tab: milestones, scope, checklist, team, portal access and history. */
+/** Overview tab: milestones, scope, money, checklist, team, portal access and history. */
 export function ProjectOverview() {
   const p = useProjectContext();
   const { data: user } = useSession();
   const timeZone = user?.agency.timezone ?? 'Africa/Cairo';
   const manage = p.access.manage;
+  const finance = useFinancePermissions();
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-6">
@@ -528,6 +531,7 @@ export function ProjectOverview() {
         <Baseline p={p} timeZone={timeZone} />
       </div>
       <div className="flex min-w-0 flex-col gap-6">
+        {finance.view || manage ? <ProjectMoney projectId={p.id} /> : null}
         <Checklist p={p} manage={manage} />
         <Team p={p} manage={manage} />
         {manage ? <PortalAccessCard project={p} /> : null}
