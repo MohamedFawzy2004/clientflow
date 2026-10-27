@@ -171,6 +171,14 @@ export const router = createBrowserRouter([
             lazy: screen(() => import('../features/delivery/DeliverablePage'), 'DeliverablePage'),
           },
           {
+            path: 'changes',
+            lazy: screen(() => import('../features/changes/ChangesPage'), 'ChangesPage'),
+          },
+          {
+            path: 'changes/:changeId',
+            lazy: screen(() => import('../features/changes/ChangePage'), 'ChangePage'),
+          },
+          {
             path: 'files',
             lazy: screen(() => import('../features/delivery/FilesPage'), 'FilesPage'),
           },
@@ -216,6 +224,10 @@ export const router = createBrowserRouter([
       {
         path: 'projects/:id',
         lazy: screen(() => import('../features/portal/PortalProjectPage'), 'PortalProjectPage'),
+      },
+      {
+        path: 'changes/:id',
+        lazy: screen(() => import('../features/portal/PortalChangePage'), 'PortalChangePage'),
       },
       {
         path: 'deliverables/:id',

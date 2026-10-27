@@ -52,6 +52,7 @@ const project = (over: Partial<ProjectDetail> = {}): ProjectDetail => ({
   milestoneList: [],
   checklist: [],
   activities: [],
+  scopeHistory: { originalBudgetMinor: '0', currentBudgetMinor: '0', currency: 'EGP', changes: [] },
   clientOrg: { id: 'o1', name: 'Harbour Co.' },
   access: { manage: false, work: true },
   ...over,
@@ -70,6 +71,9 @@ const task = (over: Partial<TaskView>): TaskView => ({
   overdue: false,
   estimateMinutes: null,
   loggedMinutes: 0,
+  scope: 'BASELINE',
+  change: null,
+  scopeNote: null,
   openBlockers: [],
   completedAt: null,
   updatedAt: '2026-10-25T10:00:00.000Z',
@@ -133,10 +137,16 @@ describe('task board (FR-P07, US-11)', () => {
       path: '/app/projects/:id',
       url: '/app/projects/p1',
       user: { ...USER, role: 'SALES' },
-      children: [{ index: true, element: <p>Overview</p> }],
+      children: [{ index: true, element: <p>Overview content</p> }],
     });
-    expect(await screen.findByText('Overview')).toBeInTheDocument();
-    expect(screen.queryByRole('navigation', { name: 'Project sections' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Overview content')).toBeInTheDocument();
+    // Sales see the overview and the changes, never the delivery tabs.
+    const nav = screen.getByRole('navigation', { name: 'Project sections' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((l) => l.textContent),
+    ).toEqual(['Overview', 'Changes']);
   });
 });
 
@@ -222,9 +232,11 @@ const deliverable = (over: Partial<PortalDeliverableDetail> = {}): PortalDeliver
 describe('client deliverable review (FR-S07, US-13)', () => {
   it('approves exactly the open version, and a revision needs a reason', async () => {
     const calls = mockFetch((url, init) =>
-      init.method === 'POST' && url.includes('/decision')
-        ? ok(deliverable({ state: 'APPROVED', openVersionId: null }))
-        : ok(deliverable()),
+      url.includes('/portal/comments')
+        ? ok([])
+        : init.method === 'POST' && url.includes('/decision')
+          ? ok(deliverable({ state: 'APPROVED', openVersionId: null }))
+          : ok(deliverable()),
     );
     renderRoute(<PortalDeliverablePage />, {
       path: '/portal/deliverables/:id',

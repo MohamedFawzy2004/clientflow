@@ -47,15 +47,52 @@ function Text({ label, text }: { label: string; text: string | null }) {
   );
 }
 
+/** Accepted changes on top of the original scope, with the budget before and now (US-12). */
+function ScopeChanges({ p, timeZone }: { p: ProjectDetail; timeZone: string }) {
+  const h = p.scopeHistory;
+  if (h.changes.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+      <h3 className="text-[13px] font-semibold uppercase tracking-[0.06em] text-muted">
+        Accepted changes
+      </h3>
+      <ul className="flex flex-col gap-1.5 text-sm">
+        {h.changes.map((c) => (
+          <li key={c.id} className="flex flex-wrap items-center justify-between gap-2">
+            <Link
+              to={`/app/projects/${p.id}/changes/${c.id}`}
+              className="min-w-0 break-words font-medium text-primary-strong hover:underline"
+            >
+              {c.reference} {c.title}
+            </Link>
+            <span className="text-muted">
+              +<Money minor={c.priceMinor} currency={h.currency} /> · accepted{' '}
+              {formatDateTime(c.acceptedAt, timeZone)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm text-text">
+        Budget <Money minor={h.originalBudgetMinor} currency={h.currency} /> originally, now{' '}
+        <Money minor={h.currentBudgetMinor} currency={h.currency} className="font-semibold" />{' '}
+        excluding tax.
+      </p>
+    </div>
+  );
+}
+
 function Baseline({ p, timeZone }: { p: ProjectDetail; timeZone: string }) {
   const { data: user } = useSession();
   const b = p.baseline;
   if (!b) {
     return (
       <Card title="Scope baseline">
-        <p className="text-sm text-muted">
-          Created without a deal, so there is no accepted proposal behind it.
-        </p>
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted">
+            Created without a deal, so there is no accepted proposal behind it.
+          </p>
+          <ScopeChanges p={p} timeZone={timeZone} />
+        </div>
       </Card>
     );
   }
@@ -79,8 +116,9 @@ function Baseline({ p, timeZone }: { p: ProjectDetail; timeZone: string }) {
           {b.acceptedBy && b.acceptedAt
             ? `, accepted by ${b.acceptedBy} on ${formatDateTime(b.acceptedAt, timeZone)}`
             : ''}
-          . It cannot change; changes to scope will go through change requests.
+          . It never changes: extra scope goes through change requests the client accepts.
         </p>
+        <ScopeChanges p={p} timeZone={timeZone} />
         <Text label="Summary" text={b.summary} />
         <div className="grid gap-5 md:grid-cols-2">
           <Text label="Included" text={b.inclusions} />

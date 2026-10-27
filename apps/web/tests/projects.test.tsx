@@ -43,6 +43,7 @@ const project = (over: Partial<ProjectDetail> = {}): ProjectDetail => ({
     },
   ],
   activities: [],
+  scopeHistory: { originalBudgetMinor: '0', currentBudgetMinor: '0', currency: 'EGP', changes: [] },
   clientOrg: null,
   access: { manage: true, work: true },
   ...over,
