@@ -33,7 +33,9 @@ export function ProjectMoney({ projectId }: { projectId: string }) {
         (budget minus an estimated time cost of {formatMoney(f.cost.estimatedMinor, c)}).
       </p>
       <p className="mt-1 text-xs text-muted">
-        Estimate based on {f.cost.completenessPercent}% of logged time.
+        {f.cost.minutesTotal === 0
+          ? 'No time logged yet, so the cost is not known.'
+          : `Estimate based on ${f.cost.completenessPercent}% of logged time.`}
         {f.cost.missingRates.length
           ? ` No usable cost rate for: ${f.cost.missingRates.join(', ')}.`
           : ''}

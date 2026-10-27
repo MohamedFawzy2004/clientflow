@@ -123,9 +123,9 @@ describe('invoice draft (FR-F01, FR-F02)', () => {
       'C:018f0000-0000-7000-8000-00000000cc01',
     );
     expect(screen.getByLabelText('Line 1 description')).toHaveValue('CR-1 Arabic version');
-    expect(screen.getByLabelText('Unit price (EGP)')).toHaveValue('12500.50');
-    await userEvent.clear(screen.getByLabelText('Quantity'));
-    await userEvent.type(screen.getByLabelText('Quantity'), '3');
+    expect(screen.getByLabelText('Line 1 unit price (EGP)')).toHaveValue('12500.50');
+    await userEvent.clear(screen.getByLabelText('Line 1 quantity'));
+    await userEvent.type(screen.getByLabelText('Line 1 quantity'), '3');
     // 3 × 12,500.50 = 37,501.50; 14% tax = 5,250.21 (half up); total 42,751.71.
     const totals = screen.getByText('Subtotal').closest('dl')!;
     expect(within(totals).getByText(/37,501\.50/)).toBeInTheDocument();

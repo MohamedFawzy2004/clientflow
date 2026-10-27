@@ -197,6 +197,7 @@ function DraftEditor({ inv }: { inv: InvoiceDetail }) {
                 </label>
                 <Input
                   id={`qty-${l.key}`}
+                  aria-label={`Line ${n + 1} quantity`}
                   inputMode="decimal"
                   value={l.quantity}
                   onChange={(e) => update(l.key, { quantity: e.target.value })}
@@ -208,6 +209,7 @@ function DraftEditor({ inv }: { inv: InvoiceDetail }) {
                 </label>
                 <Input
                   id={`price-${l.key}`}
+                  aria-label={`Line ${n + 1} unit price (${inv.currency})`}
                   inputMode="decimal"
                   value={l.unitPrice}
                   onChange={(e) => update(l.key, { unitPrice: e.target.value })}

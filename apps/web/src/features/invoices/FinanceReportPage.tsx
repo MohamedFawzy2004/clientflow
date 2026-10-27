@@ -37,7 +37,11 @@ function Totals({ t }: { t: FinanceTotals }) {
         </div>
         <div>
           <dt className="text-xs text-muted">Overdue ({t.overdue.count})</dt>
-          <dd className="font-semibold tabular-nums text-danger">{m(t.overdue.balanceMinor)}</dd>
+          <dd
+            className={`font-semibold tabular-nums ${t.overdue.count > 0 ? 'text-danger' : 'text-text'}`}
+          >
+            {m(t.overdue.balanceMinor)}
+          </dd>
         </div>
       </dl>
       <h3 className="mt-4 text-[13px] font-semibold text-text">Open balance by days past due</h3>
