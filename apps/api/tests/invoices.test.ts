@@ -309,6 +309,10 @@ describe('payments (FR-F03, FR-F04, T-PAY-01, T-PAY-02, US-14, US-18)', () => {
     });
     await pay(finance, i.id, { amount: '1.00', receivedOn: '2026-10-22' }).expect(409);
     expect(await db.payment.count()).toBe(3);
+    // FR-F04: every recorded payment is audited with its actor.
+    const audits = await db.auditEvent.findMany({ where: { action: 'payment.record' } });
+    expect(audits).toHaveLength(3);
+    expect(new Set(audits.map((a) => a.actorId))).toEqual(new Set([seeded.users.finance!.id]));
   });
 
   it('a retried request with the same Idempotency-Key records one payment; racing payments cannot overpay', async () => {
@@ -351,6 +355,7 @@ describe('payments (FR-F03, FR-F04, T-PAY-01, T-PAY-02, US-14, US-18)', () => {
       reason: 'Again',
     }).expect(200);
     expect(await db.payment.count()).toBe(2);
+    expect(await db.auditEvent.count({ where: { action: 'payment.reverse' } })).toBe(1);
     await expect(db.payment.updateMany({ data: { amountMinor: 1n } })).rejects.toThrow();
     await expect(db.payment.deleteMany({})).rejects.toThrow();
 

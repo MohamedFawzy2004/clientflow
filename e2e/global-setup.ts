@@ -43,6 +43,7 @@ export default async function globalSetup() {
     resetUser: { email: 'reset.user@e2e.test', password: password() },
     pm: { email: 'pm@e2e.test', password: password() },
     member: { email: 'member@e2e.test', password: password() },
+    finance: { email: 'finance@e2e.test', password: password() },
   };
 
   run(
@@ -69,6 +70,7 @@ export default async function globalSetup() {
     ['resetUser', 'Rana Fathy', 'SALES'],
     ['pm', 'Pat Morgan', 'PM'],
     ['member', 'Mina Adel', 'MEMBER'],
+    ['finance', 'Tarek Habib', 'FINANCE'],
   ] as const) {
     const passwordHash = await hash(creds[key].password, {
       algorithm: 2,

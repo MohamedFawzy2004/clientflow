@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Browser, type Page } from '@playwright/test';
 import { shot } from './shot';
 
-export type Who = 'owner' | 'admin' | 'pm' | 'member' | 'salesA' | 'salesB';
+export type Who = 'owner' | 'admin' | 'pm' | 'member' | 'salesA' | 'salesB' | 'finance';
 export const creds = () =>
   JSON.parse(readFileSync('e2e/.auth/credentials.json', 'utf8')) as Record<
     Who,
