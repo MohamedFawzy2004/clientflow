@@ -320,3 +320,51 @@ The statuses follow spec §9: DRAFT → READY (a version with a clean file) → 
 Spec §10 lists `upload-intent`, `complete` and `download`, a shape designed for presigned object-storage uploads. With local storage the API receives the bytes itself, so M7 uses one request: `POST /projects/:id/files` with the raw body and the name in `X-File-Name`. The bytes are checked and encrypted as they stream in, so nothing unchecked is ever kept.
 
 A refused upload's remaining body is drained up to 2× the limit, so the client receives the error instead of a reset connection; past that the connection is closed. When an S3 adapter arrives, the intent/complete pair can be added in front of the same checks.
+
+## ADR-050 — Change requests: versions, internal approval and client acceptance (ACCEPTED, M8)
+
+A change request (CR-n per project) holds the requester's words (what should change and why). The project manager's estimate lives in numbered versions:
+
+- the scope delta (shown to the client);
+- work items, one per line;
+- effort in minutes (internal, never in the portal);
+- the price excluding tax, in minor units of the project currency;
+- tax at the accepted proposal's rate (14% if there is none);
+- an optional new due date.
+
+The flow follows spec §9 and J4:
+
+- `REQUESTED` (by the client in the portal or by the PM) → `ESTIMATING` (draft version).
+- **Priced change:** → `IN_REVIEW`. An Owner or Admin approves it (`changes.approve`) or sends it back with a reason. Then → `AWAITING_CLIENT` when sent.
+- **Change without a price** (for example a date-only change): sent directly → `AWAITING_CLIENT`.
+- `AWAITING_CLIENT` → `ACCEPTED` or `REJECTED`, decided by the client.
+- `WITHDRAWN` at any open step, with a reason.
+
+Sending computes a SHA-256 over the client-visible content and freezes the version (DB trigger: content, hash and number can never change; a decided, superseded or withdrawn version is final). The client decides by naming that hash, like proposals (ADR-030). The portal shows only sent versions; internal review reads as "Estimating".
+
+Self-approval (O16) is still open: an Owner who manages a project can approve their own priced change, as for proposals.
+
+## ADR-051 — Only an accepted change moves the baseline, in one transaction (ACCEPTED, M8)
+
+The original baseline stays the accepted proposal version (ADR-039). Under row locks on the change and the project, accepting a change:
+
+- adds the version's price to `projects.budget_minor`;
+- moves `due_on` when the change sets a new date;
+- creates one task per work item with `scope = CHANGE` and a link to the change;
+- records the budget before and after and the old due date on the version;
+- writes the decision (unique per version), history and audit.
+
+Rejecting writes only the decision. One decision per version; repeating the same decision returns the same result (T-SCOPE-01/02, US-18). The project page shows the original budget, every accepted change and the current budget. A project cannot be completed while a change waits for the client, and accepting is refused on a closed project.
+
+## ADR-052 — Extra work is either an accepted change or a documented exception (ACCEPTED, M8)
+
+Every task has a scope: `BASELINE`, `CHANGE` (an accepted change of the same project) or `EXCEPTION` (a written reason of at least 10 characters). DB checks and a trigger enforce the same rules as the API, so a task cannot silently point at a change that was not accepted (FR-S05). Creating an exception is audited. The board shows extra-work badges, and the Time tab splits minutes between original scope, accepted changes and exceptions (spec J4 step 5).
+
+## ADR-053 — Comment threads shared by the team and the client (ACCEPTED, M8)
+
+Deliverables and change requests have one comment thread each (FR-X08).
+
+- **Who comments:** staff with delivery access on the project, and clients who can see the item in the portal. Elsewhere it is a 404 plus a DENIED audit event.
+- **Edit and delete:** authors edit or delete only their own comments. Each edit or delete appends the earlier text to `project_comment_revisions` (append-only, DB trigger); a deleted comment shows as "deleted".
+- **History:** the team sees the history of every comment; clients see the history of their own comments.
+- **Notifications:** a client comment sends the project manager a link-only email. In-app notifications arrive with M10.
