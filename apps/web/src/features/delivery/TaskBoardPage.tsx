@@ -85,14 +85,15 @@ function TaskCard({
             onChange={(e) => {
               // Read it now: the select snaps back to the saved status until the server answers.
               const next = e.target.value as TaskStatus;
-              action.mutate(
-                { kind: 'status', taskId: t.id, version: t.version, status: next },
-                {
-                  onSuccess: () =>
+              // The card moves to another column (a new component) once the board refreshes,
+              // and per-call callbacks of an unmounted component never run: use the promise.
+              action
+                .mutateAsync({ kind: 'status', taskId: t.id, version: t.version, status: next })
+                .then(
+                  () =>
                     toast.success(`“${t.title}” is now ${TASK_STATUS_LABELS[next].toLowerCase()}`),
-                  onError: (err) => toast.error(deliveryMessage(err)),
-                },
-              );
+                  (err: unknown) => toast.error(deliveryMessage(err)),
+                );
             }}
           >
             {statusOptions(t, manager).map((s) => (

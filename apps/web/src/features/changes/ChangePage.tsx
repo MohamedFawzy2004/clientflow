@@ -141,6 +141,17 @@ function EstimateForm({ c }: { c: ChangeDetail }) {
   );
 }
 
+const VERSION_LABELS: Record<ChangeVersionView['status'], string> = {
+  DRAFT: 'Draft',
+  IN_REVIEW: 'In internal review',
+  APPROVED_INTERNAL: 'Approved internally',
+  SENT: 'With the client',
+  ACCEPTED: 'Accepted',
+  REJECTED: 'Rejected',
+  SUPERSEDED: 'Superseded',
+  WITHDRAWN: 'Withdrawn',
+};
+
 function Version({ v, timeZone }: { v: ChangeVersionView; timeZone: string }) {
   return (
     <li className="flex flex-col gap-2 py-3 first:pt-0">
@@ -151,7 +162,7 @@ function Version({ v, timeZone }: { v: ChangeVersionView; timeZone: string }) {
             v.status === 'ACCEPTED' ? 'success' : v.status === 'REJECTED' ? 'danger' : 'neutral'
           }
         >
-          {v.status.replace('_', ' ').toLowerCase()}
+          {VERSION_LABELS[v.status]}
         </Badge>
       </div>
       <p className="whitespace-pre-line break-words text-sm text-text">{v.scope}</p>
@@ -322,7 +333,7 @@ export function ChangePage() {
 
       {c.access.estimate ? (
         <Card title={latest ? `Estimate (version ${latest.versionNo}, draft)` : 'Estimate'}>
-          <EstimateForm key={c.version} c={c} />
+          <EstimateForm c={c} />
         </Card>
       ) : null}
 

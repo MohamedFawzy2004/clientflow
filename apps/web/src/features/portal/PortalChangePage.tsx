@@ -181,20 +181,21 @@ export function PortalChangePage() {
                         ))}
                       </ul>
                     ) : null}
-                    <dl className="grid grid-cols-3 gap-2 text-sm">
-                      <div>
+                    {/* One row per amount on phones, three columns from 640px. */}
+                    <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                      <div className="flex justify-between gap-3 sm:block">
                         <dt className="text-xs text-muted">Price</dt>
                         <dd className="tabular-nums text-text">
                           {formatMoney(v.priceMinor, v.currency)}
                         </dd>
                       </div>
-                      <div>
+                      <div className="flex justify-between gap-3 sm:block">
                         <dt className="text-xs text-muted">Tax ({v.taxRateBp / 100}%)</dt>
                         <dd className="tabular-nums text-text">
                           {formatMoney(v.taxMinor, v.currency)}
                         </dd>
                       </div>
-                      <div>
+                      <div className="flex justify-between gap-3 sm:block">
                         <dt className="text-xs text-muted">Total</dt>
                         <dd className="font-semibold tabular-nums text-text">
                           {formatMoney(v.totalMinor, v.currency)}
