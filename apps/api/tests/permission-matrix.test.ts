@@ -74,6 +74,23 @@ interface Fixtures {
   memberId: string;
   d: DeliveryFixtures;
   m8: ScopeFixtures;
+  m9: FinanceFixtures;
+}
+
+/** M9: invoices in each state on a project the PM manages, plus a published portal invoice. */
+interface FinanceFixtures {
+  orgId: string;
+  project: string;
+  invRead: string;
+  invDraft: string;
+  invIssue: { id: string; version: number };
+  invPublish: string;
+  invVoid: string;
+  invDelete: string;
+  invPay: string;
+  invReverse: { id: string; paymentId: string };
+  portalInvoice: string;
+  rateUser: string;
 }
 
 /** M8: change requests in each state, and comments written by the role under test. */
@@ -145,6 +162,11 @@ const PROJECT_READERS: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES', 'PM
 const PROJECT_MANAGERS: Role[] = ['OWNER', 'ADMIN', 'PM'];
 /** Delivery work: tasks, own time, files and deliverables (spec §1.1 P / Assigned / Own). */
 const DELIVERY: Role[] = ['OWNER', 'ADMIN', 'PM', 'MEMBER'];
+/** Spec §1.1 "Manage invoice state": A for Owner/Admin/Finance, Read P for PM. */
+const INVOICE_READERS: Role[] = ['OWNER', 'ADMIN', 'FINANCE', 'PM'];
+const INVOICE_MANAGERS: Role[] = ['OWNER', 'ADMIN', 'FINANCE'];
+/** FR-F04: only Finance and the Owner change payment status. */
+const PAYERS: Role[] = ['OWNER', 'FINANCE'];
 const PDF = Buffer.from('%PDF-1.4\n%matrix\n%%EOF\n');
 const EVERYONE: Role[] = [...STAFF, 'CLIENT'];
 
@@ -841,6 +863,113 @@ const ENDPOINTS: Endpoint[] = [
     path: (f) => `/api/v1/comments/${f.m8.commentHistory}/history`,
     allowed: DELIVERY,
   },
+  // Invoices and finance (M9)
+  {
+    name: 'GET /invoices',
+    method: 'get',
+    path: () => '/api/v1/invoices',
+    allowed: INVOICE_READERS,
+  },
+  {
+    name: 'POST /invoices',
+    method: 'post',
+    path: () => '/api/v1/invoices',
+    body: (_r, f) => ({ clientOrgId: f.m9.orgId, dueOn: '2027-01-31' }),
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'GET /invoices/:id',
+    method: 'get',
+    path: (f) => `/api/v1/invoices/${f.m9.invRead}`,
+    allowed: INVOICE_READERS,
+  },
+  {
+    name: 'PUT /invoices/:id/draft',
+    method: 'put',
+    path: (f) => `/api/v1/invoices/${f.m9.invDraft}/draft`,
+    body: () => ({
+      version: 1,
+      dueOn: '2027-01-31',
+      taxRatePercent: '14',
+      items: [{ description: 'Line', quantity: '1', unitPrice: '10.00' }],
+    }),
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'POST /invoices/:id/issue',
+    method: 'post',
+    path: (f) => `/api/v1/invoices/${f.m9.invIssue.id}/issue`,
+    body: (_r, f) => ({ version: f.m9.invIssue.version }),
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'POST /invoices/:id/publish',
+    method: 'post',
+    path: (f) => `/api/v1/invoices/${f.m9.invPublish}/publish`,
+    body: () => ({ version: 1 }),
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'POST /invoices/:id/void',
+    method: 'post',
+    path: (f) => `/api/v1/invoices/${f.m9.invVoid}/void`,
+    body: () => ({ version: 1, reason: 'Matrix void' }),
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'POST /invoices/:id/delete',
+    method: 'post',
+    path: (f) => `/api/v1/invoices/${f.m9.invDelete}/delete`,
+    body: () => ({ version: 1 }),
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'POST /invoices/:id/payments',
+    method: 'post',
+    path: (f) => `/api/v1/invoices/${f.m9.invPay}/payments`,
+    headers: () => ({ 'Idempotency-Key': randomUUID() }),
+    body: () => ({ amount: '1.00', receivedOn: '2026-10-01', reference: 'MATRIX-1' }),
+    allowed: PAYERS,
+  },
+  {
+    name: 'POST /invoices/:id/payments/:id/reverse',
+    method: 'post',
+    path: (f) =>
+      `/api/v1/invoices/${f.m9.invReverse.id}/payments/${f.m9.invReverse.paymentId}/reverse`,
+    body: () => ({ reason: 'Matrix reversal' }),
+    allowed: PAYERS,
+  },
+  {
+    name: 'GET /projects/:id/finance',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.m9.project}/finance`,
+    allowed: INVOICE_READERS,
+  },
+  {
+    name: 'GET /reports/finance',
+    method: 'get',
+    path: () => '/api/v1/reports/finance',
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'GET /exports/invoices.csv',
+    method: 'get',
+    path: () => '/api/v1/exports/invoices.csv',
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'GET /cost-rates',
+    method: 'get',
+    path: () => '/api/v1/cost-rates',
+    allowed: INVOICE_MANAGERS,
+  },
+  {
+    name: 'POST /users/:id/cost-rates',
+    method: 'post',
+    path: (f) => `/api/v1/users/${f.m9.rateUser}/cost-rates`,
+    body: () => ({ hourly: '250.00', currency: 'EGP', effectiveFrom: '2026-10-01' }),
+    allowed: TEAM_ADMINS,
+  },
   // Client portal (M4)
   {
     name: 'GET /portal/proposals',
@@ -958,6 +1087,18 @@ const ENDPOINTS: Endpoint[] = [
     name: 'GET /portal/comments/:id/history',
     method: 'get',
     path: (f) => `/api/v1/portal/comments/${f.m8.portalCommentHistory}/history`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/invoices',
+    method: 'get',
+    path: () => '/api/v1/portal/invoices',
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/invoices/:id',
+    method: 'get',
+    path: (f) => `/api/v1/portal/invoices/${f.m9.portalInvoice}`,
     allowed: CLIENT_ONLY,
   },
 ];
@@ -1119,10 +1260,12 @@ async function freshFixtures(seeded: SeededAgency, role?: Role): Promise<Fixture
   const convertDeal = (await won()).dealId;
   const d = await deliveryFixtures(seeded, role, portal.orgId, portal.clientUserId);
   const m8 = await scopeFixtures(seeded, role, projRead.projectId, d, portal.clientUserId);
+  const m9 = await financeFixtures(seeded, d, portal.orgId);
 
   return {
     d,
     m8,
+    m9,
     projRead: projRead.projectId,
     projPatch: projPatch.projectId,
     projState: projState.projectId,
@@ -1405,6 +1548,97 @@ async function scopeFixtures(
   };
 }
 
+/** M9 fixtures: invoices on the portal organization's delivery project (managed by pm). */
+async function financeFixtures(
+  seeded: SeededAgency,
+  d: DeliveryFixtures,
+  orgId: string,
+): Promise<FinanceFixtures> {
+  const { agencyId } = seeded;
+  const financeId = seeded.users.finance!.id;
+  let n = 0;
+  const invoice = async (status: 'DRAFT' | 'ISSUED', extra: object = {}) => {
+    const issuedFields =
+      status === 'ISSUED'
+        ? {
+            status: 'ISSUED' as const,
+            number: ++n,
+            issuedOn: new Date('2026-10-01'),
+            issuedAt: new Date(),
+            issuedById: financeId,
+            billedToName: 'Fixture client',
+            issuerName: 'Test Agency',
+          }
+        : {};
+    const i = await db.invoice.create({
+      data: {
+        agencyId,
+        clientOrgId: orgId,
+        projectId: d.project,
+        currency: 'EGP',
+        dueOn: new Date('2099-01-31'),
+        createdById: financeId,
+        subtotalMinor: 10_000n,
+        taxMinor: 1_400n,
+        totalMinor: 11_400n,
+        ...issuedFields,
+        ...extra,
+      },
+    });
+    // Lines can only be added while the invoice is a draft, so issued ones get theirs first.
+    return i;
+  };
+  const withLine = async () => {
+    const i = await invoice('DRAFT');
+    await db.invoiceItem.create({
+      data: {
+        invoiceId: i.id,
+        position: 0,
+        description: 'Line',
+        quantityCenti: 100,
+        unitPriceMinor: 10_000n,
+        lineTotalMinor: 10_000n,
+      },
+    });
+    return i;
+  };
+  const invRead = await invoice('ISSUED');
+  const invDraft = await invoice('DRAFT');
+  const invIssue = await withLine();
+  const invPublish = await invoice('ISSUED');
+  const invVoid = await invoice('ISSUED');
+  const invDelete = await invoice('DRAFT');
+  const invPay = await invoice('ISSUED');
+  const invReverse = await invoice('ISSUED', { status: 'PARTIALLY_PAID', paidMinor: 100n });
+  const payment = await db.payment.create({
+    data: {
+      agencyId,
+      invoiceId: invReverse.id,
+      amountMinor: 100n,
+      currency: 'EGP',
+      receivedOn: new Date('2026-10-01'),
+      recordedById: financeId,
+    },
+  });
+  const portalInvoice = await invoice('ISSUED', { publishedAt: new Date() });
+  // The counter matches the numbers used above, as issuing would have left it.
+  await db.agency.update({ where: { id: agencyId }, data: { invoiceSeq: n } });
+  return {
+    orgId,
+    project: d.project,
+    invRead: invRead.id,
+    invDraft: invDraft.id,
+    invIssue: { id: invIssue.id, version: invIssue.version },
+    invPublish: invPublish.id,
+    invVoid: invVoid.id,
+    invDelete: invDelete.id,
+    invPay: invPay.id,
+    invReverse: { id: invReverse.id, paymentId: payment.id },
+    portalInvoice: portalInvoice.id,
+    rateUser: seeded.users.member!.id,
+  };
+}
+
 describe('role × endpoint matrix', () => {
   it.each(EVERYONE)('%s gets exactly the access spec §1.1 grants', async (role) => {
     await resetDb();
@@ -1545,6 +1779,17 @@ describe('role × endpoint matrix', () => {
     if (!DELIVERY.includes(role) && role !== 'CLIENT') {
       expect(await db.projectComment.count()).toBe(6);
       expect(await db.projectCommentRevision.count()).toBe(0);
+    }
+    if (!INVOICE_MANAGERS.includes(role)) {
+      // No invoice was created, edited, issued, published, voided or deleted.
+      expect(await db.invoice.count()).toBe(9);
+      expect(await db.invoice.count({ where: { version: { gt: 1 } } })).toBe(0);
+      expect(await db.invoiceItem.count()).toBe(1);
+      expect(await db.costRate.count()).toBe(0);
+    }
+    if (!PAYERS.includes(role)) {
+      // T-PAY-02: no payment or reversal was recorded.
+      expect(await db.payment.count()).toBe(1);
     }
     if (role === 'CLIENT') {
       expect(await db.deliverableReview.count()).toBe(1);
