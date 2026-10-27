@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import type { TimelineEntry } from './crm.js';
 import { CURRENCIES, parseMoneyToMinor, type Currency } from './money.js';
+import type { ScopeHistory } from './changes.js';
 import type { ProposalItemView } from './proposals.js';
 
 const uuid = z.uuid({ message: 'Choose an item from the list.' });
@@ -210,6 +211,8 @@ export interface ProjectDetail extends ProjectSummary {
   milestoneList: ProjectMilestoneView[];
   checklist: ChecklistItemView[];
   activities: TimelineEntry[];
+  /** Accepted changes on top of the baseline, with the budget before and now (US-12). */
+  scopeHistory: ScopeHistory;
   /** The customer company whose portal users can be given access (FR-X01). */
   clientOrg: { id: string; name: string } | null;
   /**

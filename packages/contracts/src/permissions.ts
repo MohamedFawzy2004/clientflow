@@ -59,6 +59,8 @@ export const PERMISSIONS = {
    * Sales see linked projects read-only and none of this (spec §1.1 "Read linked").
    */
   'delivery.work': ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
+  /** Release a priced change request to the client (spec J4 step 3: internal approver). */
+  'changes.approve': ['OWNER', 'ADMIN'],
   /** Delivery dashboard: project and milestone counts in the viewer's scope. */
   'dashboard.delivery': ['OWNER', 'ADMIN', 'PM', 'MEMBER'],
   /** See team members and invitations. */
