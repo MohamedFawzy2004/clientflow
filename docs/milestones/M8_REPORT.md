@@ -1,6 +1,6 @@
 # ClientFlow Milestone M8 Report
 
-**Milestone:** M8 — Scope changes · **Date:** 2026-10-27 · **Branch:** `feat/m8-scope-changes` (stacked on M7 #79 → M6 #70 → M5 #62 → M4 #52 → M3 #43 → M2 #32 → M1 #22)
+**Milestone:** M8 — Scope changes · **Date:** 2026-10-27 · **Branch:** `feat/m8-scope-changes` (PR #87, stacked on M7 #79 → M6 #70 → M5 #62 → M4 #52 → M3 #43 → M2 #32 → M1 #22)
 **Environments:** Windows 11 (Node 24.19.0, Docker 29.9.2, Postgres 17.6, Edge) and GitHub Actions `ubuntu-latest`.
 
 ## Status summary
@@ -176,11 +176,11 @@ npm run e2e:screenshots   # optional
 
 ## CI evidence
 
-Filled in after pushing; the final result is the PR check list.
+The branch was pushed with all local checks green (above). When this report was written, the CI jobs on PR #87 had just started. M7 PR #79 had 6 checks passing, none failing and 4 still running (stacked re-runs). The final result is each PR's check list.
 
 ## Requirements traceability updates
 
-`docs/REQUIREMENTS_TRACEABILITY.csv` is updated for 9 IDs. ADR-050 to ADR-053 are added, and the risk register adds R28 and R29. GitHub: issues #80–#86 are closed by the PR, and epic #8 ticks the fully tested IDs.
+`docs/REQUIREMENTS_TRACEABILITY.csv` is updated for 9 IDs. ADR-050 to ADR-053 are added, and the risk register adds R28 and R29. GitHub: issues #80–#86 are closed by PR #87, and epic #8 ticks the 13 fully tested IDs (including US-10, US-11, US-13, US-20 and T-ACL-02 from M6/M7).
 
 ## Next milestone plan / decisions needed
 
