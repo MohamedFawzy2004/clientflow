@@ -214,6 +214,26 @@ export async function listInvoices(
   };
 }
 
+/** Client organizations and their projects, for the New invoice form (names, ids, currency). */
+export async function invoiceOptions(db: Db, actor: AuthUser) {
+  requireManage(actor);
+  const orgs = await db.clientOrganization.findMany({
+    where: { agencyId: actor.agencyId, archivedAt: null },
+    select: {
+      id: true,
+      name: true,
+      projects: {
+        where: { state: { not: 'ARCHIVED' } },
+        select: { id: true, title: true, currency: true },
+        orderBy: { title: 'asc' },
+      },
+    },
+    orderBy: { name: 'asc' },
+    take: 500,
+  });
+  return orgs;
+}
+
 // ---------------------------------------------------------------------------
 // Drafts, issue, publish, void (FR-F01, FR-F02)
 // ---------------------------------------------------------------------------

@@ -22,6 +22,7 @@ import {
   getFinanceReport,
   getInvoice,
   getProjectFinance,
+  invoiceOptions,
   issueInvoice,
   listCostRates,
   listInvoices,
@@ -66,6 +67,12 @@ export function invoicesRouter(deps: AppDeps) {
       const input = parseOrThrow(invoiceCreateSchema, req.body);
       ok(req, res, await createInvoice(db, req.auth!.user, input, req.requestId), 201);
     }),
+  );
+
+  router.get(
+    '/invoices/options',
+    manage,
+    wrap(async (req, res) => ok(req, res, await invoiceOptions(db, req.auth!.user))),
   );
 
   router.get(

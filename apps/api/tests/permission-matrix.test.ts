@@ -878,6 +878,12 @@ const ENDPOINTS: Endpoint[] = [
     allowed: INVOICE_MANAGERS,
   },
   {
+    name: 'GET /invoices/options',
+    method: 'get',
+    path: () => '/api/v1/invoices/options',
+    allowed: INVOICE_MANAGERS,
+  },
+  {
     name: 'GET /invoices/:id',
     method: 'get',
     path: (f) => `/api/v1/invoices/${f.m9.invRead}`,
