@@ -13,6 +13,7 @@ import { bootstrapOwner } from '../src/modules/auth/bootstrap.js';
 import { hashPassword } from '../src/lib/password.js';
 import { MemoryMailer } from '../src/lib/mailer.js';
 import { LocalEncryptedStorage } from '../src/modules/files/storage.js';
+import { runDueJobs, type RunResult } from '../src/jobs/worker.js';
 
 export const ORIGIN = 'http://localhost:5173';
 export const CSRF_SECRET = 'test-csrf-secret-that-is-long-enough-1234567890';
@@ -33,7 +34,7 @@ export function testDb(): Db {
 /** TRUNCATE skips row-level triggers, so the append-only audit table can still be reset. */
 export async function resetDb(db = testDb()) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 }
 
@@ -43,6 +44,8 @@ export interface TestApp {
   mailer: MemoryMailer;
   /** Resolves once work started after a response (e.g. reset emails) has finished. */
   settled: () => Promise<void>;
+  /** Runs every due background job now (emails from the outbox), as the worker would. */
+  drainJobs: () => Promise<RunResult>;
 }
 
 export function makeApp(
@@ -79,7 +82,9 @@ export function makeApp(
   const settled = async () => {
     await Promise.all(pending.splice(0));
   };
-  return { app, logs, mailer, settled };
+  const drainJobs = () =>
+    runDueJobs({ db, mailer, logger: createLogger('silent', sink), publicUrl: ORIGIN });
+  return { app, logs, mailer, settled, drainJobs };
 }
 
 export interface SeededAgency {
