@@ -4,6 +4,7 @@ import {
   BarChart3,
   Briefcase,
   Coins,
+  FileUp,
   CalendarClock,
   FileText,
   FolderKanban,
@@ -23,7 +24,7 @@ import { Avatar, Wordmark } from '../components/ui/brand';
 import { RadixDialog } from '../components/ui/dialog';
 import { cn } from '../lib/format';
 import { useLogout, useSession } from '../features/auth/session';
-import { ReminderBell } from '../features/dashboard/ReminderBell';
+import { NotificationBell } from '../features/notifications/NotificationBell';
 
 /** UI hint only: the API enforces the same matrix on every request (ADR-009). */
 export function canSeeLeads(role: Role) {
@@ -109,6 +110,12 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
     group: 'Workspace',
     items: [
       { to: '/app/team', label: 'Team', icon: UserCog, visible: (r) => can(r, 'team.read') },
+      {
+        to: '/app/imports',
+        label: 'Imports',
+        icon: FileUp,
+        visible: (r) => can(r, 'imports.run'),
+      },
       {
         to: '/app/settings',
         label: 'Settings',
@@ -280,7 +287,7 @@ export function AppShell() {
         </RadixDialog.Root>
         <Wordmark />
         <span className="flex items-center">
-          <ReminderBell />
+          <NotificationBell />
           <span className="grid size-11 place-items-center">
             <Avatar name={user.name} size="sm" />
           </span>
@@ -298,7 +305,7 @@ export function AppShell() {
               {user.agency.defaultCurrency} · {user.agency.timezone.replace('_', ' ')}
             </span>
           </p>
-          <ReminderBell />
+          <NotificationBell />
         </header>
         <main
           id="main"

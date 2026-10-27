@@ -114,6 +114,24 @@ export const router = createBrowserRouter([
         lazy: screen(() => import('../features/dashboard/DashboardPage'), 'DashboardPage'),
       },
       {
+        path: 'notifications',
+        lazy: screen(
+          () => import('../features/notifications/NotificationsPage'),
+          'NotificationsPage',
+        ),
+      },
+      {
+        path: 'notifications/settings',
+        lazy: screen(
+          () => import('../features/notifications/NotificationSettingsPage'),
+          'NotificationSettingsPage',
+        ),
+      },
+      {
+        path: 'imports',
+        lazy: screen(() => import('../features/imports/ImportPage'), 'ImportPage'),
+      },
+      {
         path: 'reminders',
         lazy: screen(() => import('../features/dashboard/RemindersPage'), 'RemindersPage'),
       },

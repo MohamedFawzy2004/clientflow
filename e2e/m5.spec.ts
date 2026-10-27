@@ -119,9 +119,8 @@ test.describe.serial('M5 sales MVP', () => {
     await expect(page.getByRole('link', { name: /Export deals/ })).toHaveCount(0);
     const attention = page.getByRole('region', { name: 'Needs your attention' });
     await expect(attention.getByText('Late Lina')).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: /Reminders: \d+ need attention/ }).first(),
-    ).toBeVisible();
+    // Since M10 the header bell opens the notification center; reminders stay on the dashboard.
+    await expect(page.getByRole('link', { name: /Notifications: / }).first()).toBeVisible();
 
     await page.goto(`/app/proposals/${proposal.id}`);
     const download = page.waitForEvent('download');
