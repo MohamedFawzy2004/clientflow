@@ -2,11 +2,11 @@
 
 A secure **agency operations platform** for a single software & digital agency. It covers the path from lead → deal → versioned proposal → project handoff → tasks and deliverables → change requests → invoice tracking, plus an isolated client portal.
 
-> **Status: M8 (scope changes) complete on `feat/m8-scope-changes`, stacked on M1–M7.** Clients and PMs request scope changes; priced changes are approved internally, sent as frozen versions, and only a client-accepted change moves the budget, due date and tasks. Comment threads connect the team and the client. 291 API, 59 UI and 47 end-to-end tests pass. **Not deployed yet** and not production-ready (no antivirus engine yet; see the reports and `docs/17_DEPLOYMENT.md`).
+> **Status: M9 (invoice tracking) complete on `feat/m9-invoices`, stacked on M1–M8.** Finance drafts invoices from milestones and accepted changes, issues them as frozen, numbered snapshots, publishes them to the client portal and records partial payments that are exact, idempotent and never overpay. Projects show expected, invoiced and received money and an estimated margin from dated cost rates. ClientFlow tracks invoices; it does not take payments and is not accounting software. 303 API, 64 UI and 54 end-to-end tests pass. **Not deployed yet** and not production-ready (no antivirus engine yet; see the reports and `docs/17_DEPLOYMENT.md`).
 
 ![Task board at 1440px](docs/milestones/m7-screenshots/board-pm-1440.png)
 
-## What works today (M1 to M8)
+## What works today (M1 to M9)
 
 - CLI-only owner bootstrap (refuses a second run). No public sign-up.
 - Email + password sign-in with Argon2id, hashed server sessions, idle and absolute expiry, logout revocation, CSRF + Origin checks, login throttling.
@@ -22,6 +22,7 @@ A secure **agency operations platform** for a single software & digital agency. 
 - Deliverables: private until the project manager publishes a version; the client approves, asks for a revision or rejects with a reason, once per version. History cannot be changed.
 - Client portal for projects: shared per person; clients see status, milestones and published deliverables only, and anything else is a logged "not found".
 - Scope changes: change requests from the client or the PM, priced estimates with internal approval, client accept/reject on a frozen version, and an atomic baseline update on acceptance. Extra work needs an accepted change or a written exception.
+- Invoice tracking: drafts with exact totals, issued snapshots numbered INV-0001…, client-portal publishing, partial payments with reversals (Finance and Owner only), project money and estimated margin, a finance report per currency with aging, and CSV export.
 - Comments on deliverables and changes, shared by the team and the client, with edit history.
 - Proposal PDFs, agency settings (profile, currency, timezone, working days).
 - Team page: invite by email with one-time links, change roles, deactivate/reactivate, sign out everywhere. The last owner can never be removed.
@@ -35,7 +36,7 @@ A secure **agency operations platform** for a single software & digital agency. 
 - **Product source of truth:** [`CLIENTFLOW_MASTER_SPEC.md`](CLIENTFLOW_MASTER_SPEC.md)
 - **Windows setup:** [`docs/16_WINDOWS_SETUP.md`](docs/16_WINDOWS_SETUP.md)
 - **Deployment (not done yet):** [`docs/17_DEPLOYMENT.md`](docs/17_DEPLOYMENT.md)
-- **Milestone reports:** [M1](docs/milestones/M1_REPORT.md) · [M2](docs/milestones/M2_REPORT.md) · [M3](docs/milestones/M3_REPORT.md) · [M4](docs/milestones/M4_REPORT.md) · [M5](docs/milestones/M5_REPORT.md) · [M6](docs/milestones/M6_REPORT.md) · [M7](docs/milestones/M7_REPORT.md) · [M8](docs/milestones/M8_REPORT.md)
+- **Milestone reports:** [M1](docs/milestones/M1_REPORT.md) · [M2](docs/milestones/M2_REPORT.md) · [M3](docs/milestones/M3_REPORT.md) · [M4](docs/milestones/M4_REPORT.md) · [M5](docs/milestones/M5_REPORT.md) · [M6](docs/milestones/M6_REPORT.md) · [M7](docs/milestones/M7_REPORT.md) · [M8](docs/milestones/M8_REPORT.md) · [M9](docs/milestones/M9_REPORT.md)
 - **Requirements traceability:** [`docs/REQUIREMENTS_TRACEABILITY.csv`](docs/REQUIREMENTS_TRACEABILITY.csv)
 - **Architecture decisions:** [`docs/07_ARCHITECTURE_ADRS.md`](docs/07_ARCHITECTURE_ADRS.md)
 - **Risks:** [`docs/RISK_REGISTER.md`](docs/RISK_REGISTER.md)
