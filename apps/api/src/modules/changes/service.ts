@@ -29,7 +29,9 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { formatDateOnly, parseDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, staleVersion, validationFailed } from '../../lib/errors.js';
+import { notify, usersWithPermission } from '../../lib/notify.js';
 import { recordActivity } from '../../lib/timeline.js';
+import { enqueue } from '../../jobs/outbox.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
 import {
@@ -424,6 +426,16 @@ export async function submitChange(
       requestId,
       metadata: { versionNo: latest.versionNo },
     });
+    await notify(tx, {
+      agencyId: actor.agencyId,
+      recipientIds: await usersWithPermission(tx, actor.agencyId, 'changes.approve'),
+      actorId: actor.id,
+      category: 'APPROVALS',
+      type: 'change.submitted',
+      title: `${actor.name} asks you to approve ${changeReference(c.number)} v${latest.versionNo} (${project.title})`,
+      link: `/app/projects/${project.id}/changes/${c.id}`,
+      entity: { type: 'change_request', id: c.id },
+    });
   });
   return getChange(db, actor, id);
 }
@@ -480,6 +492,18 @@ export async function reviewChange(
       requestId,
       metadata: { versionNo: latest.versionNo },
     });
+    await notify(tx, {
+      agencyId: actor.agencyId,
+      recipientIds: [latest.createdById, project.managerId],
+      actorId: actor.id,
+      category: 'APPROVALS',
+      type: approve ? 'change.approved' : 'change.returned',
+      title: approve
+        ? `${actor.name} approved ${changeReference(c.number)} v${latest.versionNo}: you can send it to the client`
+        : `${actor.name} sent ${changeReference(c.number)} back for changes`,
+      link: `/app/projects/${project.id}/changes/${c.id}`,
+      entity: { type: 'change_request', id: c.id },
+    });
   });
   return getChange(db, actor, id);
 }
@@ -495,8 +519,8 @@ export async function sendChange(
   version: number,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
-  const recipients = await db.$transaction(async (tx) => {
+  const { db } = deps;
+  await db.$transaction(async (tx) => {
     const { c, project } = await findManageableChange(tx, actor, id, version);
     const latest = c.versions[0];
     if (!latest) throw conflict('Estimate the change before sending it.');
@@ -546,19 +570,19 @@ export async function sendChange(
     });
     const shares = await tx.projectShare.findMany({
       where: { projectId: project.id, revokedAt: null, user: { active: true } },
-      select: { user: { select: { emailNorm: true } } },
+      select: { userId: true },
     });
-    return shares.map((s) => s.user.emailNorm);
+    // Link-only emails to the shared client users, sent by the worker after commit (ADR-058).
+    await enqueue(
+      tx,
+      shares.map((s) => ({
+        agencyId: actor.agencyId,
+        kind: 'email.portal' as const,
+        payload: { template: 'change_sent' as const, userId: s.userId, entityId: c.id },
+        dedupeKey: `email.portal:change_sent:${latest.id}:${s.userId}`,
+      })),
+    );
   });
-  for (const to of recipients) {
-    await mailer.send({
-      kind: 'change_sent',
-      to,
-      subject: 'A change to your project is waiting for your decision',
-      // Link only: scope and price stay in the portal (SEC-24).
-      text: `Review it here:\n\n${config.publicUrl}/portal/changes/${id}`,
-    });
-  }
   return getChange(db, actor, id);
 }
 
@@ -753,26 +777,34 @@ export async function createPortalChange(
   input: z.output<typeof changeCreateSchema>,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
+  const { db } = deps;
   const scope = portalProjectScope(actor);
   const project = UUID_PATTERN.test(projectId)
     ? await db.project.findFirst({
         where: { AND: [scope, { id: projectId }] },
-        include: { manager: { select: { emailNorm: true } } },
       })
     : null;
   if (!project) {
     await logPortalDenied(db, actor, 'project', projectId, requestId);
     throw notFound();
   }
-  const id = await db.$transaction((tx) =>
-    insertChange(tx, actor, project.id, input, true, requestId),
-  );
-  await mailer.send({
-    kind: 'change_requested',
-    to: project.manager.emailNorm,
-    subject: 'A client requested a change',
-    text: `Estimate it here:\n\n${config.publicUrl}/app/projects/${project.id}/changes/${id}`,
+  const id = await db.$transaction(async (tx) => {
+    const created = await insertChange(tx, actor, project.id, input, true, requestId);
+    const c = await tx.changeRequest.findUniqueOrThrow({
+      where: { id: created },
+      select: { number: true },
+    });
+    await notify(tx, {
+      agencyId: actor.agencyId,
+      recipientIds: [project.managerId],
+      actorId: actor.id,
+      category: 'CLIENT_ACTIVITY',
+      type: 'change.client_requested',
+      title: `${actor.name} (client) requested ${changeReference(c.number)} on ${project.title}`,
+      link: `/app/projects/${project.id}/changes/${created}`,
+      entity: { type: 'change_request', id: created },
+    });
+    return created;
   });
   return getPortalChange(db, actor, id, requestId);
 }
@@ -797,16 +829,15 @@ export async function decideOnChange(
   input: z.output<typeof changeDecisionSchema>,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
+  const { db } = deps;
   const visible = await findPortalChange(db, actor, id);
   if (!visible) {
     await logPortalDenied(db, actor, 'change', id, requestId);
     throw notFound();
   }
   const wanted = input.decision === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED';
-  let notify: { to: string; text: string } | null = null;
   try {
-    notify = await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       await lockChange(tx, visible.id);
       await lockProject(tx, visible.projectId);
       const c = await tx.changeRequest.findUniqueOrThrow({ where: { id: visible.id } });
@@ -820,7 +851,7 @@ export async function decideOnChange(
         );
       }
       if (v.decision) {
-        if (v.decision.decision === wanted) return null; // same decision again: idempotent
+        if (v.decision.decision === wanted) return; // same decision again: idempotent
         throw conflict('A decision was already recorded for this version.');
       }
       if (c.status !== 'AWAITING_CLIENT' || v.status !== 'SENT') {
@@ -828,7 +859,6 @@ export async function decideOnChange(
       }
       const project = await tx.project.findUniqueOrThrow({
         where: { id: c.projectId },
-        include: { manager: { select: { emailNorm: true } } },
       });
       if (!(LIVE_PROJECT as readonly string[]).includes(project.state)) {
         throw conflict('This project is closed. Please contact the agency.');
@@ -910,10 +940,16 @@ export async function decideOnChange(
         requestId,
         metadata: { versionNo: v.versionNo, contentHash: v.contentHash },
       });
-      return {
-        to: project.manager.emailNorm,
-        text: `A client decided on ${ref}.\n\n${config.publicUrl}/app/projects/${project.id}/changes/${c.id}`,
-      };
+      await notify(tx, {
+        agencyId: actor.agencyId,
+        recipientIds: [project.managerId, v.createdById],
+        actorId: actor.id,
+        category: 'CLIENT_ACTIVITY',
+        type: `change.client_${wanted.toLowerCase()}`,
+        title: `${actor.name} (client) ${wanted === 'ACCEPTED' ? 'accepted' : 'rejected'} ${ref} v${v.versionNo} on ${project.title}`,
+        link: `/app/projects/${project.id}/changes/${c.id}`,
+        entity: { type: 'change_request', id: c.id },
+      });
     });
   } catch (err) {
     // Lost a race on the one-decision index: fine only if the stored decision is the same.
@@ -923,14 +959,6 @@ export async function decideOnChange(
     });
     if (stored?.decision !== wanted)
       throw conflict('A decision was already recorded for this version.');
-  }
-  if (notify) {
-    await mailer.send({
-      kind: 'change_decision',
-      to: notify.to,
-      subject: 'A client decided on a change request',
-      text: notify.text,
-    });
   }
   return getPortalChange(db, actor, id, requestId);
 }

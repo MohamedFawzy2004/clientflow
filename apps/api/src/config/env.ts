@@ -55,6 +55,18 @@ const envSchema = z.object({
   LOGIN_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).max(10_000).optional(),
   TOKEN_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).max(10_000).optional(),
   API_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).max(100_000).optional(),
+  /**
+   * Run the background worker (emails, reminders) inside this process. Turn it off only when a
+   * separate `npm run jobs:worker` process runs it instead (ADR-058).
+   */
+  JOBS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  /** How often the worker looks for due jobs. */
+  JOBS_POLL_SECONDS: z.coerce.number().int().min(1).max(300).default(10),
+  /** How often reminders are scanned (FR-A01). */
+  REMINDER_SCAN_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
 });
 
 export type Env = z.infer<typeof envSchema>;

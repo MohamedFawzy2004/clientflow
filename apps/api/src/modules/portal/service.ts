@@ -11,6 +11,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { agencyToday, formatDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound } from '../../lib/errors.js';
+import { notify } from '../../lib/notify.js';
 import { recordActivity } from '../../lib/timeline.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
@@ -125,7 +126,7 @@ export async function decideOnProposal(
   input: z.output<typeof clientDecisionSchema>,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
+  const { db } = deps;
   const scope = orgScope(actor);
   if (!UUID_PATTERN.test(id)) throw notFound();
   const visible = await db.proposal.findFirst({
@@ -136,13 +137,12 @@ export async function decideOnProposal(
   const t = await today(db, actor.agencyId);
   const wanted = DECISION_STATUS[input.decision];
 
-  let notify: { to: string; subject: string; text: string } | null = null;
   try {
-    notify = await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       await lockProposal(tx, id);
       const p = await tx.proposal.findUniqueOrThrow({
         where: { id },
-        include: { deal: { include: { owner: { select: { emailNorm: true } } } } },
+        include: { deal: true },
       });
       const v = await tx.proposalVersion.findFirst({
         where: { proposalId: id, contentHash: input.contentHash, ...sentOnly },
@@ -155,7 +155,7 @@ export async function decideOnProposal(
       }
       const existing = v.reviews[0];
       if (existing) {
-        if (v.status === wanted) return null; // same decision again: idempotent
+        if (v.status === wanted) return; // same decision again: idempotent
         throw conflict('A decision was already recorded for this version.');
       }
       if (v.status === 'SUPERSEDED') {
@@ -266,15 +266,16 @@ export async function decideOnProposal(
         requestId,
         metadata: { contentHash: v.contentHash },
       });
-      return {
-        to: p.deal.owner.emailNorm,
-        subject: `${reference}: client ${DECISION_WORDS[input.decision]} version ${v.versionNo}`,
-        text: [
-          `${actor.name} ${DECISION_WORDS[input.decision]} ${reference} version ${v.versionNo}.`,
-          '',
-          `${config.publicUrl}/app/proposals/${id}`,
-        ].join('\n'),
-      };
+      await notify(tx, {
+        agencyId: actor.agencyId,
+        recipientIds: [p.deal.ownerId, v.createdById],
+        actorId: actor.id,
+        category: 'CLIENT_ACTIVITY',
+        type: `proposal.client_${input.decision.toLowerCase()}`,
+        title: `${actor.name} (client) ${DECISION_WORDS[input.decision]} ${reference} v${v.versionNo}`,
+        link: `/app/proposals/${id}`,
+        entity: { type: 'proposal', id },
+      });
     });
   } catch (err) {
     // Lost a race on the one-decision index: accept only if the recorded decision is the same.
@@ -286,7 +287,6 @@ export async function decideOnProposal(
     if (stored?.status !== wanted)
       throw conflict('A decision was already recorded for this version.');
   }
-  if (notify) await mailer.send({ kind: 'proposal_decision', ...notify });
   return getPortalProposal(db, actor, id);
 }
 
