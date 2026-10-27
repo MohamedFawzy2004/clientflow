@@ -631,3 +631,42 @@ describe('cost, margin and finance views (FR-F05 – FR-F09, US-23, T-ACL-04/05)
     await get(finance, `/projects/${projectId}`).expect(403);
   });
 });
+
+describe('idempotent draft creation (O31, SEC-15)', () => {
+  it('a retried or double-clicked Create draft returns the first draft', async () => {
+    const key = randomUUID();
+    const body = { clientOrgId: orgId, projectId, dueOn: '2027-01-31' };
+    const before = await db.invoice.count();
+    const [a, b] = await Promise.all([
+      send(finance, 'post', '/invoices', body, { 'Idempotency-Key': key }),
+      send(finance, 'post', '/invoices', body, { 'Idempotency-Key': key }),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 201]);
+    expect(a.body.data.id).toBe(b.body.data.id);
+    const again = await send(finance, 'post', '/invoices', body, { 'Idempotency-Key': key });
+    expect(again.status).toBe(200);
+    expect(again.body.data.id).toBe(a.body.data.id);
+    expect(await db.invoice.count()).toBe(before + 1);
+    expect(await db.auditEvent.count({ where: { action: 'invoice.create' } })).toBe(1);
+    // The same key for different values, or by someone else, is refused.
+    await send(
+      finance,
+      'post',
+      '/invoices',
+      { ...body, dueOn: '2027-02-28' },
+      {
+        'Idempotency-Key': key,
+      },
+    ).expect(409);
+    await send(owner, 'post', '/invoices', body, { 'Idempotency-Key': key }).expect(409);
+    // A key is required, and must be a UUID.
+    await finance.agent
+      .post('/api/v1/invoices')
+      .set('Origin', ORIGIN)
+      .set('X-CSRF-Token', finance.csrf)
+      .send(body)
+      .expect(422);
+    await send(finance, 'post', '/invoices', body, { 'Idempotency-Key': 'not-a-uuid' }).expect(422);
+    expect(await db.invoice.count()).toBe(before + 1);
+  });
+});

@@ -75,9 +75,10 @@ const SOURCE_BY_TEXT = new Map<string, ContactSource>(
 
 /** Dates as YYYY-MM-DD (09:00 agency time) or YYYY-MM-DD HH:mm in the agency timezone. */
 function parseLocalInstant(value: string, timeZone: string): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?$/.exec(value);
-  if (!m) return null;
-  return zonedLocalToUtcIso(`${m[1]}T${m[2] ?? '09:00'}`, timeZone);
+  const m = /^(\d{4}-\d{2}-\d{2})(?:[ T]([01]\d|2[0-3]):([0-5]\d))?$/.exec(value);
+  // 2026-13-40 matches the pattern but is no date: Date would roll it over to 2027-02-09.
+  if (!m || !isDate(m[1]!)) return null;
+  return zonedLocalToUtcIso(`${m[1]}T${m[2] ? `${m[2]}:${m[3]}` : '09:00'}`, timeZone);
 }
 
 function isDate(value: string) {
@@ -491,7 +492,7 @@ export async function commitImport(
   try {
     return await db.$transaction(
       async (tx) => {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('clientflow.import'), hashtext(${actor.agencyId}))`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('clientflow.import'), hashtext(${actor.agencyId}))`;
         const again = await replay(tx);
         if (again) return again;
         const { preview, rows } = await check(tx, actor, input);

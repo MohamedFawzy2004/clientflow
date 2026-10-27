@@ -28,7 +28,8 @@ function delimiterOf(text: string) {
 }
 
 export function parseCsv(raw: string): ParsedCsv {
-  const text = raw.replace(/^\uFEFF/, '');
+  // One line ending everywhere, so line numbers match what an editor shows.
+  const text = raw.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   // A file saved as UTF-16 or Windows-1256 arrives with replacement characters: say so plainly
   // instead of importing broken names.
   if (text.includes('\uFFFD')) {
@@ -45,6 +46,8 @@ export function parseCsv(raw: string): ParsedCsv {
     records = parse(text, {
       delimiter: delimiterOf(text),
       relax_column_count: true,
+      // Hand-made files have quotes inside unquoted cells, e.g. =HYPERLINK("…"): keep them as text.
+      relax_quotes: true,
       skip_empty_lines: true,
       info: true,
       max_record_size: MAX_CELL * IMPORT_MAX_COLUMNS,
@@ -72,7 +75,11 @@ export function parseCsv(raw: string): ParsedCsv {
   const rows = body
     // Rows of only empty cells (a trailing ";;;" line) are not data.
     .filter((r) => r.record.some((c) => c.trim() !== ''))
-    .map((r) => ({ line: r.info.lines, cells: r.record }));
+    // csv-parse reports the line a record ends on; a quoted cell may span lines.
+    .map((r) => ({
+      line: r.info.lines - r.record.reduce((n, c) => n + c.split('\n').length - 1, 0),
+      cells: r.record,
+    }));
   if (rows.length === 0) fileErrors.push('The file has a header row but no data rows.');
   if (rows.length > IMPORT_MAX_ROWS) {
     fileErrors.push(
