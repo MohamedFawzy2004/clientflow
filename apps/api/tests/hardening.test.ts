@@ -1,4 +1,7 @@
 // M11: production hardening — shared rate limits (ADR-062) and readiness (ADR-064).
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PostgresRateLimitStore, pruneRateLimits } from '../src/middleware/rate-limit-store.js';
@@ -100,5 +103,27 @@ describe('monitoring (ADR-064)', () => {
       await a.agent.get('/api/v1/ops/status').expect(403);
     }
     await request(app).get('/api/v1/ops/status').expect(401);
+  });
+});
+
+describe('compression (ADR-065, NFR-03)', () => {
+  it('compresses the web app’s files but never API JSON', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'clientflow-web-'));
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(
+      join(dir, 'index.html'),
+      `<!doctype html><div id="root"></div>${' '.repeat(4000)}`,
+    );
+    writeFileSync(
+      join(dir, 'assets', 'app-abc123.js'),
+      `console.log(1);${'/* pad */'.repeat(2000)}`,
+    );
+    const { app } = makeApp({ webDistDir: dir });
+    const asset = await request(app).get('/assets/app-abc123.js').set('Accept-Encoding', 'gzip');
+    expect(asset.headers['content-encoding']).toBe('gzip');
+    const page = await request(app).get('/app/dashboard').set('Accept-Encoding', 'gzip');
+    expect(page.headers['content-encoding']).toBe('gzip');
+    const api = await request(app).get('/api/v1/auth/csrf').set('Accept-Encoding', 'gzip');
+    expect(api.headers['content-encoding']).toBeUndefined();
   });
 });

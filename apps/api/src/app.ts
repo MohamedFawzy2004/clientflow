@@ -1,3 +1,4 @@
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -147,6 +148,9 @@ function webApp(dir: string, isProduction: boolean): RequestHandler {
   if (!existsSync(index)) throw new Error(`WEB_DIST_DIR has no index.html: ${root}`);
   const router = express.Router();
   router.use(securityHeaders(isProduction, 'web'));
+  // Gzip/Brotli for the app's own files only (NFR-03). API JSON is never compressed here: it can
+  // mix secrets (CSRF tokens) with reflected input, the BREACH pattern (ADR-065).
+  router.use(compression());
   router.use(
     '/assets',
     express.static(join(root, 'assets'), { immutable: true, maxAge: '365d', index: false }),
