@@ -32,8 +32,13 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/contracts/package.json packages/contracts/
+# Then prune to what the API reaches (O19, ADR-065): npm also installs the web app's packages and
+# the Prisma CLI (an optional peer of @prisma/client, with Prisma Studio and an embedded Postgres),
+# which the generated client never loads.
+COPY scripts/prune-runtime.mjs scripts/
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
       --workspace @clientflow/api --workspace @clientflow/contracts \
+  && node scripts/prune-runtime.mjs \
   && npm cache clean --force
 
 # Release step: applies pending migrations, then exits. Run before starting a new runtime version.
