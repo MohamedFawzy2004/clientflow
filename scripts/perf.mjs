@@ -60,21 +60,35 @@ csrf = login.body.data.csrfToken;
 
 // Data: 2,000 contacts through the real import (idempotent by key).
 const rows = ['Name,Email,Company,Source'];
-for (let i = 0; i < 2000; i++) rows.push(`Perf Person ${i},perf.${i}@load.test,Load Co ${i % 50},Website`);
+for (let i = 0; i < 2000; i++)
+  rows.push(`Perf Person ${i},perf.${i}@load.test,Load Co ${i % 50},Website`);
 const csv = rows.join('\n');
 const preview = await call('POST', '/api/v1/imports/preview', { kind: 'contacts', csv });
 await call(
   'POST',
   '/api/v1/imports',
-  { kind: 'contacts', csv, mapping: preview.body.data.mapping, fileSha256: preview.body.data.fileSha256 },
+  {
+    kind: 'contacts',
+    csv,
+    mapping: preview.body.data.mapping,
+    fileSha256: preview.body.data.fileSha256,
+  },
   { 'Idempotency-Key': '00000000-0000-4000-8000-00000000f00d' },
 );
 const contacts = await call('GET', '/api/v1/contacts?limit=1');
 const total = contacts.body.meta?.total ?? contacts.body.data?.total ?? 'n/a';
 
 const scenarios = [
-  { name: 'GET /contacts (page 1, 25)', kind: 'read', run: () => call('GET', '/api/v1/contacts?page=1&limit=25') },
-  { name: 'GET /contacts?q=Person 1', kind: 'read', run: () => call('GET', '/api/v1/contacts?q=Person%201') },
+  {
+    name: 'GET /contacts (page 1, 25)',
+    kind: 'read',
+    run: () => call('GET', '/api/v1/contacts?page=1&limit=25'),
+  },
+  {
+    name: 'GET /contacts?q=Person 1',
+    kind: 'read',
+    run: () => call('GET', '/api/v1/contacts?q=Person%201'),
+  },
   { name: 'GET /deals/board', kind: 'read', run: () => call('GET', '/api/v1/deals/board') },
   { name: 'GET /dashboard/sales', kind: 'read', run: () => call('GET', '/api/v1/dashboard/sales') },
   { name: 'GET /invoices', kind: 'read', run: () => call('GET', '/api/v1/invoices') },
@@ -86,7 +100,8 @@ const scenarios = [
   },
 ];
 
-const pct = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
+const pct = (sorted, p) =>
+  sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
 const results = [];
 for (const s of scenarios) {
   for (let i = 0; i < 10; i++) await s.run(); // warm-up

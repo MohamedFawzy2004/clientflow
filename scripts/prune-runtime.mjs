@@ -10,7 +10,16 @@ const root = process.cwd();
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')).packages;
 const out = execFileSync(
   'npm',
-  ['ls', '--omit=dev', '--all', '--parseable', '-w', '@clientflow/api', '-w', '@clientflow/contracts'],
+  [
+    'ls',
+    '--omit=dev',
+    '--all',
+    '--parseable',
+    '-w',
+    '@clientflow/api',
+    '-w',
+    '@clientflow/contracts',
+  ],
   { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
 );
 const reached = new Set(
