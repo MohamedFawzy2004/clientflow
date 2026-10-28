@@ -1,0 +1,83 @@
+{
+  "environment": {
+    "os": "Windows_NT 10.0.26200",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13650HX",
+    "cores": 20,
+    "memoryGb": 16,
+    "node": "v24.19.0",
+    "concurrency": 10,
+    "contactsInDatabase": 2321
+  },
+  "results": [
+    {
+      "scenario": "GET /contacts (page 1, 25)",
+      "requests": 300,
+      "errors": 0,
+      "p50": 44,
+      "p95": 56,
+      "max": 69,
+      "target": 500,
+      "pass": true
+    },
+    {
+      "scenario": "GET /contacts?q=Person 1",
+      "requests": 300,
+      "errors": 0,
+      "p50": 42,
+      "p95": 56,
+      "max": 66,
+      "target": 500,
+      "pass": true
+    },
+    {
+      "scenario": "GET /deals/board",
+      "requests": 300,
+      "errors": 0,
+      "p50": 80,
+      "p95": 97,
+      "max": 104,
+      "target": 500,
+      "pass": true
+    },
+    {
+      "scenario": "GET /dashboard/sales",
+      "requests": 300,
+      "errors": 0,
+      "p50": 107,
+      "p95": 136,
+      "max": 154,
+      "target": 500,
+      "pass": true
+    },
+    {
+      "scenario": "GET /invoices",
+      "requests": 300,
+      "errors": 0,
+      "p50": 35,
+      "p95": 44,
+      "max": 58,
+      "target": 500,
+      "pass": true
+    },
+    {
+      "scenario": "GET /notifications",
+      "requests": 300,
+      "errors": 0,
+      "p50": 25,
+      "p95": 36,
+      "max": 48,
+      "target": 500,
+      "pass": true
+    },
+    {
+      "scenario": "POST /contacts",
+      "requests": 300,
+      "errors": 0,
+      "p50": 47,
+      "p95": 60,
+      "max": 70,
+      "target": 800,
+      "pass": true
+    }
+  ]
+}

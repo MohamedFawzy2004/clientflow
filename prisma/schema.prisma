@@ -1450,3 +1450,14 @@ model ImportRun {
   @@index([agencyId, createdAt(sort: Desc)])
   @@map("import_runs")
 }
+
+// M11: brute-force limits shared by every API instance (ADR-062). Keys are prefixed per limiter
+// and hold hashed emails or IP addresses, never raw emails.
+model RateLimitCounter {
+  key     String   @id @db.VarChar(200)
+  hits    Int
+  resetAt DateTime @map("reset_at") @db.Timestamptz(3)
+
+  @@index([resetAt])
+  @@map("rate_limit_counters")
+}

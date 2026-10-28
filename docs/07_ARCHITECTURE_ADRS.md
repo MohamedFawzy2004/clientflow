@@ -477,3 +477,42 @@ Each reminder has a dedupe key, so it is created once per item and due date. "To
 The M10 epic lists outbound webhooks (FR-A04, FR-A05, SEC-19, T-SEC-06), but the approved M10 proposal did not include them, and no integration needs them yet. They are deferred until the owner names an integration.
 
 When they are built, they will use the outbox (ADR-058) with signed payloads, per-endpoint secrets and rotation. SSRF defenses will block loopback, private and link-local ranges, and the address will be checked again at connect time.
+
+## ADR-062 — Brute-force limits shared in PostgreSQL; general API limit per instance (ACCEPTED, M11)
+
+Sign-in per IP, failed sign-ins per account, one-time links per IP and reset requests per account are counted in `rate_limit_counters`, using one atomic `INSERT … ON CONFLICT` per counted request. This closes O1. The limits:
+
+- hold across restarts and across every API instance;
+- use hashed email keys;
+- are pruned hourly by the worker;
+- fail closed: if the database is down, sign-in fails anyway.
+
+The general per-IP API limit (1,000 requests per 15 minutes) stays in memory per instance, which supersedes ADR-007 for the auth limiters. It is a coarse abuse guard, and a database write on every request is not worth it. With N instances the effective ceiling is N × 1,000, which is acceptable for one agency.
+
+Tests build apps without the shared store, so each test counts on its own. A dedicated test checks that two instances and a "restart" share counts, and that counting is atomic under 20 concurrent hits.
+
+## ADR-063 — Portable, verifiable backups and isolated restores (ACCEPTED, M11)
+
+Platform-managed PostgreSQL backups with point-in-time recovery, plus volume snapshots, remain the first line. On top of them, `npm run backup` writes a portable backup: a custom-format `pg_dump`, a copy of the encrypted file store, and `manifest.json`. The manifest holds migrations, row counts per table, SHA-256 of everything, and a 16-hex fingerprint of the file key; never the key itself.
+
+`npm run restore` checks the backup's checksums and the key fingerprint first. It then restores only into an empty database that is not the one in `DATABASE_URL`, and into an empty folder. It reconciles migrations and row counts, and decrypts every stored file against its recorded SHA-256 (T-OPS-01). The tools use `pg_dump`/`pg_restore` from PATH, or the same tools from `postgres:17.6-alpine` through Docker; passwords go through `PGPASSWORD`, never argv.
+
+The M11 drill restored the E2E database (43 tables, 571 rows, files) and reported RECONCILED. It then applied the new M11 migration to that M10-era copy (NFR-14), and showed that each refusal case fails without side effects.
+
+## ADR-064 — Monitoring without a vendor (ACCEPTED, M11)
+
+No monitoring provider has been chosen, so ClientFlow exposes what any platform can use:
+
+- **Readiness.** `/health/ready` is 503 when the database does not answer. When a due job has waited more than 15 minutes it reports `degraded` / `jobs: lagging` but stays 200: the instance still serves requests.
+- **Logs.** One JSON line per request (request ID, user ID, path without the query string; no cookies, tokens or bodies). Unhandled rejections are logged. An uncaught exception is logged as fatal and the process exits, so the container restarts cleanly.
+- **Status view.** `GET /ops/status` (Owner/Admin) and Settings → System status show database latency, job lag, pending and failed jobs, uptime, memory, whether limits are shared, and `APP_RELEASE`. Numbers only: no hosts, credentials or dependency versions.
+
+Error tracking (Sentry or similar) can be added later through the logger, once the owner chooses one.
+
+## ADR-065 — Lean, scanned runtime image; compress only static files (ACCEPTED, M11)
+
+- **Pruning.** `scripts/prune-runtime.mjs` keeps only the packages the API and contracts reach (`npm ls --omit=dev`), minus `devOptional` ones. npm otherwise installs the web app's packages and the Prisma CLI, an optional peer of `@prisma/client`, together with Prisma Studio and an embedded Postgres. The image went from 835 to 518 MB and `node_modules` from 382 to 137 MB (O19). Argon2, pdfkit, csv-parse, pg and the generated client were checked to load in the pruned image.
+- **Scanning.** Trivy 0.76.0 in CI fails on HIGH/CRITICAL advisories with a fix. Exceptions go in `.trivyignore`, each with a reason. CodeQL (`security-extended`) runs on every push. The secret scan (gitleaks) and `npm audit --omit=dev --audit-level=high` were already in CI.
+- **What the first scan found.** All of the HIGH/CRITICAL Node findings were in the npm CLI bundled with the base image, which the runtime never runs, so npm, npx and corepack are removed. Debian updates are applied at build time, and a failed mirror download is fatal unless `OS_UPDATES=0` is passed (local builds without mirror access only). This machine could not reach the Debian mirrors, so CI is where the OS part of the gate is proven.
+- **Compression.** The web app's own files are compressed (gzip/Brotli). API JSON is not, because responses can mix secrets such as CSRF tokens with reflected input (BREACH).
+- **Loading order.** The app shells load on demand, and the screen's chunks start downloading while the session is checked.

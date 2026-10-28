@@ -34,7 +34,7 @@ export function testDb(): Db {
 /** TRUNCATE skips row-level triggers, so the append-only audit table can still be reset. */
 export async function resetDb(db = testDb()) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE rate_limit_counters, outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 }
 
@@ -51,7 +51,7 @@ export interface TestApp {
 export function makeApp(
   overrides: Partial<AppConfig> = {},
   db: Db = testDb(),
-  extra: Pick<AppDeps, 'hooks'> = {},
+  extra: Pick<AppDeps, 'hooks' | 'sharedRateLimits'> = {},
 ): TestApp {
   const logs: string[] = [];
   const sink = new Writable({

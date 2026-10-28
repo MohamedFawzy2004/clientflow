@@ -10,6 +10,7 @@ import { Field, Input, Select, Textarea } from '../../components/ui/form';
 import { Card } from '../../components/proposals/proposal-ui';
 import { useAgencySettings, useUpdateAgency } from '../dashboard/api';
 import { JobsCard } from './JobsCard';
+import { SystemStatusCard } from './SystemStatusCard';
 
 interface FormValues {
   name: string;
@@ -210,6 +211,7 @@ export function SettingsPage() {
           </Button>
         </div>
       </form>
+      <SystemStatusCard />
       <JobsCard />
     </>
   );

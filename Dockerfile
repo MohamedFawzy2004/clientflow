@@ -32,8 +32,13 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/contracts/package.json packages/contracts/
+# Then prune to what the API reaches (O19, ADR-065): npm also installs the web app's packages and
+# the Prisma CLI (an optional peer of @prisma/client, with Prisma Studio and an embedded Postgres),
+# which the generated client never loads.
+COPY scripts/prune-runtime.mjs scripts/
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
       --workspace @clientflow/api --workspace @clientflow/contracts \
+  && node scripts/prune-runtime.mjs \
   && npm cache clean --force
 
 # Release step: applies pending migrations, then exits. Run before starting a new runtime version.
@@ -52,6 +57,19 @@ ENV NODE_ENV=production \
     MAIL_TRANSPORT=disabled \
     FILE_STORAGE_DIR=/data/files
 WORKDIR /app
+# Image scan findings (SEC-21, ADR-065): the runtime starts `node` directly and never runs npm,
+# whose bundled tar/undici/brace-expansion/ip-address carried HIGH/CRITICAL advisories, so npm,
+# npx and corepack are removed. Debian security updates are applied at build time.
+# A failed index download is fatal, so an unpatched image never ships quietly. Only for a local
+# build without access to the Debian mirrors: --build-arg OS_UPDATES=0 (CI always applies them).
+ARG OS_UPDATES=1
+RUN if [ "$OS_UPDATES" = "1" ]; then \
+      apt-get update --error-on=any \
+      && apt-get upgrade -y --no-install-recommends \
+      && rm -rf /var/lib/apt/lists/*; \
+    else echo "WARNING: OS security updates skipped (OS_UPDATES=0)"; fi \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 # Encrypted uploads live on a volume owned by the unprivileged user, outside the app directory.
 RUN mkdir -p /data/files && chown node:node /data/files
 VOLUME ["/data/files"]
