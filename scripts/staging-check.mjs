@@ -3,6 +3,7 @@
 //
 //   node scripts/staging-check.mjs --base https://clientflow-staging.onrender.com --email you@agency.com
 //     [--password-file <file>]   otherwise it asks for the password (hidden)
+//     [--code 123456]            the authenticator code, if the account uses two-step sign-in
 //     [--allow-http]             local runs only: skips the HTTPS checks instead of failing them
 //
 // Prints PASS / FAIL / WARN / SKIP per check and exits 1 if anything failed. It never prints the
@@ -50,6 +51,19 @@ async function password() {
       resolve(answer);
     });
   });
+}
+
+/** The 6-digit code from the authenticator app (two-step sign-in, ADR-069). */
+async function totpCode() {
+  const given = arg('--code');
+  if (given) return given;
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) =>
+    rl.question('Code from your authenticator app: ', (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    }),
+  );
 }
 
 const jar = new Map();
@@ -223,11 +237,32 @@ await httpsOnly('HTTP redirects to HTTPS', async () => {
 // 5. Signed in as the owner
 {
   const pre = await call('/api/v1/auth/csrf');
-  const login = await call('/api/v1/auth/login', {
+  let login = await call('/api/v1/auth/login', {
     method: 'POST',
     body: { email: EMAIL, password: await password() },
     headers: { 'X-CSRF-Token': pre.json?.data?.csrfToken ?? '' },
   });
+  if (login.res.status === 200 && login.json?.data?.mfaRequired) {
+    const raw = login.setCookies.find((c) => /cf_mfa/.test(c)) ?? '';
+    const challenge = cookieFlags(raw);
+    check(
+      challenge.httpOnly && /samesite=strict/i.test(raw),
+      'Two-step challenge cookie is HttpOnly and SameSite=Strict',
+      challenge.name || 'missing',
+    );
+    login = await call('/api/v1/auth/mfa/verify', {
+      method: 'POST',
+      body: { code: await totpCode() },
+      headers: { 'X-CSRF-Token': pre.json?.data?.csrfToken ?? '' },
+    });
+    check(login.res.status === 200, 'Two-step sign-in code accepted', String(login.res.status));
+  } else if (login.res.status === 200 && isHttps) {
+    report(
+      'WARN',
+      'Two-step sign-in',
+      'the owner signed in without a code: is MFA_REQUIRED_ROLES set?',
+    );
+  }
   if (login.res.status !== 200) {
     report('FAIL', 'Owner sign-in', `HTTP ${login.res.status} ${login.json?.error?.code ?? ''}`);
   } else {
@@ -251,6 +286,10 @@ await httpsOnly('HTTP redirects to HTTPS', async () => {
     } else {
       const s = ops.json.data;
       check(s.rateLimits === 'postgres', 'Sign-in limits are shared in PostgreSQL', s.rateLimits);
+      if (s.scanner === 'ok') report('PASS', 'Virus scanner answers');
+      else if (s.scanner === 'unreachable')
+        report('FAIL', 'Virus scanner', 'configured but not reachable: uploads are refused');
+      else report('WARN', 'Virus scanner', 'none configured: uploads get built-in checks only');
       check(
         !s.jobs.lagging && s.jobs.dead === 0,
         'Background jobs on time, none failed',
