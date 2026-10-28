@@ -38,6 +38,8 @@ export function SystemStatusCard() {
             ],
             ['Server running for', duration(s.uptimeSeconds)],
             ['Server memory', `${s.memoryMb} MB`],
+            // Should be your own public address; a proxy's address means TRUST_PROXY is wrong.
+            ['Your address, as the server sees it', s.clientIp],
           ];
           return (
             <>

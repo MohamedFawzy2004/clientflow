@@ -34,6 +34,7 @@ export function opsRouter(deps: AppDeps) {
           jobs: { pending, dead, oldestDueSeconds: lag, lagging: lag > JOB_LAG_LIMIT_SECONDS },
           rateLimits: deps.sharedRateLimits ? 'postgres' : 'memory',
           memoryMb: Math.round(process.memoryUsage().rss / 1_048_576),
+          clientIp: req.ip ?? 'unknown',
         };
         res.json({ data, meta: { requestId: req.requestId } });
       })().catch(next);

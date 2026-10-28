@@ -98,6 +98,8 @@ describe('monitoring (ADR-064)', () => {
       jobs: { pending: 0, dead: 0, oldestDueSeconds: 0, lagging: false },
     });
     expect(res.body.data.database.latencyMs).toBeGreaterThanOrEqual(0);
+    // Supertest connects over loopback; behind Render this is the visitor's public IP.
+    expect(res.body.data.clientIp).toMatch(/127\.0\.0\.1|::1/);
     expect(JSON.stringify(res.body)).not.toMatch(/postgres(ql)?:\/\/|password|5433|secret/i);
     for (const who of ['pm@agency.test', 'finance@agency.test', 'salesa@agency.test']) {
       const a = await login(app, who);
@@ -156,5 +158,16 @@ describe('retention of short-lived security records (NFR-12)', () => {
     });
     expect(await pruneExpiredAuth(db)).toEqual({ sessions: 2, resetTokens: 1 });
     expect((await db.session.findMany()).map((s) => s.tokenHash[0]).sort()).toEqual(['b', 'd']);
+  });
+});
+
+describe('file storage startup check (ADR-067)', () => {
+  it('passes for a writable folder and fails when the path is not a folder', async () => {
+    const { LocalEncryptedStorage } = await import('../src/modules/files/storage.js');
+    const dir = mkdtempSync(join(tmpdir(), 'cf-store-'));
+    const key = Buffer.alloc(32, 1);
+    expect(() => new LocalEncryptedStorage(join(dir, 'files'), key).checkWritable()).not.toThrow();
+    writeFileSync(join(dir, 'not-a-folder'), 'x');
+    expect(() => new LocalEncryptedStorage(join(dir, 'not-a-folder'), key).checkWritable()).toThrow();
   });
 });

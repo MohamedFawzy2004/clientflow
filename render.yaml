@@ -1,0 +1,72 @@
+# Render Blueprint for ClientFlow STAGING (ADR-067). Not production: no real client data until the
+# release checklist (docs/15_RELEASE_CHECKLIST.md) says so. Step-by-step guide and costs:
+# docs/17_DEPLOYMENT.md → "Staging on Render".
+#
+# Secrets are never in this file. `sync: false` values are asked for once, in the Render
+# dashboard, when the Blueprint is first applied.
+services:
+  - type: web
+    name: clientflow-staging
+    runtime: docker
+    # A disk needs a paid instance; a service with a disk runs as one instance and has a few
+    # seconds of downtime per deploy.
+    plan: 0.5c-512mb
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Runs in the freshly built image before it goes live; a failure keeps the old release.
+    preDeployCommand: node apps/api/dist/cli/migrate.js
+    healthCheckPath: /health/ready
+    autoDeploy: false
+    disk:
+      name: clientflow-files
+      mountPath: /data/files
+      sizeGB: 1
+    envVars:
+      - key: PORT # the port Render forwards to; the image listens on API_PORT=4000
+        value: '4000'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: clientflow-staging-db
+          property: connectionString
+      - key: APP_ORIGINS # e.g. https://clientflow-staging.onrender.com, or your custom domain
+        sync: false
+      - key: CSRF_SECRET
+        generateValue: true
+      - key: FILE_ENCRYPTION_KEY # 64 hex characters; keep a copy in your password manager
+        sync: false
+      - key: TRUST_PROXY # confirm with Settings → System status (scripts/staging-check.mjs)
+        value: '1'
+      - key: MAIL_TRANSPORT
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM # e.g. ClientFlow <noreply@crm.youragency.com>, on a domain verified in Resend
+        sync: false
+      - key: CLAMAV_HOST # remove these two lines to run without the antivirus service
+        fromService:
+          type: pserv
+          name: clientflow-clamav
+          property: host
+      - key: CLAMAV_PORT
+        value: '3310'
+
+  # Antivirus for uploads (R25). ClamAV needs 3–4 GB of memory to load its signatures, which is
+  # most of the monthly cost; uploads are refused while it is configured but unreachable.
+  - type: pserv
+    name: clientflow-clamav
+    runtime: image
+    plan: 2c-4g
+    region: frankfurt
+    image:
+      url: docker.io/clamav/clamav:1.5.4
+
+databases:
+  - name: clientflow-staging-db
+    databaseName: clientflow
+    user: clientflow_app
+    plan: 0.5c-1g
+    region: frankfurt
+    postgresMajorVersion: '17'
+    # Only services in this Render account can connect; no public internet access.
+    ipAllowList: []

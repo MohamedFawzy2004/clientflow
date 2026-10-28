@@ -17,6 +17,16 @@ const storage = new LocalEncryptedStorage(
   Buffer.from(env.FILE_ENCRYPTION_KEY, 'hex'),
 );
 
+try {
+  storage.checkWritable();
+} catch (err) {
+  logger.fatal(
+    { dir: env.FILE_STORAGE_DIR, err: err instanceof Error ? err.message : String(err) },
+    'File storage folder is not writable; check the disk mount and its owner',
+  );
+  process.exit(1);
+}
+
 const publicUrl = (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, '');
 
 const app = createApp({

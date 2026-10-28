@@ -267,4 +267,10 @@ export interface OpsStatus {
   /** Where sign-in limits are counted: shared in PostgreSQL, or per instance in memory. */
   rateLimits: 'postgres' | 'memory';
   memoryMb: number;
+  /**
+   * The address this request appears to come from, after TRUST_PROXY (ADR-067). It should be
+   * the viewer's own public IP; a proxy's address means TRUST_PROXY is wrong and every visitor
+   * would share one rate limit.
+   */
+  clientIp: string;
 }
