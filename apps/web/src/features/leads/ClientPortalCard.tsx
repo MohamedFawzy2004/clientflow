@@ -120,9 +120,16 @@ function InviteDialog({ org, onClose }: { org: ClientOrgDetail; onClose: () => v
       {created ? (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-text">
-            {created.emailDelivery === 'sent_to_dev_sink'
-              ? 'Email delivery is in development mode, so share this link yourself. It is shown only once.'
-              : 'Share this link with them. It is shown only once.'}
+            {
+              {
+                sent: 'We emailed them the invitation. You can also share this link. It is shown only once.',
+                failed:
+                  'The invitation email could not be sent, so share this link yourself. It is shown only once.',
+                sent_to_dev_sink:
+                  'Email delivery is in development mode, so share this link yourself. It is shown only once.',
+                disabled: 'Share this link with them. It is shown only once.',
+              }[created.emailDelivery]
+            }
           </p>
           <div className="flex gap-2">
             <Input

@@ -1,7 +1,7 @@
 import { createApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { createDb } from './db/client.js';
-import { DevSinkMailer, DisabledMailer } from './lib/mailer.js';
+import { createMailer } from './lib/mailer.js';
 import { startWorker } from './jobs/worker.js';
 import { createLogger } from './middleware/logger.js';
 import { LocalEncryptedStorage } from './modules/files/storage.js';
@@ -10,10 +10,7 @@ const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
 const db = createDb(env.DATABASE_URL);
 
-const mailer =
-  env.MAIL_TRANSPORT === 'dev-sink'
-    ? new DevSinkMailer(env.MAIL_SINK_DIR, logger)
-    : new DisabledMailer(logger);
+const mailer = createMailer(env, logger);
 
 const storage = new LocalEncryptedStorage(
   env.FILE_STORAGE_DIR,

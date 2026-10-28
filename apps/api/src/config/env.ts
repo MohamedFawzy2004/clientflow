@@ -24,10 +24,23 @@ const envSchema = z.object({
   /** Public base URL used in emailed links. Defaults to the first APP_ORIGINS entry. */
   APP_PUBLIC_URL: z.string().url().optional(),
   /**
-   * `dev-sink` writes emails to local files (never sent). `disabled` sends nothing.
-   * A real provider adapter arrives with the owner's choice of provider (ADR-016).
+   * `dev-sink` writes emails to local files (never sent). `disabled` sends nothing. `resend`
+   * sends through Resend (ADR-068) and needs RESEND_API_KEY and MAIL_FROM.
    */
-  MAIL_TRANSPORT: z.enum(['dev-sink', 'disabled']).default('dev-sink'),
+  MAIL_TRANSPORT: z.enum(['dev-sink', 'disabled', 'resend']).default('dev-sink'),
+  RESEND_API_KEY: z
+    .string()
+    .regex(/^re_[A-Za-z0-9_]{8,}$/, 'RESEND_API_KEY must be a Resend API key (re_…)')
+    .optional(),
+  /** Sender, e.g. `ClientFlow <noreply@crm.youragency.com>`, on a domain verified in Resend. */
+  MAIL_FROM: z
+    .string()
+    .trim()
+    .regex(
+      /^(?:[^<>@]{1,100} <[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>|[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+)$/,
+      'MAIL_FROM must be an address or "Name <address>"',
+    )
+    .optional(),
   MAIL_SINK_DIR: z.string().min(1).default('.mail-sink'),
   /** Private upload storage (encrypted files). Never inside the web root; a volume in containers. */
   FILE_STORAGE_DIR: z.string().min(1).default('.storage'),
@@ -92,7 +105,12 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment configuration: ${issues}`);
   }
   const env = parsed.data;
-  const secrets = [env.CSRF_SECRET, env.DATABASE_URL, env.FILE_ENCRYPTION_KEY];
+  const secrets = [
+    env.CSRF_SECRET,
+    env.DATABASE_URL,
+    env.FILE_ENCRYPTION_KEY,
+    env.RESEND_API_KEY ?? '',
+  ];
   if (secrets.some((s) => PLACEHOLDER_MARKERS.some((m) => s.includes(m)))) {
     throw new Error('Environment still contains placeholder secrets from .env.example.');
   }
@@ -110,6 +128,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   // The dev sink writes tokens to disk in plain text: never acceptable in production.
   if (env.NODE_ENV === 'production' && env.MAIL_TRANSPORT === 'dev-sink') {
     throw new Error('MAIL_TRANSPORT=dev-sink is not allowed in production.');
+  }
+  if (env.MAIL_TRANSPORT === 'resend' && (!env.RESEND_API_KEY || !env.MAIL_FROM)) {
+    throw new Error('MAIL_TRANSPORT=resend needs RESEND_API_KEY and MAIL_FROM.');
   }
   // Demo visitors can type any address into an invitation: a demo must never deliver email.
   if (env.DEMO_MODE && !NON_SENDING_TRANSPORTS.includes(env.MAIL_TRANSPORT)) {

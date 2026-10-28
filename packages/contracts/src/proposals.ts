@@ -1,6 +1,7 @@
 // Proposal workflow contracts (M4): service catalog, proposals with immutable versions, internal
 // review, client organizations, portal invitations and client decisions.
 import { z } from 'zod';
+import type { EmailDelivery } from './base.js';
 import { CURRENCIES, MAX_AMOUNT_MINOR, parseMoneyToMinor, type Currency } from './money.js';
 
 const uuid = z.uuid({ message: 'Choose an item from the list.' });
@@ -401,7 +402,7 @@ export interface ClientOrgDetail {
 export interface PortalInvitationCreated {
   invitation: PortalInvitationSummary;
   acceptUrl: string;
-  emailDelivery: 'sent_to_dev_sink' | 'disabled';
+  emailDelivery: EmailDelivery;
 }
 
 // ---------------------------------------------------------------------------

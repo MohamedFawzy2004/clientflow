@@ -53,9 +53,17 @@ export function InvitationLinkNotice({ created }: { created: InvitationCreated }
   return (
     <div className="flex flex-col gap-4">
       <Banner tone="success" title={`Invitation ready for ${created.invitation.email}`}>
-        {created.emailDelivery === 'sent_to_dev_sink'
-          ? 'Development mode: the email was written to the local mail sink, not sent. Share the link below.'
-          : 'Email delivery is not configured yet. Share the link below with the person directly.'}
+        {
+          {
+            sent: 'We emailed them the invitation. You can also share the link below.',
+            failed:
+              'The invitation email could not be sent. Share the link below with the person directly.',
+            sent_to_dev_sink:
+              'Development mode: the email was written to the local mail sink, not sent. Share the link below.',
+            disabled:
+              'Email delivery is not configured yet. Share the link below with the person directly.',
+          }[created.emailDelivery]
+        }
       </Banner>
       <CopyLink url={created.acceptUrl} />
       <p className="text-xs leading-[18px] text-muted">

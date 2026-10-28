@@ -286,11 +286,14 @@ export interface InvitationSummary {
   invitedBy: { id: string; name: string };
 }
 
+/** What happened to an invitation email. `failed`: the provider refused it; share the link. */
+export type EmailDelivery = 'sent' | 'failed' | 'sent_to_dev_sink' | 'disabled';
+
 export interface InvitationCreated {
   invitation: InvitationSummary;
   /** Shown once to the inviter so the invite works even without email delivery. */
   acceptUrl: string;
-  emailDelivery: 'sent_to_dev_sink' | 'disabled';
+  emailDelivery: EmailDelivery;
 }
 
 export interface InvitationPreview {

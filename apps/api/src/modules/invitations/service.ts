@@ -10,6 +10,7 @@ import type { AppDeps } from '../../app.js';
 import type { Invitation, Role, User } from '../../generated/prisma/client.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, tokenInvalid, validationFailed } from '../../lib/errors.js';
+import { sendOrReport } from '../../lib/mailer.js';
 import { normalizeEmail } from '../../lib/normalize.js';
 import {
   checkPasswordPolicy,
@@ -74,7 +75,7 @@ export async function createInvitation(
   input: InvitationCreate,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
+  const { db, mailer, config, logger } = deps;
   assertCanGrant(actor, input.role);
   const emailNorm = normalizeEmail(input.email);
 
@@ -119,7 +120,7 @@ export async function createInvitation(
   const agency = await db.agency.findUniqueOrThrow({ where: { id: actor.agencyId } });
   // Fragment, not query string: the token never reaches server logs or the Referer header.
   const acceptUrl = `${config.publicUrl}/activate-invite#token=${token}`;
-  await mailer.send({
+  const emailDelivery = await sendOrReport(mailer, logger, {
     kind: 'invitation',
     to: emailNorm,
     subject: `${actor.name} invited you to ${agency.name} on ClientFlow`,
@@ -137,7 +138,7 @@ export async function createInvitation(
   return {
     invitation: toInvitationSummary(invitation, now),
     acceptUrl,
-    emailDelivery: mailer.delivery,
+    emailDelivery,
   };
 }
 

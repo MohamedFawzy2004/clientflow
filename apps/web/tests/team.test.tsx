@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InvitationSummary, TeamMember } from '@clientflow/contracts';
+import { InvitationLinkNotice } from '../src/features/team/InviteDialog';
 import { TeamPage } from '../src/features/team/TeamPage';
 import { errorBody, mockFetch, renderRoute, USER } from './utils';
 
@@ -180,5 +181,31 @@ describe('TeamPage', () => {
     expect(
       JSON.parse(calls.find((c) => c.url.endsWith('/deactivate'))!.init.body as string),
     ).toEqual({ version: 3 });
+  });
+});
+
+describe('InvitationLinkNotice (ADR-068)', () => {
+  const created = (emailDelivery: 'sent' | 'failed') => ({
+    invitation: {
+      id: 'i1',
+      email: 'new@agency.test',
+      role: 'MEMBER' as const,
+      status: 'PENDING' as const,
+      expiresAt: '2026-11-04T00:00:00.000Z',
+      createdAt: '2026-10-28T00:00:00.000Z',
+      invitedBy: { id: 'u1', name: 'Olivia Owner' },
+    },
+    acceptUrl: 'https://crm.example.test/activate-invite#token=abc',
+    emailDelivery,
+  });
+
+  it('says the email went out, and still offers the link', () => {
+    render(<InvitationLinkNotice created={created('sent') as never} />);
+    expect(screen.getByText(/We emailed them the invitation/)).toBeInTheDocument();
+  });
+
+  it('asks the inviter to share the link when the email failed', () => {
+    render(<InvitationLinkNotice created={created('failed') as never} />);
+    expect(screen.getByText(/could not be sent/)).toBeInTheDocument();
   });
 });
