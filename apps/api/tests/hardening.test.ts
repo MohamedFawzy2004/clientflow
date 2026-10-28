@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { pruneExpiredAuth } from '../src/lib/retention.js';
 import { PostgresRateLimitStore, pruneRateLimits } from '../src/middleware/rate-limit-store.js';
 import { getPreCsrf, login, makeApp, ORIGIN, resetDb, seedAgency, testDb } from './helpers.js';
 
@@ -125,5 +126,35 @@ describe('compression (ADR-065, NFR-03)', () => {
     expect(page.headers['content-encoding']).toBe('gzip');
     const api = await request(app).get('/api/v1/auth/csrf').set('Accept-Encoding', 'gzip');
     expect(api.headers['content-encoding']).toBeUndefined();
+  });
+});
+
+describe('retention of short-lived security records (NFR-12)', () => {
+  it('removes sessions and reset links 30 days after they ended, and keeps the rest', async () => {
+    const user = await db.user.findFirstOrThrow({ where: { emailNorm: 'owner@agency.test' } });
+    const day = 86_400_000;
+    const at = (d: number) => new Date(Date.now() + d * day);
+    const mk = (n: string, expiresAt: Date, revokedAt: Date | null = null) =>
+      db.session.create({
+        data: {
+          userId: user.id,
+          tokenHash: n.padEnd(64, '0'),
+          createdAt: new Date(expiresAt.getTime() - 7 * day),
+          expiresAt,
+          revokedAt,
+        },
+      });
+    await mk('a', at(-31));
+    await mk('b', at(-29));
+    await mk('c', at(5), at(-40));
+    await mk('d', at(5));
+    await db.passwordResetToken.createMany({
+      data: [
+        { userId: user.id, tokenHash: 'e'.padEnd(64, '0'), createdAt: at(-32), expiresAt: at(-31) },
+        { userId: user.id, tokenHash: 'f'.padEnd(64, '0'), createdAt: at(-2), expiresAt: at(-1) },
+      ],
+    });
+    expect(await pruneExpiredAuth(db)).toEqual({ sessions: 2, resetTokens: 1 });
+    expect((await db.session.findMany()).map((s) => s.tokenHash[0]).sort()).toEqual(['b', 'd']);
   });
 });
