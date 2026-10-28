@@ -27,6 +27,7 @@ const app = createApp({
   logger,
   mailer,
   storage,
+  sharedRateLimits: true,
   config: {
     isProduction: env.NODE_ENV === 'production',
     appOrigins: env.APP_ORIGINS,

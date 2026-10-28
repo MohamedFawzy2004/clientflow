@@ -31,7 +31,7 @@ export default async function globalSetup() {
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   await client.query(
-    'TRUNCATE TABLE outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE rate_limit_counters, outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 
   const password = () => randomBytes(18).toString('base64url');
