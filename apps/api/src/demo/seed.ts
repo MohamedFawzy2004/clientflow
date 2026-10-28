@@ -574,6 +574,23 @@ export async function seedDemo(
   log('proposals: 4');
 
   // 8. Projects from the three won deals, managed by the PM, shared with each client.
+  const MILESTONE_PLAN: Array<Array<[number, 'PLANNED' | 'IN_PROGRESS' | 'DONE']>> = [
+    [
+      [5, 'IN_PROGRESS'],
+      [33, 'PLANNED'],
+      [49, 'PLANNED'],
+    ],
+    [
+      [-14, 'DONE'],
+      [28, 'IN_PROGRESS'],
+      [56, 'PLANNED'],
+    ],
+    [
+      [-3, 'IN_PROGRESS'],
+      [70, 'PLANNED'],
+      [91, 'PLANNED'],
+    ],
+  ];
   const projects: ProjectDetail[] = [];
   for (const [i, title, due] of [
     [0, 'Nile Bakery — ordering website', 49],
@@ -607,6 +624,18 @@ export async function seedDemo(
       });
       detail = await c('pm').get<ProjectDetail>(`/projects/${project.id}`);
     }
+    // Dates and progress, so the timeline reads like a project three weeks in (the clinic's
+    // first milestone is overdue on purpose).
+    const plan = MILESTONE_PLAN[i]!;
+    for (const [n, m] of detail.milestoneList.entries()) {
+      const [inDays, status] = plan[Math.min(n, plan.length - 1)]!;
+      await c('pm').patch(`/projects/${project.id}/milestones/${m.id}`, {
+        version: m.version,
+        dueOn: day(inDays),
+        status,
+      });
+    }
+    detail = await c('pm').get<ProjectDetail>(`/projects/${project.id}`);
     projects.push(detail);
   }
   log(`projects: ${projects.length}`);
