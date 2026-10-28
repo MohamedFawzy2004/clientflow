@@ -43,3 +43,8 @@ Thumbs.db
 .storage/
 e2e/.storage/
 e2e/.mail-sink/
+
+# backups (contain personal data; never commit)
+backups/
+apps/api/backups/
+.restore-storage/

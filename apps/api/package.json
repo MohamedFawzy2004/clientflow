@@ -14,7 +14,9 @@
     "bootstrap:owner": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/bootstrap-owner.ts",
     "seed:dev": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/seed-dev.ts",
     "jobs:once": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/jobs.ts once",
-    "jobs:worker": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/jobs.ts worker"
+    "jobs:worker": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/jobs.ts worker",
+    "backup": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/backup.ts",
+    "restore": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/restore.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.2",
