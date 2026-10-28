@@ -154,6 +154,14 @@ jobs:
         run: |
           docker build -t clientflow:ci .
           docker build -t clientflow-migrate:ci --target migrate .
+      # Fails on HIGH/CRITICAL advisories that have a fix; exceptions only via .trivyignore with a
+      # written reason (SEC-21, ADR-065). Scanning complements the tests, it does not replace them.
+      - name: Scan the runtime image (Trivy)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.trivyignore:/.trivyignore:ro" aquasec/trivy:0.76.0 image \
+            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --ignorefile /.trivyignore --no-progress --skip-version-check clientflow:ci
       - name: Migrate an empty database with the migrate image
         run: docker run --rm --network host -e DATABASE_URL="$SMOKE_DB" clientflow-migrate:ci
       - name: Start the runtime image in production mode
@@ -190,3 +198,18 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    name: Static analysis (CodeQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3

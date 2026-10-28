@@ -1,0 +1,5 @@
+# Documented exceptions to the image scan gate (SEC-21, ADR-065).
+# The CI gate fails on HIGH or CRITICAL advisories that have a fixed version. To accept one, add
+# its ID below with: why it does not apply, who decided, and a review date. Keep this list short.
+#
+# (no exceptions)
