@@ -13,6 +13,8 @@ const BROWSER = (process.env.E2E_BROWSER ?? 'chromium') as 'chromium' | 'firefox
 
 export default defineConfig({
   testDir: 'e2e',
+  // The demo tour has its own config and database (playwright.demo.config.ts).
+  testIgnore: 'demo/**',
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
