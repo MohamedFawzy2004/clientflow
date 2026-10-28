@@ -516,3 +516,22 @@ Error tracking (Sentry or similar) can be added later through the logger, once t
 - **What the first scan found.** All of the HIGH/CRITICAL Node findings were in the npm CLI bundled with the base image, which the runtime never runs, so npm, npx and corepack are removed. Debian updates are applied at build time, and a failed mirror download is fatal unless `OS_UPDATES=0` is passed (local builds without mirror access only). This machine could not reach the Debian mirrors, so CI is where the OS part of the gate is proven.
 - **Compression.** The web app's own files are compressed (gzip/Brotli). API JSON is not, because responses can mix secrets such as CSRF tokens with reflected input (BREACH).
 - **Loading order.** The app shells load on demand, and the screen's chunks start downloading while the session is checked.
+
+## ADR-066 — A demo workspace that cannot wipe real data (ACCEPTED, M12)
+
+The portfolio and pilot need a believable workspace with a user for every role (spec §21), and a reset (FR-A08). Hand-written inserts would drift from the rules the API enforces, so `npm run demo:reset` builds the demo **through the real API**. It runs an in-process copy of the API on 127.0.0.1 and has each fictional person do their own part: invitations accepted, leads and deals created by their owners, proposals approved by the sales manager, clients deciding in the portal, a PM running projects, finance issuing invoices. Only the owner bootstrap and the demo flag are written directly. The result has the same validation, permissions, workflow states, activities and audit events as real use, and a schema change that breaks the demo breaks its test.
+
+A reset deletes data, so it refuses unless **all** of these hold:
+
+1. `DEMO_MODE=true` in the environment;
+2. the database name contains `demo`;
+3. that name is typed back with `--confirm`;
+4. every agency in the database has `is_demo = true`. Only the demo reset sets that column; there is no API for it.
+
+A production database fails check 4 even if the other three were set by mistake. The wipe removes stored files by the keys the database records (never a folder sweep), then truncates every table except `_prisma_migrations`.
+
+Email: `DEMO_MODE` refuses any mail transport that could deliver, because demo visitors can type real addresses into an invitation. The seeder's own emails go to an in-memory mailer, and the outbox is drained before the command exits, so a live demo server never emails the fictional `.test` addresses. Passwords are random per reset and written to `apps/api/.demo-credentials.local.json` (gitignored), never printed.
+
+The app and portal show a **Demo workspace** notice whenever the agency is a demo (`isDemo` on the session).
+
+Not decided: a public hosted demo needs hosting, a reset schedule (for example nightly) and a way to share the demo accounts. That waits for the owner's hosting choice.

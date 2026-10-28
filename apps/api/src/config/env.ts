@@ -67,7 +67,18 @@ const envSchema = z.object({
   JOBS_POLL_SECONDS: z.coerce.number().int().min(1).max(300).default(10),
   /** How often reminders are scanned (FR-A01). */
   REMINDER_SCAN_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
+  /**
+   * A demo deployment (ADR-066): allows `npm run demo:reset` and never sends real email. A reset
+   * still refuses any database whose agency is not marked as a demo.
+   */
+  DEMO_MODE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
+
+/** Transports that never deliver mail to a real inbox. */
+const NON_SENDING_TRANSPORTS: readonly string[] = ['dev-sink', 'disabled'];
 
 export type Env = z.infer<typeof envSchema>;
 
@@ -99,6 +110,10 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   // The dev sink writes tokens to disk in plain text: never acceptable in production.
   if (env.NODE_ENV === 'production' && env.MAIL_TRANSPORT === 'dev-sink') {
     throw new Error('MAIL_TRANSPORT=dev-sink is not allowed in production.');
+  }
+  // Demo visitors can type any address into an invitation: a demo must never deliver email.
+  if (env.DEMO_MODE && !NON_SENDING_TRANSPORTS.includes(env.MAIL_TRANSPORT)) {
+    throw new Error('DEMO_MODE needs a transport that sends nothing (dev-sink or disabled).');
   }
   return env;
 }

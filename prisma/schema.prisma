@@ -64,6 +64,8 @@ model Agency {
   proposalSeq     Int      @default(0) @map("proposal_seq")
   /// Last invoice number issued (INV-0001, ...). Incremented atomically on issue.
   invoiceSeq      Int      @default(0) @map("invoice_seq")
+  /// Set only by the demo reset (ADR-066). A reset refuses any database whose agency lacks it.
+  isDemo          Boolean  @default(false) @map("is_demo")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
