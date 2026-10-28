@@ -15,7 +15,7 @@ import {
   testDb,
   type SeededAgency,
 } from './helpers.js';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   FIXTURE_HASH,
   makeClientOrg,
@@ -75,7 +75,19 @@ interface Fixtures {
   d: DeliveryFixtures;
   m8: ScopeFixtures;
   m9: FinanceFixtures;
+  m10: AutomationFixtures;
 }
+
+/** M10: the signed-in user's own notification, a dead job and an import run to undo. */
+interface AutomationFixtures {
+  /** Null for portal users, who have no notifications. */
+  myNotification: string | null;
+  deadJob: string;
+  importRun: string;
+}
+
+const IMPORT_CSV = 'Name,Email\nMatrix Import,matrix.import@x.test\n';
+const IMPORT_SHA = createHash('sha256').update(IMPORT_CSV, 'utf8').digest('hex');
 
 /** M9: invoices in each state on a project the PM manages, plus a published portal invoice. */
 interface FinanceFixtures {
@@ -167,6 +179,8 @@ const INVOICE_READERS: Role[] = ['OWNER', 'ADMIN', 'FINANCE', 'PM'];
 const INVOICE_MANAGERS: Role[] = ['OWNER', 'ADMIN', 'FINANCE'];
 /** FR-F04: only Finance and the Owner change payment status. */
 const PAYERS: Role[] = ['OWNER', 'FINANCE'];
+/** M10: CSV imports need agency-wide CRM reads. */
+const IMPORTERS: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER'];
 const PDF = Buffer.from('%PDF-1.4\n%matrix\n%%EOF\n');
 const EVERYONE: Role[] = [...STAFF, 'CLIENT'];
 
@@ -874,6 +888,7 @@ const ENDPOINTS: Endpoint[] = [
     name: 'POST /invoices',
     method: 'post',
     path: () => '/api/v1/invoices',
+    headers: () => ({ 'Idempotency-Key': randomUUID() }),
     body: (_r, f) => ({ clientOrgId: f.m9.orgId, dueOn: '2027-01-31' }),
     allowed: INVOICE_MANAGERS,
   },
@@ -1107,6 +1122,80 @@ const ENDPOINTS: Endpoint[] = [
     path: (f) => `/api/v1/portal/invoices/${f.m9.portalInvoice}`,
     allowed: CLIENT_ONLY,
   },
+  // Notifications, jobs and imports (M10)
+  {
+    name: 'GET /notifications',
+    method: 'get',
+    path: () => '/api/v1/notifications',
+    allowed: STAFF,
+  },
+  {
+    name: 'GET /notifications/unread-count',
+    method: 'get',
+    path: () => '/api/v1/notifications/unread-count',
+    allowed: STAFF,
+  },
+  {
+    name: 'PATCH /notifications/:id/read',
+    method: 'patch',
+    // Portal users have none: they ask for a random ID and must get 403, not 404.
+    path: (f) => `/api/v1/notifications/${f.m10.myNotification ?? randomUUID()}/read`,
+    allowed: STAFF,
+  },
+  {
+    name: 'POST /notifications/read-all',
+    method: 'post',
+    path: () => '/api/v1/notifications/read-all',
+    body: () => ({ upTo: new Date().toISOString() }),
+    allowed: STAFF,
+  },
+  {
+    name: 'GET /notification-preferences',
+    method: 'get',
+    path: () => '/api/v1/notification-preferences',
+    allowed: STAFF,
+  },
+  {
+    name: 'PUT /notification-preferences',
+    method: 'put',
+    path: () => '/api/v1/notification-preferences',
+    body: () => ({ preferences: [{ category: 'TASKS', inApp: true, email: true }] }),
+    allowed: STAFF,
+  },
+  { name: 'GET /jobs', method: 'get', path: () => '/api/v1/jobs', allowed: TEAM_ADMINS },
+  {
+    name: 'POST /jobs/:id/retry',
+    method: 'post',
+    path: (f) => `/api/v1/jobs/${f.m10.deadJob}/retry`,
+    allowed: TEAM_ADMINS,
+  },
+  { name: 'GET /imports', method: 'get', path: () => '/api/v1/imports', allowed: IMPORTERS },
+  {
+    name: 'POST /imports/preview',
+    method: 'post',
+    path: () => '/api/v1/imports/preview',
+    body: () => ({ kind: 'contacts', csv: IMPORT_CSV }),
+    allowed: IMPORTERS,
+  },
+  {
+    name: 'POST /imports',
+    method: 'post',
+    path: () => '/api/v1/imports',
+    headers: () => ({ 'Idempotency-Key': randomUUID() }),
+    body: () => ({
+      kind: 'contacts',
+      csv: IMPORT_CSV,
+      mapping: { fullName: 'Name', email: 'Email' },
+      fileSha256: IMPORT_SHA,
+    }),
+    allowed: IMPORTERS,
+  },
+  {
+    name: 'POST /imports/:id/undo',
+    method: 'post',
+    path: (f) => `/api/v1/imports/${f.m10.importRun}/undo`,
+    allowed: IMPORTERS,
+  },
 ];
 
 const KEY_FOR_ROLE: Record<string, string> = {
@@ -1267,11 +1356,13 @@ async function freshFixtures(seeded: SeededAgency, role?: Role): Promise<Fixture
   const d = await deliveryFixtures(seeded, role, portal.orgId, portal.clientUserId);
   const m8 = await scopeFixtures(seeded, role, projRead.projectId, d, portal.clientUserId);
   const m9 = await financeFixtures(seeded, d, portal.orgId);
+  const m10 = await automationFixtures(seeded, role);
 
   return {
     d,
     m8,
     m9,
+    m10,
     projRead: projRead.projectId,
     projPatch: projPatch.projectId,
     projState: projState.projectId,
@@ -1552,6 +1643,50 @@ async function scopeFixtures(
     portalCommentDelete: (await portalThread()).id,
     portalCommentHistory: (await portalThread()).id,
   };
+}
+
+/** M10 fixtures. The notification belongs to the role's own seeded user. */
+async function automationFixtures(seeded: SeededAgency, role?: Role): Promise<AutomationFixtures> {
+  const { agencyId } = seeded;
+  const me = role && role !== 'CLIENT' ? seeded.users[KEY_FOR_ROLE[role]!]!.id : null;
+  const myNotification = me
+    ? (
+        await db.notification.create({
+          data: {
+            agencyId,
+            recipientId: me,
+            category: 'TASKS',
+            type: 'matrix',
+            title: 'Matrix notification',
+            link: '/app/dashboard',
+          },
+        })
+      ).id
+    : null;
+  const deadJob = await db.outboxJob.create({
+    data: {
+      agencyId,
+      kind: 'reminders.scan',
+      payload: { agencyId },
+      state: 'DEAD',
+      attempts: 6,
+      finishedAt: new Date(),
+      lastError: 'Error: matrix',
+    },
+  });
+  const importRun = await db.importRun.create({
+    data: {
+      agencyId,
+      actorId: seeded.users.manager!.id,
+      kind: 'contacts',
+      fileSha256: 'c'.repeat(64),
+      rowsTotal: 0,
+      rowsCreated: 0,
+      rowsSkipped: 0,
+      rowsFailed: 0,
+    },
+  });
+  return { myNotification, deadJob: deadJob.id, importRun: importRun.id };
 }
 
 /** M9 fixtures: invoices on the portal organization's delivery project (managed by pm). */

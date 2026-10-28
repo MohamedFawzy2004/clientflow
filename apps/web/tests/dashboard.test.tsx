@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ReminderList, SalesDashboard, SessionUser } from '@clientflow/contracts';
+import type { SalesDashboard, SessionUser } from '@clientflow/contracts';
 import { SalesDashboard as SalesDashboardSection } from '../src/features/dashboard/SalesDashboard';
-import { ReminderBell } from '../src/features/dashboard/ReminderBell';
+import { NotificationBell } from '../src/features/notifications/NotificationBell';
 import { mockFetch, renderRoute, USER } from './utils';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -89,35 +89,33 @@ describe('sales dashboard', () => {
   });
 });
 
-describe('reminder bell', () => {
-  it('announces how many items need attention', async () => {
-    const list: ReminderList = {
-      items: [
-        {
-          kind: 'follow_up_overdue',
-          id: 'c-1',
-          title: 'Late lead',
-          detail: 'Follow-up overdue',
-          href: '/app/leads/1',
-          dueAt: null,
-        },
-      ],
-      total: 1,
-    };
-    mockFetch(() => ok(list));
-    renderRoute(<ReminderBell />, { path: '/app', url: '/app' });
-    expect(
-      await screen.findByRole('link', { name: 'Reminders: 1 need attention' }),
-    ).toHaveAttribute('href', '/app/reminders');
+describe('notification bell (M10 replaces the reminder bell)', () => {
+  it('announces the unread count and opens the notification center', async () => {
+    mockFetch(() => ok({ count: 3 }));
+    renderRoute(<NotificationBell />, { path: '/app', url: '/app' });
+    expect(await screen.findByRole('link', { name: 'Notifications: 3 unread' })).toHaveAttribute(
+      'href',
+      '/app/notifications',
+    );
   });
 
-  it('is hidden for roles without sales reminders', () => {
-    mockFetch(() => ok({ items: [], total: 0 }));
-    renderRoute(<ReminderBell />, {
+  it('is shown to every staff role and hidden in the portal role', async () => {
+    mockFetch(() => ok({ count: 0 }));
+    renderRoute(<NotificationBell />, {
       path: '/app',
       url: '/app',
       user: { ...USER, role: 'FINANCE' },
     });
-    expect(screen.queryByRole('link', { name: /Reminders/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Notifications: none unread' })).toBeVisible();
+  });
+
+  it('is hidden for client users', () => {
+    mockFetch(() => ok({ count: 0 }));
+    renderRoute(<NotificationBell />, {
+      path: '/app',
+      url: '/app',
+      user: { ...USER, role: 'CLIENT' },
+    });
+    expect(screen.queryByRole('link', { name: /Notifications/ })).not.toBeInTheDocument();
   });
 });

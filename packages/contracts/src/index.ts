@@ -11,3 +11,4 @@ export * from './projects.js';
 export * from './delivery.js';
 export * from './changes.js';
 export * from './finance.js';
+export * from './automation.js';

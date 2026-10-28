@@ -24,6 +24,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { agencyToday, formatDateOnly, parseDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, staleVersion, validationFailed } from '../../lib/errors.js';
+import { notify } from '../../lib/notify.js';
 import { recordActivity } from '../../lib/timeline.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
@@ -339,9 +340,29 @@ export async function createTask(
       requestId,
       metadata: { scope: scope.scope },
     });
+    await notifyAssignee(tx, actor, t, p.title);
     return t.id;
   });
   return getTask(db, actor, id, timeZone);
+}
+
+/** The new assignee hears about it, unless they assigned it to themselves (FR-P10). */
+async function notifyAssignee(
+  tx: Tx,
+  actor: AuthUser,
+  t: { id: string; projectId: string; title: string; assigneeId: string | null },
+  projectTitle: string,
+) {
+  await notify(tx, {
+    agencyId: actor.agencyId,
+    recipientIds: [t.assigneeId],
+    actorId: actor.id,
+    category: 'TASKS',
+    type: 'task.assigned',
+    title: `${actor.name} assigned you “${t.title}” in ${projectTitle}`,
+    link: `/app/projects/${t.projectId}/board`,
+    entity: { type: 'task', id: t.id },
+  });
 }
 
 /** Project manager, Owner or Admin only: every field except status (FR-P09). */
@@ -398,6 +419,17 @@ export async function updateTask(
         eventType: 'task.assigned',
         summary: `${actor.name} assigned “${input.title ?? t.title}” to ${who}`,
       });
+      await notifyAssignee(
+        tx,
+        actor,
+        {
+          id: t.id,
+          projectId: t.projectId,
+          title: input.title ?? t.title,
+          assigneeId: input.assigneeId,
+        },
+        t.project.title,
+      );
     }
   });
   return getTask(db, actor, taskId, timeZone);

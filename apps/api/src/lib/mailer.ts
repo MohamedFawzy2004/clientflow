@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Logger } from 'pino';
 import { generateToken } from './tokens.js';
@@ -10,6 +10,11 @@ export interface MailMessage {
   text: string;
   /** Category for logs and tests, e.g. "invitation", "password_reset". */
   kind: string;
+  /**
+   * Same key = same email. Background jobs pass one so a retry after a crash does not send twice:
+   * the dev sink and the test mailer drop repeats, and a real provider gets it as its idempotency key.
+   */
+  idempotencyKey?: string;
 }
 
 export interface Mailer {
@@ -34,7 +39,12 @@ export class DevSinkMailer implements Mailer {
 
   async send(message: MailMessage) {
     mkdirSync(this.dir, { recursive: true });
-    const file = join(this.dir, `${Date.now()}-${message.kind}-${generateToken(4)}.json`);
+    const key = message.idempotencyKey?.replace(/[^A-Za-z0-9_.-]/g, '_');
+    if (key && readdirSync(this.dir).some((name) => name.endsWith(`-${key}.json`))) {
+      this.logger.info({ kind: message.kind }, 'Email already in dev sink (repeat dropped)');
+      return;
+    }
+    const file = join(this.dir, `${Date.now()}-${message.kind}-${key ?? generateToken(4)}.json`);
     writeFileSync(
       file,
       JSON.stringify({ ...message, createdAt: new Date().toISOString() }, null, 2),
@@ -61,8 +71,17 @@ export class MemoryMailer implements Mailer {
   readonly delivery = 'sent_to_dev_sink' as const;
   readonly messages: MailMessage[] = [];
 
+  /** Test hook: throw on the next sends (after accepting the message when `afterSend`). */
+  failures: Array<{ afterSend: boolean }> = [];
+
   async send(message: MailMessage) {
-    this.messages.push(message);
+    const failure = this.failures.shift();
+    if (failure && !failure.afterSend) throw new Error('Mail provider unavailable');
+    const repeat =
+      message.idempotencyKey !== undefined &&
+      this.messages.some((m) => m.idempotencyKey === message.idempotencyKey);
+    if (!repeat) this.messages.push(message);
+    if (failure?.afterSend) throw new Error('Connection reset after the message was accepted');
   }
 
   /** Extracts the token from the last link of the given kind. */

@@ -9,6 +9,7 @@ import { Banner, EmptyState, ErrorState, Skeleton } from '../../components/ui/fe
 import { Field, Input, Select, Textarea } from '../../components/ui/form';
 import { Card } from '../../components/proposals/proposal-ui';
 import { useAgencySettings, useUpdateAgency } from '../dashboard/api';
+import { JobsCard } from './JobsCard';
 
 interface FormValues {
   name: string;
@@ -209,6 +210,7 @@ export function SettingsPage() {
           </Button>
         </div>
       </form>
+      <JobsCard />
     </>
   );
 }

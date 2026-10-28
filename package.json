@@ -29,7 +29,9 @@
     "test:web": "npm run test -w @clientflow/web",
     "e2e": "playwright test",
     "build": "npm run build -w @clientflow/contracts && npm run build -w @clientflow/api && npm run build -w @clientflow/web",
-    "e2e:screenshots": "node scripts/e2e-screenshots.mjs"
+    "e2e:screenshots": "node scripts/e2e-screenshots.mjs",
+    "jobs:once": "npm run jobs:once -w @clientflow/api",
+    "jobs:worker": "npm run jobs:worker -w @clientflow/api"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

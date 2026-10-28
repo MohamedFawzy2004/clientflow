@@ -13,6 +13,7 @@ import type { AppDeps } from '../../app.js';
 import type { Db } from '../../db/client.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { writeAudit } from '../../lib/audit.js';
+import { notify } from '../../lib/notify.js';
 import { conflict, forbidden, notFound, staleVersion } from '../../lib/errors.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
@@ -121,7 +122,7 @@ async function addComment(
   body: string,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
+  const { db } = deps;
   const c = await db.$transaction(async (tx) => {
     const created = await tx.projectComment.create({
       data: {
@@ -144,23 +145,27 @@ async function addComment(
       requestId,
       metadata: { entityType: t.entityType },
     });
+    // A client comment is easy to miss: tell the project manager (FR-X09).
+    if (actor.role === 'CLIENT') {
+      const p = await tx.project.findUniqueOrThrow({
+        where: { id: t.projectId },
+        select: { managerId: true, title: true },
+      });
+      const path =
+        t.entityType === 'deliverable' ? `deliverables/${t.entityId}` : `changes/${t.entityId}`;
+      await notify(tx, {
+        agencyId: actor.agencyId,
+        recipientIds: [p.managerId],
+        actorId: actor.id,
+        category: 'CLIENT_ACTIVITY',
+        type: 'comment.client',
+        title: `${actor.name} (client) commented on a ${t.entityType === 'deliverable' ? 'deliverable' : 'change'} in ${p.title}`,
+        link: `/app/projects/${t.projectId}/${path}`,
+        entity: { type: 'comment', id: created.id },
+      });
+    }
     return created;
   });
-  // A client comment is easy to miss: tell the project manager (link only, SEC-24).
-  if (actor.role === 'CLIENT') {
-    const p = await db.project.findUniqueOrThrow({
-      where: { id: t.projectId },
-      select: { manager: { select: { emailNorm: true } } },
-    });
-    const path =
-      t.entityType === 'deliverable' ? `deliverables/${t.entityId}` : `changes/${t.entityId}`;
-    await mailer.send({
-      kind: 'client_comment',
-      to: p.manager.emailNorm,
-      subject: 'A client commented',
-      text: `Read it here:\n\n${config.publicUrl}/app/projects/${t.projectId}/${path}`,
-    });
-  }
   return toView(c, actor);
 }
 

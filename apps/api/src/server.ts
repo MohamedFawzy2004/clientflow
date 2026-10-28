@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { createDb } from './db/client.js';
 import { DevSinkMailer, DisabledMailer } from './lib/mailer.js';
+import { startWorker } from './jobs/worker.js';
 import { createLogger } from './middleware/logger.js';
 import { LocalEncryptedStorage } from './modules/files/storage.js';
 
@@ -19,6 +20,8 @@ const storage = new LocalEncryptedStorage(
   Buffer.from(env.FILE_ENCRYPTION_KEY, 'hex'),
 );
 
+const publicUrl = (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, '');
+
 const app = createApp({
   db,
   logger,
@@ -34,11 +37,19 @@ const app = createApp({
       ...(env.TOKEN_RATE_LIMIT_PER_IP ? { tokenPerIp: env.TOKEN_RATE_LIMIT_PER_IP } : {}),
       ...(env.API_RATE_LIMIT_PER_IP ? { apiPerIp: env.API_RATE_LIMIT_PER_IP } : {}),
     },
-    publicUrl: (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, ''),
+    publicUrl,
     ...(env.WEB_DIST_DIR ? { webDistDir: env.WEB_DIST_DIR } : {}),
     files: { maxBytes: env.FILE_MAX_BYTES, projectQuotaBytes: env.FILE_PROJECT_QUOTA_BYTES },
   },
 });
+
+// Emails and reminders (ADR-058). Safe with several processes: claims use SKIP LOCKED.
+const worker = env.JOBS_ENABLED
+  ? startWorker(
+      { db, mailer, logger, publicUrl },
+      { pollMs: env.JOBS_POLL_SECONDS * 1000, scanMs: env.REMINDER_SCAN_MINUTES * 60_000 },
+    )
+  : null;
 
 const server = app.listen(env.API_PORT, env.HOST, () => {
   logger.info(
@@ -53,6 +64,7 @@ async function shutdown(signal: string) {
   shuttingDown = true;
   logger.info({ signal }, 'Shutting down');
   server.close(async () => {
+    await worker?.stop();
     await db.$disconnect();
     process.exit(0);
   });
