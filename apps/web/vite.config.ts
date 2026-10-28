@@ -26,7 +26,18 @@ export default defineConfig({
     },
   },
   preview: { host: 'localhost', port: 4173, strictPort: true },
-  build: { sourcemap: false },
+  build: {
+    sourcemap: false,
+    rolldownOptions: {
+      output: {
+        // Each icon used to be its own 1 KB chunk: one shared icon chunk saves dozens of round
+        // trips on slow mobile networks (NFR-03, R38).
+        // A broader "shared app code" group was tried: the dashboard reached 85, but the group was
+        // preloaded on the sign-in page too and its score fell from 91-94 to 87-90 (M12 report).
+        codeSplitting: { groups: [{ name: 'icons', test: /node_modules[\\/]lucide-react/ }] },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,
