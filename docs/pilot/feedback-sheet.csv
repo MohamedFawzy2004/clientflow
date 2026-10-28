@@ -1,0 +1,11 @@
+session,date,seat,device,task,completed,minutes,quote,severity,observation,proposed_change,status
+S1,,sales,laptop,1 Add a lead with a follow-up,,,,,,,
+S1,,sales,laptop,2 Find overdue follow-ups,,,,,,,
+S1,,sales,laptop,3 Quote for the law firm deal and submit,,,,,,,
+S1,,manager,laptop,4 Approve Omar's proposal,,,,,,,
+S1,,pm,laptop,5 What blocks Nile Bakery,,,,,,,
+S1,,pm,laptop,6 Status of the push-alerts change,,,,,,,
+S1,,member,laptop,7 Log 1.5 hours on the catalogue import,,,,,,,
+S1,,finance,laptop,8 Overdue client and a 5000 USD payment,,,,,,,
+S1,,client 2,phone,9 Review the dashboard wireframes,,,,,,,
+S1,,client 1,phone,10 What is still owed and when,,,,,,,

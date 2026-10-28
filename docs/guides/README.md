@@ -34,6 +34,9 @@ Lead → Deal → Proposal (internal approval → client decision)
 - **Forgot password?** on the sign-in page sends a reset link. The link works once and expires.
 - Sessions end after 12 hours without activity, or 7 days at most. Signing out ends the session on
   that device.
+- **Two-step sign-in:** click your name at the bottom of the menu to turn it on (Owners and Admins
+  must). After your password you enter a 6-digit code from an authenticator app; a saved recovery
+  code works once if you lose your phone.
 
 ## Trying it with the demo workspace
 

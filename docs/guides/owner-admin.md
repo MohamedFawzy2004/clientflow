@@ -5,6 +5,9 @@ Admins can do the same except record payments and manage Owners.
 
 ## First day
 
+0. **Two-step sign-in:** Owners and Admins must turn it on at their first sign-in. Scan the QR code
+   with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password …), enter
+   the code, and save the 10 recovery codes in your password manager.
 1. **Settings → Profile:** name, contact email, phone and address. These appear on proposals,
    invoices and in the client portal. Under **Defaults**, set the currency, time zone and working
    days.
@@ -36,6 +39,9 @@ The server enforces every rule. Hiding a button is never the only protection.
   work stays, still credited to them. **Reactivate** restores access.
 - A workspace always keeps at least one active Owner: the last one cannot be removed or demoted.
 - Changing someone's role takes effect on their next request.
+- **Lost phone:** the person signs in with a recovery code. Without one, an Owner opens the person in
+  **Team** and chooses **Reset two-step sign-in**; they are signed out and set it up again. Nobody
+  can reset their own. The last Owner without codes needs the server command in the runbook.
 
 ## Importing existing data
 

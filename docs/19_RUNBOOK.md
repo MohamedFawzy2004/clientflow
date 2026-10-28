@@ -15,14 +15,28 @@
 
 ## Common situations
 
-| Symptom                                   | Likely cause                                          | What to do                                                                                                 |
-| ----------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `/health/ready` is 503                    | Database down, wrong `DATABASE_URL`, network          | Check the database service; restart the app after it is back                                               |
-| `degraded` / "Background jobs are behind" | Worker stopped, or many emails failing                | Check the logs for worker errors; restart; see failed jobs in Settings; retry them once the cause is fixed |
-| Many failed jobs                          | Email provider down or wrong settings                 | Fix the settings, then **Retry** each job (each retry is audited; emails are not sent twice)               |
-| Everyone gets "Too many attempts"         | Rate limit hit from one shared IP (office NAT)        | Check `TRUST_PROXY`; wait 15 minutes; limits reset by themselves                                           |
-| Files cannot be downloaded                | File volume missing, or a wrong `FILE_ENCRYPTION_KEY` | Never generate a new key: restore the right one from the secret manager                                    |
-| App container restarts in a loop          | An uncaught error at start (bad env)                  | Read the first log lines: the app names the variable it refuses                                            |
+| Symptom                                     | Likely cause                                                                    | What to do                                                                                                                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/health/ready` is 503                      | Database down, wrong `DATABASE_URL`, network                                    | Check the database service; restart the app after it is back                                                                                                                                           |
+| `degraded` / "Background jobs are behind"   | Worker stopped, or many emails failing                                          | Check the logs for worker errors; restart; see failed jobs in Settings; retry them once the cause is fixed                                                                                             |
+| Many failed jobs                            | Email provider down or wrong settings                                           | Fix the settings, then **Retry** each job (each retry is audited; emails are not sent twice)                                                                                                           |
+| Everyone gets "Too many attempts"           | Rate limit hit from one shared IP (office NAT)                                  | Check `TRUST_PROXY`; wait 15 minutes; limits reset by themselves                                                                                                                                       |
+| Files cannot be downloaded                  | File volume missing, or a wrong `FILE_ENCRYPTION_KEY`                           | Never generate a new key: restore the right one from the secret manager                                                                                                                                |
+| App container restarts in a loop            | An uncaught error at start (bad env)                                            | Read the first log lines: the app names the variable it refuses                                                                                                                                        |
+| Someone lost their phone (two-step sign-in) | Authenticator app gone                                                          | They sign in with a recovery code. Without one, an Owner opens **Team → the person → Reset two-step sign-in**. For the last Owner: `node apps/api/dist/cli/reset-mfa.js --email …` in the server shell |
+| "Uploads are paused" / scanner unreachable  | ClamAV service down or still loading signatures (a few minutes after a restart) | Check the `clientflow-clamav` service; Settings → System status shows when it answers again. Uploads are refused meanwhile, never stored unscanned                                                     |
+| Deploy failed in the pre-deploy step        | A migration failed; the previous release keeps running                          | Read the step's log (`Migration … failed and was rolled back: …`). Fix the cause, then mark the failed row resolved (below) and deploy again                                                           |
+| Emails stop arriving                        | Resend key revoked, domain not verified, or quota                               | Resend dashboard → Logs; Settings → Jobs shows failed jobs; retry them once fixed                                                                                                                      |
+
+### Resolving a failed migration
+
+The migration runner records a failed migration in `_prisma_migrations` and refuses to deploy again until a person has looked at it, as Prisma does (P3009). Each migration runs in one transaction, so a failure leaves the schema as it was. After fixing the cause (usually data that breaks a new constraint), remove the failed row so the runner retries it:
+
+```sql
+DELETE FROM "_prisma_migrations" WHERE migration_name = '<name>' AND finished_at IS NULL;
+```
+
+Never delete a row whose `finished_at` is set: that migration was applied.
 
 ## Security incident
 

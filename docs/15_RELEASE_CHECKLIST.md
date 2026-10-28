@@ -1,4 +1,4 @@
-# Release checklist (spec §27), status at M12
+# Release checklist (spec §27), status at M12.1
 
 Each line is **Done** only when a test or a record shows it. **Partial** says what is missing, and
 **Not done** names who has to act. This checklist gates putting real client data in, not the
@@ -15,15 +15,15 @@ portfolio release.
 
 ## Engineering
 
-| Item                                                     | Status   | Evidence / what is missing                                                                                           |
-| -------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
-| CI clean and reproducible                                | Done     | Lint, types, audit, PostgreSQL tests, E2E, image build + Trivy, CodeQL, gitleaks on every push                       |
-| Migrations and rollback rehearsed                        | Partial  | Forward migration applied to a restored copy (M11 drill); rollback means restoring a backup; not rehearsed on a host |
-| HTTPS, secure cookies, CSRF and CORS verified in staging | Partial  | Verified by tests with production settings; **no staging host yet**                                                  |
-| Database and file storage private, least privilege       | Not done | Documented requirements (`17_DEPLOYMENT.md`); checked only once a host exists                                        |
-| Backup **and** restore verified                          | Partial  | Local drill RECONCILED (`m11-restore-drill.txt`); hosted restore waits for hosting                                   |
-| No known critical/high exploitable vulnerabilities open  | Done     | `npm audit` 0; Trivy gate passed in CI on the M11 pull request                                                       |
-| Error monitoring and an alert test observed              | Not done | No vendor chosen (ADR-064)                                                                                           |
+| Item                                                     | Status   | Evidence / what is missing                                                                                                        |
+| -------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| CI clean and reproducible                                | Done     | Lint, types, audit, PostgreSQL tests, E2E, image build + Trivy, CodeQL, gitleaks on every push                                    |
+| Migrations and rollback rehearsed                        | Partial  | Forward migration applied to a restored copy (M11 drill); rollback means restoring a backup; not rehearsed on a host              |
+| HTTPS, secure cookies, CSRF and CORS verified in staging | Partial  | `scripts/staging-check.mjs` checks all of them (passes locally on the production build); **run it after the first Render deploy** |
+| Database and file storage private, least privilege       | Partial  | `render.yaml`: database reachable only inside the Render account, files on a private encrypted disk; confirm after deploy         |
+| Backup **and** restore verified                          | Partial  | Local drill RECONCILED (`m11-restore-drill.txt`); Render drill steps in `17_DEPLOYMENT.md`, waiting for the deploy                |
+| No known critical/high exploitable vulnerabilities open  | Done     | `npm audit` 0; Trivy gate passed in CI on the M11 pull request                                                                    |
+| Error monitoring and an alert test observed              | Not done | No vendor chosen (ADR-064)                                                                                                        |
 
 ## Security and privacy
 
@@ -58,9 +58,9 @@ portfolio release.
 
 ## Before real client data goes in
 
-1. Choose hosting; run the restore drill there; check HTTPS, cookies and headers on that host.
-2. Choose an email provider; set up SPF, DKIM and DMARC.
+1. ~~Choose hosting~~ (Render, M12.1). Apply the Blueprint, run the staging check and the restore drill there.
+2. ~~Choose an email provider~~ (Resend, M12.1). Verify the domain: SPF, DKIM and DMARC.
 3. Decide retention periods, backup schedule and RPO/RTO; name who answers data requests.
 4. Legal review of the privacy document and the approval wording.
 5. Run at least three pilot sessions and fix every severity-3 finding.
-6. Add an antivirus engine for uploads and multi-factor sign-in for Owners and Admins.
+6. ~~Antivirus and two-step sign-in for Owners/Admins~~ (built in M12.1). Keep the ClamAV service running wherever real files are uploaded.

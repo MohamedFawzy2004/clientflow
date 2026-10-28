@@ -44,6 +44,7 @@ Set these as secrets in the platform. Never put them in the image or the reposit
 | `RESEND_API_KEY`                              | with resend | A Resend key with sending access only (`re_…`)                                                                                                                      |
 | `MAIL_FROM`                                   | with resend | `ClientFlow <noreply@mail.youragency.com>`, on a domain verified in Resend                                                                                          |
 | `CLAMAV_HOST` / `CLAMAV_PORT`                 | no          | The ClamAV service (port 3310). When set, every upload is scanned and refused while the scanner is unreachable                                                      |
+| `MFA_REQUIRED_ROLES`                          | no          | Roles that must use two-step sign-in (ADR-069). Default `OWNER,ADMIN` in production; `none` to turn the requirement off (not recommended)                           |
 | `LOG_LEVEL`                                   | no          | `info`                                                                                                                                                              |
 | `JOBS_ENABLED`                                | no          | `true` (default): the background worker runs inside the app. Set `false` only if a separate `node apps/api/dist/cli/jobs.js worker` process runs it                 |
 | `JOBS_POLL_SECONDS` / `REMINDER_SCAN_MINUTES` | no          | Defaults 10 s and 15 min                                                                                                                                            |
@@ -182,6 +183,8 @@ node apps/api/dist/cli/bootstrap-owner.js --agency "Your Agency" --name "Your Na
 
 It asks for a password (hidden). It refuses to run a second time.
 
+Then sign in at the staging address. Owners and Admins must turn on **two-step sign-in** before anything else: scan the QR code with an authenticator app and save the 10 recovery codes in your password manager. If you ever lose both, `node apps/api/dist/cli/reset-mfa.js --email you@youragency.com` in the Shell turns it off for that account.
+
 ### 5. Check the deployment
 
 From your computer, with the staging address and the owner account:
@@ -190,9 +193,10 @@ From your computer, with the staging address and the owner account:
 node scripts/staging-check.mjs --base https://clientflow-staging.onrender.com --email you@youragency.com
 ```
 
-It checks HTTPS, cookies, security headers, CSRF and origin rules, health, and the address the
-server sees for you (it prints whether `TRUST_PROXY` looks right). Keep its output with the
-release records.
+It asks for your password and a code from your authenticator app. It checks HTTPS, cookies,
+security headers, CSRF and origin rules, health, two-step sign-in, the virus scanner, and the
+address the server sees for you (it prints whether `TRUST_PROXY` looks right). Keep its output
+with the release records.
 
 ### 6. Restore drill on Render
 
@@ -246,8 +250,9 @@ decision on how visitors get the demo accounts.
 
 ## Known gaps before real client data
 
-- **No real email provider (O9).** Invitation links are shown on screen to copy.
-- **No antivirus engine for uploads (R25).**
+- **Email (O9):** Resend is built in (ADR-068); the owner still has to verify a domain (SPF, DKIM, DMARC).
+- **Antivirus (R25):** ClamAV is built in (ADR-070) and runs as its own Render service; without it, uploads get the built-in checks only.
+- **Nothing is deployed yet:** the staging check and the hosted restore drill wait for the first deploy.
 - **Legal and privacy review** of `docs/18_PRIVACY_RETENTION.md` before real client data (SEC-23).
 - **RPO/RTO** and the backup schedule are the owner's decision.
-- **`prisma migrate` warns about OpenSSL** in the slim image. Migrations still apply.
+- **Migrations** run from the app image (`node apps/api/dist/cli/migrate.js`, ADR-067); the separate `migrate` image with Prisma's CLI is still built and used by CI to check the result.
