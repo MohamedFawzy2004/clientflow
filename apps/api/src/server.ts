@@ -75,3 +75,14 @@ async function shutdown(signal: string) {
 
 process.on('SIGINT', () => void shutdown('SIGINT'));
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+// A bug that escapes every handler is logged as one structured line, never silently lost. An
+// uncaught exception leaves the process in an unknown state, so it exits and the supervisor
+// (Docker restart policy) starts a fresh one (ADR-064).
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason instanceof Error ? reason : String(reason) }, 'Unhandled rejection');
+});
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'Uncaught exception; exiting');
+  setTimeout(() => process.exit(1), 100).unref();
+});

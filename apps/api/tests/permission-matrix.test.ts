@@ -1164,6 +1164,12 @@ const ENDPOINTS: Endpoint[] = [
   },
   { name: 'GET /jobs', method: 'get', path: () => '/api/v1/jobs', allowed: TEAM_ADMINS },
   {
+    name: 'GET /ops/status',
+    method: 'get',
+    path: () => '/api/v1/ops/status',
+    allowed: TEAM_ADMINS,
+  },
+  {
     name: 'POST /jobs/:id/retry',
     method: 'post',
     path: (f) => `/api/v1/jobs/${f.m10.deadJob}/retry`,

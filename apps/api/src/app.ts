@@ -38,6 +38,7 @@ import { commentsRouter } from './modules/comments/routes.js';
 import { invoicesRouter } from './modules/invoices/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
 import { importsRouter } from './modules/imports/routes.js';
+import { opsRouter } from './modules/ops/routes.js';
 import type { FileStorage } from './modules/files/storage.js';
 
 export interface AppConfig {
@@ -125,6 +126,7 @@ export function createApp(deps: AppDeps): Express {
   api.use(commentsRouter(deps));
   api.use(notificationsRouter(deps));
   api.use(importsRouter(deps));
+  api.use(opsRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', apiHeaders, api);

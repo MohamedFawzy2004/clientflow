@@ -2,7 +2,7 @@
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PostgresRateLimitStore, pruneRateLimits } from '../src/middleware/rate-limit-store.js';
-import { getPreCsrf, makeApp, ORIGIN, resetDb, seedAgency, testDb } from './helpers.js';
+import { getPreCsrf, login, makeApp, ORIGIN, resetDb, seedAgency, testDb } from './helpers.js';
 
 const db = testDb();
 afterAll(() => db.$disconnect());
@@ -65,5 +65,40 @@ describe('shared rate limits (ADR-062, O1)', () => {
       data: { resetAt: new Date(Date.now() - 1000) },
     });
     expect(await pruneRateLimits(db)).toBe(1);
+  });
+});
+
+describe('monitoring (ADR-064)', () => {
+  it('readiness reports a lagging job queue as degraded, without taking the instance out', async () => {
+    const { app } = makeApp();
+    const agencyId = (await db.agency.findFirstOrThrow()).id;
+    expect((await request(app).get('/health/ready').expect(200)).body.status).toBe('ok');
+    await db.outboxJob.create({
+      data: {
+        agencyId,
+        kind: 'reminders.scan',
+        payload: { agencyId },
+        availableAt: new Date(Date.now() - 20 * 60_000),
+      },
+    });
+    const res = await request(app).get('/health/ready').expect(200);
+    expect(res.body).toEqual({ status: 'degraded', checks: { database: 'ok', jobs: 'lagging' } });
+  });
+
+  it('owners and admins see system status with numbers only; others get 403', async () => {
+    const { app } = makeApp({}, db, { sharedRateLimits: true });
+    const owner = await login(app, 'owner@agency.test');
+    const res = await owner.agent.get('/api/v1/ops/status').expect(200);
+    expect(res.body.data).toMatchObject({
+      rateLimits: 'postgres',
+      jobs: { pending: 0, dead: 0, oldestDueSeconds: 0, lagging: false },
+    });
+    expect(res.body.data.database.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify(res.body)).not.toMatch(/postgres(ql)?:\/\/|password|5433|secret/i);
+    for (const who of ['pm@agency.test', 'finance@agency.test', 'salesa@agency.test']) {
+      const a = await login(app, who);
+      await a.agent.get('/api/v1/ops/status').expect(403);
+    }
+    await request(app).get('/api/v1/ops/status').expect(401);
   });
 });
