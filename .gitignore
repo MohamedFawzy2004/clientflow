@@ -42,6 +42,7 @@ Thumbs.db
 # private uploaded files (encrypted, M7)
 .storage/
 e2e/.storage/
+e2e/.demo-storage/
 e2e/.mail-sink/
 
 # backups (contain personal data; never commit)
