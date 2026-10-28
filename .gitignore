@@ -48,3 +48,4 @@ e2e/.mail-sink/
 backups/
 apps/api/backups/
 .restore-storage/
+.demo-storage/

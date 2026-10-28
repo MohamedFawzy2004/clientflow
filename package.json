@@ -21,6 +21,7 @@
     "db:test:prepare": "node scripts/with-test-db.mjs prisma migrate deploy",
     "bootstrap:owner": "npm run bootstrap:owner -w @clientflow/api --",
     "seed:dev": "npm run seed:dev -w @clientflow/api",
+    "demo:reset": "npm run demo:reset -w @clientflow/api --",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
