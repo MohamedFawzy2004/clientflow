@@ -42,6 +42,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['tests/setup.ts'],
+    // Simulated typing takes 2-3 s in the editor tests; 5 s was too tight on a busy machine.
+    testTimeout: 15_000,
     include: ['tests/**/*.test.tsx'],
     css: false,
   },
