@@ -1,0 +1,18 @@
+# ClamAV check (ADR-070, R25), 2026-10-28T17:59Z
+# Real clamd: docker.io/clamav/clamav:1.5.4 on 127.0.0.1:3310 (official image, signatures from freshclam).
+# Windows 11, Node 24.19.0. Command: CLAMAV_TEST_HOST=127.0.0.1 vitest run tests/clamav.test.ts
+
+ ✓ tests/clamav.test.ts > clamd protocol > reads the three kinds of reply 2ms
+ ✓ tests/clamav.test.ts > uploads with a virus scanner > a clean file is stored; the scanner saw exactly its bytes, decrypted 655ms
+ ✓ tests/clamav.test.ts > uploads with a virus scanner > a flagged file is refused, not stored, and the detection is audited 371ms
+ ✓ tests/clamav.test.ts > uploads with a virus scanner > when the scanner cannot be reached, uploads are refused (fail closed) 399ms
+ ✓ tests/clamav.test.ts > uploads with a virus scanner > system status shows the scanner answering, or off when none is configured 332ms
+ ✓ tests/clamav.test.ts > uploads with a virus scanner > streams large files in chunks without holding them whole 20ms
+ ✓ tests/clamav.test.ts > real ClamAV > answers, passes a clean file and detects the EICAR test file 26ms
+      Tests  7 passed (7)
+
+Direct scanner calls against the same clamd:
+  ping true
+  clean text -> {"clean":true}
+  EICAR test file -> {"clean":false,"signature":"Eicar-Test-Signature"}
+  20 MB stream in 2 chunks -> {"clean":true} in 1639 ms

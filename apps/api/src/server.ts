@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { loadEnv, mfaRequiredRoles } from './config/env.js';
 import { createDb } from './db/client.js';
+import { ClamdScanner } from './lib/clamav.js';
 import { createMailer } from './lib/mailer.js';
 import { deriveMfaKey } from './lib/totp.js';
 import { startWorker } from './jobs/worker.js';
@@ -30,11 +31,16 @@ try {
 
 const publicUrl = (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, '');
 
+const scanner = env.CLAMAV_HOST ? new ClamdScanner(env.CLAMAV_HOST, env.CLAMAV_PORT) : undefined;
+if (!scanner)
+  logger.warn('No antivirus scanner configured (CLAMAV_HOST): uploads get built-in checks only');
+
 const app = createApp({
   db,
   logger,
   mailer,
   storage,
+  ...(scanner ? { scanner } : {}),
   sharedRateLimits: true,
   config: {
     isProduction: env.NODE_ENV === 'production',

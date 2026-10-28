@@ -90,6 +90,9 @@ const envSchema = z.object({
    * and ADMIN in production (not in a demo), none elsewhere.
    */
   MFA_REQUIRED_ROLES: z.string().trim().optional(),
+  /** ClamAV (clamd) for uploads (ADR-070). Unset: built-in checks only. */
+  CLAMAV_HOST: z.string().trim().min(1).optional(),
+  CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
   DEMO_MODE: z
     .enum(['true', 'false'])
     .default('false')

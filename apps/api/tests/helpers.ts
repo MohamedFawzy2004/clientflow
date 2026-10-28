@@ -54,7 +54,7 @@ export interface TestApp {
 export function makeApp(
   overrides: Partial<AppConfig> = {},
   db: Db = testDb(),
-  extra: Pick<AppDeps, 'hooks' | 'sharedRateLimits'> = {},
+  extra: Pick<AppDeps, 'hooks' | 'sharedRateLimits' | 'scanner'> = {},
 ): TestApp {
   const logs: string[] = [];
   const sink = new Writable({

@@ -49,6 +49,13 @@ export function SystemStatusCard() {
                 ) : (
                   <Badge tone="success">Background jobs on time</Badge>
                 )}
+                {s.scanner === 'ok' ? (
+                  <Badge tone="success">Virus scanner on</Badge>
+                ) : s.scanner === 'unreachable' ? (
+                  <Badge tone="danger">Virus scanner not reachable: uploads paused</Badge>
+                ) : (
+                  <Badge tone="warning">No virus scanner: built-in checks only</Badge>
+                )}
                 <Badge tone={s.rateLimits === 'postgres' ? 'success' : 'warning'}>
                   {s.rateLimits === 'postgres'
                     ? 'Sign-in limits shared by all servers'

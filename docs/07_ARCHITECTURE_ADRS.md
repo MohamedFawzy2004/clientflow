@@ -552,3 +552,25 @@ The owner chose Resend (O9). `MAIL_TRANSPORT=resend` uses one HTTPS call per ema
 Invitation emails are sent during the request because the link is also shown to the inviter. A provider failure therefore no longer fails the request: the API returns `emailDelivery: "failed"` and the screen asks the inviter to share the link directly. Notification emails go through the outbox and are retried with backoff. A password-reset email is sent just after the response, so its timing reveals nothing about which accounts exist; a failure there is logged and the person can ask again.
 
 `DEMO_MODE` still refuses any sending transport, Resend included (ADR-066). Domain authentication (SPF, DKIM, DMARC) is set up by the owner in Resend and DNS; the deployment guide lists the steps.
+
+## ADR-069 — Two-step sign-in with an authenticator app (ACCEPTED, M12.1)
+
+Owners and Admins can change everything, so a stolen password must not be enough (threat model open risk, ASVS V2.8). ClientFlow uses **TOTP** (RFC 6238: HMAC-SHA1, 6 digits, 30-second steps), which every common authenticator app reads. It is built on Node's crypto with no library and checked against the RFC's test vectors.
+
+- **Sign-in.** A correct password for an account with two-step sign-in creates a challenge, not a session: a random token in an HttpOnly, SameSite=Strict cookie (`__Host-` in production), stored as its SHA-256 hash, valid for 5 minutes, single use, with at most 5 attempts. The session is created only after a valid code or recovery code, through the same `signIn()` as before.
+- **Codes.** One step of clock drift is accepted either way. The last accepted step is stored, and a conditional update makes the same code unusable twice, even for two concurrent requests.
+- **Secrets.** Stored AES-256-GCM encrypted, with a key derived by HKDF-SHA256 from `FILE_ENCRYPTION_KEY` (info `clientflow-mfa-totp-v1`). That gives a separate key for a separate purpose without another secret for the owner to manage. Losing the file key therefore also loses two-step sign-in; recovery is the `reset-mfa` CLI.
+- **Setup.** It needs the current password, then a code from the new secret. The QR code is drawn in the browser from the `otpauth://` link (`qrcode-generator`, MIT, no dependencies), and the key is also shown for typing in by hand. Ten recovery codes (60 bits each) are shown once and stored as SHA-256 hashes. Turning it on ends the person's other sessions.
+- **Required roles.** `MFA_REQUIRED_ROLES` defaults to `OWNER,ADMIN` in production, and to none in demos, development and tests. Until a required person has it on, the API answers `403 MFA_SETUP_REQUIRED` to everything except reading the session, signing out and the two setup calls, and the app shows only the setup page. Required roles cannot turn it off.
+- **Recovery.** An Owner can reset another person's two-step sign-in, which ends their sessions; nobody can reset their own. For the last Owner, `node apps/api/dist/cli/reset-mfa.js --email …` runs from the server's shell. Every step is audited: setup, enable, disable, failed codes, recovery code use and resets.
+- **Not done.** WebAuthn/passkeys (phishing-resistant) would be stronger and remain a later option. Client portal users are not required to use two-step sign-in by default.
+
+## ADR-070 — ClamAV for uploads, failing closed (ACCEPTED, M12.1)
+
+The built-in checks (allowlist, file signature, active content, test signature) are not an antivirus (R25). With `CLAMAV_HOST` set, every upload that passes them is decrypted from storage and streamed to **clamd** with its `INSTREAM` protocol, in 4-byte length-prefixed chunks with back-pressure. The client is a small TCP client in `lib/clamav.ts`, with no library.
+
+- **Detected:** the stored object is deleted, the upload is refused (422), and the audit event records the signature name.
+- **Scanner unreachable or unexpected reply:** the object is deleted and the upload is refused with 503. While a scanner is configured, nothing unscanned is stored (fail closed). System status shows the scanner as on, unreachable or off, and the staging check reports it.
+- **Without `CLAMAV_HOST`:** behaviour is unchanged (built-in checks only), and the server logs a warning at startup.
+- **On Render:** the official `clamav/clamav:1.5.4` image as a private service. It needs 3–4 GB of memory to load signatures and updates them itself (freshclam). clamd's default stream limit (25 MB) matches the default upload limit; raising `FILE_MAX_BYTES` needs a matching `StreamMaxLength`.
+- **Tests** use a fake clamd that speaks the real framing; the report records a check against the real image.

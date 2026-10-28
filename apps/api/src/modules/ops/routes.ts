@@ -22,10 +22,11 @@ export function opsRouter(deps: AppDeps) {
         await db.$queryRaw`SELECT 1`;
         const latencyMs = Math.round((performance.now() - t0) * 10) / 10;
         const agencyId = req.auth!.user.agencyId;
-        const [pending, dead, lag] = await Promise.all([
+        const [pending, dead, lag, scannerUp] = await Promise.all([
           db.outboxJob.count({ where: { agencyId, state: 'PENDING' } }),
           db.outboxJob.count({ where: { agencyId, state: 'DEAD' } }),
           jobLagSeconds(db),
+          deps.scanner ? deps.scanner.ping() : Promise.resolve(null),
         ]);
         const data: OpsStatus = {
           release: process.env.APP_RELEASE?.slice(0, 64) ?? null,
@@ -35,6 +36,7 @@ export function opsRouter(deps: AppDeps) {
           rateLimits: deps.sharedRateLimits ? 'postgres' : 'memory',
           memoryMb: Math.round(process.memoryUsage().rss / 1_048_576),
           clientIp: req.ip ?? 'unknown',
+          scanner: scannerUp === null ? 'off' : scannerUp ? 'ok' : 'unreachable',
         };
         res.json({ data, meta: { requestId: req.requestId } });
       })().catch(next);

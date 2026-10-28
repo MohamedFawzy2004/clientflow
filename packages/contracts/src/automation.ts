@@ -273,4 +273,6 @@ export interface OpsStatus {
    * would share one rate limit.
    */
   clientIp: string;
+  /** Antivirus for uploads (ADR-070): not configured, answering, or not reachable. */
+  scanner: 'off' | 'ok' | 'unreachable';
 }

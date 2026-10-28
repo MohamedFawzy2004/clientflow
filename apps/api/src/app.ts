@@ -6,6 +6,7 @@ import express, { type Express, type Request, type RequestHandler, type Response
 import type { Role } from '@clientflow/contracts';
 import type { Logger } from 'pino';
 import type { Db } from './db/client.js';
+import type { MalwareScanner } from './lib/clamav.js';
 import type { Mailer } from './lib/mailer.js';
 import { csrfProtection, loadSession, requireAuth, requireMfaSetup } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
@@ -66,6 +67,8 @@ export interface AppDeps {
   mailer: Mailer;
   /** Private file storage (encrypted local disk today, ADR-043). */
   storage: FileStorage;
+  /** Antivirus for uploads (ADR-070). When set, uploads are refused while it cannot answer. */
+  scanner?: MalwareScanner;
   /** Test-only fault injection (T-HAND-02). Never set by server.ts. */
   hooks?: { beforeHandoffCommit?: () => void | Promise<void> };
   /**
