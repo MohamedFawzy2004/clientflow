@@ -106,6 +106,7 @@ export async function resolveSession(
       isDemo: user.agency.isDemo,
     },
     clientOrg: user.clientOrg ? { id: user.clientOrg.id, name: user.clientOrg.name } : null,
+    mfaEnabled: user.mfaEnabledAt !== null,
   };
 }
 

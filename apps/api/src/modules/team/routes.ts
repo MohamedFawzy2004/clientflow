@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { memberActionSchema, memberUpdateSchema } from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
+import { resetMfaFor } from '../auth/mfa.js';
 import { parseOrThrow } from '../../lib/validation.js';
 import { requirePermission } from '../../middleware/auth.js';
 import {
@@ -84,6 +85,16 @@ export function teamRouter(deps: AppDeps) {
         req.requestId,
       );
       res.json({ data, meta: { requestId: req.requestId } });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Lost phone and recovery codes (ADR-069): an Owner resets another person's two-step sign-in.
+  router.post('/:id/mfa-reset', requirePermission('team.manage'), async (req, res, next) => {
+    try {
+      await resetMfaFor(deps, req.auth!, String(req.params.id), req.requestId);
+      res.json({ data: { reset: true }, meta: { requestId: req.requestId } });
     } catch (err) {
       next(err);
     }

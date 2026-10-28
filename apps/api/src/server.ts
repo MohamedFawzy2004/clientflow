@@ -1,7 +1,8 @@
 import { createApp } from './app.js';
-import { loadEnv } from './config/env.js';
+import { loadEnv, mfaRequiredRoles } from './config/env.js';
 import { createDb } from './db/client.js';
 import { createMailer } from './lib/mailer.js';
+import { deriveMfaKey } from './lib/totp.js';
 import { startWorker } from './jobs/worker.js';
 import { createLogger } from './middleware/logger.js';
 import { LocalEncryptedStorage } from './modules/files/storage.js';
@@ -48,6 +49,10 @@ const app = createApp({
     publicUrl,
     ...(env.WEB_DIST_DIR ? { webDistDir: env.WEB_DIST_DIR } : {}),
     files: { maxBytes: env.FILE_MAX_BYTES, projectQuotaBytes: env.FILE_PROJECT_QUOTA_BYTES },
+    mfa: {
+      key: deriveMfaKey(Buffer.from(env.FILE_ENCRYPTION_KEY, 'hex')),
+      requiredRoles: mfaRequiredRoles(env),
+    },
   },
 });
 

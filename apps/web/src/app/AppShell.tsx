@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   BarChart3,
   Briefcase,
@@ -193,12 +193,20 @@ function UserBlock({
   signingOut: boolean;
 }) {
   return (
-    <div className={cn('flex items-center gap-3 rounded-lg p-2', rail && 'flex-col lg:flex-row')}>
-      <Avatar name={user.name} />
-      <div className={cn('min-w-0 flex-1', rail && 'hidden lg:block')}>
-        <p className="truncate text-sm font-medium text-text">{user.name}</p>
-        <p className="truncate text-xs text-muted">{ROLE_LABELS[user.role]}</p>
-      </div>
+    <div className={cn('flex items-center gap-1 rounded-lg p-1', rail && 'flex-col lg:flex-row')}>
+      {/* Your name opens your account security (two-step sign-in, ADR-069). */}
+      <Link
+        to="/app/account"
+        aria-label={`${user.name}, ${ROLE_LABELS[user.role]}: account security`}
+        title="Account security"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1 transition-colors hover:bg-surface-alt"
+      >
+        <Avatar name={user.name} />
+        <span className={cn('min-w-0 flex-1', rail && 'hidden lg:block')}>
+          <span className="block truncate text-sm font-medium text-text">{user.name}</span>
+          <span className="block truncate text-xs text-muted">{ROLE_LABELS[user.role]}</span>
+        </span>
+      </Link>
       <button
         type="button"
         onClick={onSignOut}

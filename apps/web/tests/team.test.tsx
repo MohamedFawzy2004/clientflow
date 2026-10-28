@@ -19,6 +19,7 @@ const member = (over: Partial<TeamMember>): TeamMember => ({
   status: 'ACTIVE',
   lastLoginAt: '2026-10-24T08:00:00.000Z',
   activeSessions: 1,
+  mfaEnabled: false,
   createdAt: '2026-10-01T08:00:00.000Z',
   version: 3,
   isSelf: false,

@@ -3,10 +3,11 @@ import cookieParser from 'cookie-parser';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import express, { type Express, type Request, type RequestHandler, type Response } from 'express';
+import type { Role } from '@clientflow/contracts';
 import type { Logger } from 'pino';
 import type { Db } from './db/client.js';
 import type { Mailer } from './lib/mailer.js';
-import { csrfProtection, loadSession, requireAuth } from './middleware/auth.js';
+import { csrfProtection, loadSession, requireAuth, requireMfaSetup } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { httpLogger } from './middleware/logger.js';
 import {
@@ -54,6 +55,8 @@ export interface AppConfig {
   webDistDir?: string;
   /** Upload limits (SEC-12): per file, and in total per project. */
   files: { maxBytes: number; projectQuotaBytes?: number };
+  /** Two-step sign-in (ADR-069): the key for TOTP secrets, and the roles that must use it. */
+  mfa: { key: Buffer; requiredRoles: readonly Role[] };
 }
 
 export interface AppDeps {
@@ -106,6 +109,7 @@ export function createApp(deps: AppDeps): Express {
   api.use(cookieParser());
   api.use(loadSession(db, cookies));
   api.use(csrfProtection(config.csrfSecret));
+  api.use(requireMfaSetup(config.mfa.requiredRoles));
 
   api.use('/auth', authRouter(deps, limiters));
   api.use('/contacts', contactsRouter(deps));

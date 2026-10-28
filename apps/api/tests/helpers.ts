@@ -21,6 +21,9 @@ export const PASSWORD = 'correct horse battery staple';
 /** Upload limit in tests: small, so the size checks run fast. */
 export const TEST_FILE_MAX_BYTES = 256 * 1024;
 
+/** Key for TOTP secrets in tests (ADR-069). */
+export const MFA_KEY = randomBytes(32);
+
 /** One throwaway encrypted store per test process (never the developer's .storage folder). */
 export const STORAGE_DIR = mkdtempSync(join(tmpdir(), 'clientflow-files-'));
 export const storage = new LocalEncryptedStorage(STORAGE_DIR, randomBytes(32));
@@ -34,7 +37,7 @@ export function testDb(): Db {
 /** TRUNCATE skips row-level triggers, so the append-only audit table can still be reset. */
 export async function resetDb(db = testDb()) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE rate_limit_counters, outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE mfa_challenges, mfa_recovery_codes, rate_limit_counters, outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 }
 
@@ -76,6 +79,7 @@ export function makeApp(
       trustProxy: 0,
       publicUrl: ORIGIN,
       files: { maxBytes: TEST_FILE_MAX_BYTES },
+      mfa: { key: MFA_KEY, requiredRoles: [] },
       ...overrides,
     },
   });

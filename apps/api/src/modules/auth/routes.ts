@@ -1,8 +1,13 @@
-import { type RequestHandler, Router } from 'express';
+import { type Request, type RequestHandler, Router } from 'express';
 import {
   loginRequestSchema,
+  mfaConfirmSchema,
+  mfaEnableSchema,
+  mfaSetupStartSchema,
+  mfaVerifySchema,
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
+  type MfaChallengeResponse,
   type SessionUser,
 } from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
@@ -20,13 +25,23 @@ import {
   revokeSession,
   sessionCsrfToken,
 } from './session.js';
+import {
+  disableMfa,
+  enableMfa,
+  issueChallenge,
+  mfaCookieName,
+  mfaStatus,
+  regenerateRecoveryCodes,
+  startSetup,
+  verifyChallenge,
+} from './mfa.js';
 import { signIn } from './sign-in.js';
 import type { AuthContext } from '../../types/express.js';
 
 const INVALID_CREDENTIALS = () =>
   new AppError(401, 'UNAUTHENTICATED', 'Email or password is incorrect.');
 
-function toSessionUser(auth: AuthContext): SessionUser {
+function toSessionUser(auth: AuthContext, config: AppDeps['config']): SessionUser {
   return {
     id: auth.user.id,
     name: auth.user.name,
@@ -34,6 +49,7 @@ function toSessionUser(auth: AuthContext): SessionUser {
     role: auth.user.role,
     agency: auth.agency,
     clientOrg: auth.clientOrg,
+    mfa: mfaStatus(config, auth.user.role, auth.mfaEnabled),
   };
 }
 
@@ -92,6 +108,21 @@ export function authRouter(deps: AppDeps, limiters: AuthLimiters) {
           throw INVALID_CREDENTIALS();
         }
 
+        // Two-step sign-in (ADR-069): the session waits for the code.
+        if (user.mfaEnabledAt) {
+          await issueChallenge(deps, res, user.id);
+          await writeAudit(db, {
+            agencyId: user.agencyId,
+            actorId: user.id,
+            action: 'auth.password_verified',
+            outcome: 'SUCCESS',
+            requestId: req.requestId,
+            metadata: { next: 'mfa' },
+          });
+          const pending: MfaChallengeResponse = { mfaRequired: true };
+          res.json({ data: pending, meta: { requestId: req.requestId } });
+          return;
+        }
         const body = await signIn(deps, req, res, user, 'auth.login');
         res.json({ data: body, meta: { requestId: req.requestId } });
       } catch (err) {
@@ -99,6 +130,50 @@ export function authRouter(deps: AppDeps, limiters: AuthLimiters) {
       }
     },
   );
+
+  router.post('/mfa/verify', limiters.tokenPerIp, formCsrf, async (req, res, next) => {
+    try {
+      const input = parseOrThrow(mfaVerifySchema, req.body);
+      const user = await verifyChallenge(deps, req, input);
+      res.clearCookie(mfaCookieName(config.isProduction), { path: '/', secure: cookies.secure });
+      const body = await signIn(deps, req, res, user, 'auth.login');
+      res.json({ data: body, meta: { requestId: req.requestId } });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  const mfaRoute = (path: string, handler: (req: Request) => Promise<unknown>) =>
+    router.post(path, requireAuth, async (req, res, next) => {
+      try {
+        res.json({ data: await handler(req), meta: { requestId: req.requestId } });
+      } catch (err) {
+        next(err);
+      }
+    });
+  mfaRoute('/mfa/setup', (req) =>
+    startSetup(
+      deps,
+      req.auth!,
+      parseOrThrow(mfaSetupStartSchema, req.body).password,
+      req.requestId,
+    ),
+  );
+  mfaRoute('/mfa/enable', (req) =>
+    enableMfa(deps, req.auth!, parseOrThrow(mfaEnableSchema, req.body).code, req.requestId),
+  );
+  mfaRoute('/mfa/recovery-codes', (req) =>
+    regenerateRecoveryCodes(
+      deps,
+      req.auth!,
+      parseOrThrow(mfaConfirmSchema, req.body),
+      req.requestId,
+    ),
+  );
+  mfaRoute('/mfa/disable', async (req) => {
+    await disableMfa(deps, req.auth!, parseOrThrow(mfaConfirmSchema, req.body), req.requestId);
+    return { disabled: true };
+  });
 
   router.post('/logout', requireAuth, async (req, res, next) => {
     try {
@@ -119,7 +194,7 @@ export function authRouter(deps: AppDeps, limiters: AuthLimiters) {
   });
 
   router.get('/me', requireAuth, (req, res) => {
-    res.json({ data: toSessionUser(req.auth!), meta: { requestId: req.requestId } });
+    res.json({ data: toSessionUser(req.auth!, config), meta: { requestId: req.requestId } });
   });
 
   // Always the same 202, whether or not the account exists (no enumeration). The work runs after

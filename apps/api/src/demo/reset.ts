@@ -1,6 +1,7 @@
 // One demo reset (ADR-066), after checkDemoTarget has accepted the database: wipe, seed through
 // an in-process copy of the API on 127.0.0.1 (never the public server), then deliver every
 // queued email into memory so the live server never mails the fictional addresses.
+import { randomBytes } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { createApp } from '../app.js';
 import type { Db } from '../db/client.js';
@@ -44,6 +45,8 @@ export async function resetDemo(deps: {
       // The seeder signs in a dozen people from one address within seconds.
       rateLimits: { loginPerIp: 1000, tokenPerIp: 1000, apiPerIp: 100_000 },
       files: deps.files,
+      // The demo seeder never turns on two-step sign-in, and demos do not require it.
+      mfa: { key: randomBytes(32), requiredRoles: [] },
     },
   });
   const server = app.listen(0, '127.0.0.1');

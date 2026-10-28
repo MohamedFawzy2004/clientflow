@@ -1,3 +1,4 @@
+import { ROLES, type Role } from '@clientflow/contracts';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -84,6 +85,11 @@ const envSchema = z.object({
    * A demo deployment (ADR-066): allows `npm run demo:reset` and never sends real email. A reset
    * still refuses any database whose agency is not marked as a demo.
    */
+  /**
+   * Roles that must use two-step sign-in (ADR-069), comma-separated, or `none`. Default: OWNER
+   * and ADMIN in production (not in a demo), none elsewhere.
+   */
+  MFA_REQUIRED_ROLES: z.string().trim().optional(),
   DEMO_MODE: z
     .enum(['true', 'false'])
     .default('false')
@@ -136,5 +142,21 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (env.DEMO_MODE && !NON_SENDING_TRANSPORTS.includes(env.MAIL_TRANSPORT)) {
     throw new Error('DEMO_MODE needs a transport that sends nothing (dev-sink or disabled).');
   }
+  mfaRequiredRoles(env); // fails here on an unknown role name
   return env;
+}
+
+/** The roles that must use two-step sign-in (ADR-069). */
+export function mfaRequiredRoles(env: Env): Role[] {
+  const raw = env.MFA_REQUIRED_ROLES;
+  if (raw === undefined) {
+    return env.NODE_ENV === 'production' && !env.DEMO_MODE ? ['OWNER', 'ADMIN'] : [];
+  }
+  if (raw === '' || raw.toLowerCase() === 'none') return [];
+  const roles = raw.split(',').map((r) => r.trim().toUpperCase());
+  const unknown = roles.filter((r) => !(ROLES as readonly string[]).includes(r));
+  if (unknown.length > 0) {
+    throw new Error(`MFA_REQUIRED_ROLES has unknown roles: ${unknown.join(', ')}`);
+  }
+  return roles as Role[];
 }

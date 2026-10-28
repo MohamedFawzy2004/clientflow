@@ -168,6 +168,8 @@ describe('file storage startup check (ADR-067)', () => {
     const key = Buffer.alloc(32, 1);
     expect(() => new LocalEncryptedStorage(join(dir, 'files'), key).checkWritable()).not.toThrow();
     writeFileSync(join(dir, 'not-a-folder'), 'x');
-    expect(() => new LocalEncryptedStorage(join(dir, 'not-a-folder'), key).checkWritable()).toThrow();
+    expect(() =>
+      new LocalEncryptedStorage(join(dir, 'not-a-folder'), key).checkWritable(),
+    ).toThrow();
   });
 });

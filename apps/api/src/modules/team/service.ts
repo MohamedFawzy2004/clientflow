@@ -30,6 +30,7 @@ function toMember(u: User, activeSessions: number, actor: AuthUser): TeamMember 
     status: u.active ? 'ACTIVE' : 'DEACTIVATED',
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     activeSessions,
+    mfaEnabled: u.mfaEnabledAt !== null,
     createdAt: u.createdAt.toISOString(),
     version: u.version,
     isSelf: u.id === actor.id,

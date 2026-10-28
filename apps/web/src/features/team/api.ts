@@ -71,7 +71,8 @@ export type MemberAction =
   | { kind: 'role'; role: StaffRole }
   | { kind: 'deactivate' }
   | { kind: 'reactivate' }
-  | { kind: 'revoke-sessions' };
+  | { kind: 'revoke-sessions' }
+  | { kind: 'mfa-reset' };
 
 export function useMemberAction() {
   const invalidate = useInvalidateTeam();
@@ -84,8 +85,8 @@ export function useMemberAction() {
           version: member.version,
         });
       }
-      if (action.kind === 'revoke-sessions') {
-        return api.post<ApiSuccess<TeamMember>>(`${base}/revoke-sessions`);
+      if (action.kind === 'revoke-sessions' || action.kind === 'mfa-reset') {
+        return api.post<ApiSuccess<TeamMember>>(`${base}/${action.kind}`);
       }
       return api.post<ApiSuccess<TeamMember>>(`${base}/${action.kind}`, {
         version: member.version,
