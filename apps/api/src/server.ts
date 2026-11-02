@@ -1,6 +1,6 @@
 import { createApp } from './app.js';
 import { loadEnv, mfaRequiredRoles } from './config/env.js';
-import { createDb } from './db/client.js';
+import { createDb, dbOptionsFromEnv } from './db/client.js';
 import { ClamdScanner } from './lib/clamav.js';
 import { createMailer } from './lib/mailer.js';
 import { deriveMfaKey } from './lib/totp.js';
@@ -10,7 +10,7 @@ import { LocalEncryptedStorage } from './modules/files/storage.js';
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
-const db = createDb(env.DATABASE_URL);
+const db = createDb(env.DATABASE_URL, dbOptionsFromEnv(env));
 
 const mailer = createMailer(env, logger);
 

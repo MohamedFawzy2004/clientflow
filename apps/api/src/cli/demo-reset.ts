@@ -8,7 +8,7 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadEnv } from '../config/env.js';
-import { createDb } from '../db/client.js';
+import { createDb, dbOptionsFromEnv } from '../db/client.js';
 import { DemoRefused, checkDemoTarget } from '../demo/guard.js';
 import { resetDemo } from '../demo/reset.js';
 import { LocalEncryptedStorage } from '../modules/files/storage.js';
@@ -19,7 +19,7 @@ const arg = (name: string) => {
   return i >= 0 ? process.argv[i + 1] : undefined;
 };
 
-const db = createDb(env.DATABASE_URL);
+const db = createDb(env.DATABASE_URL, dbOptionsFromEnv(env));
 try {
   const target = await checkDemoTarget(db, { demoMode: env.DEMO_MODE, confirm: arg('--confirm') });
   const result = await resetDemo({

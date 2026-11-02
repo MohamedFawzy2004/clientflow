@@ -6,7 +6,7 @@
 // Ends all their sessions. If their role requires two-step sign-in, they set it up again at the
 // next sign-in. Recorded in the audit log.
 import { loadEnv } from '../config/env.js';
-import { createDb } from '../db/client.js';
+import { createDb, dbOptionsFromEnv } from '../db/client.js';
 import { writeAudit } from '../lib/audit.js';
 import { normalizeEmail } from '../lib/normalize.js';
 import { clearMfa } from '../modules/auth/mfa.js';
@@ -19,7 +19,7 @@ if (!email) {
   process.exit(2);
 }
 
-const db = createDb(env.DATABASE_URL);
+const db = createDb(env.DATABASE_URL, dbOptionsFromEnv(env));
 try {
   const user = await db.user.findFirst({ where: { emailNorm: normalizeEmail(email) } });
   if (!user) {

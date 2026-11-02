@@ -4,7 +4,7 @@
 import { cpSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { loadEnv } from '../config/env.js';
-import { createDb } from '../db/client.js';
+import { createDb, dbOptionsFromEnv } from '../db/client.js';
 import {
   appliedMigrations,
   describeFiles,
@@ -28,7 +28,7 @@ if (existsSync(out)) {
 }
 mkdirSync(out, { recursive: true, mode: 0o700 });
 
-const db = createDb(env.DATABASE_URL);
+const db = createDb(env.DATABASE_URL, dbOptionsFromEnv(env));
 const started = Date.now();
 try {
   // Counts first, then the dump: rows written in between show up as a count mismatch on restore
