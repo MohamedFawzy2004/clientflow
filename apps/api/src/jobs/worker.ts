@@ -1,7 +1,7 @@
 // The background worker (FR-A02, ADR-058). It runs inside the API process by default, and as many
 // copies as you like can run at once: claims use SKIP LOCKED and every job is idempotent.
 import { handleJob, type WorkerDeps } from './handlers.js';
-import { pruneExpiredAuth } from '../lib/retention.js';
+import { pruneExpiredAuth, pruneIdempotencyRecords } from '../lib/retention.js';
 import { pruneRateLimits } from '../middleware/rate-limit-store.js';
 import { buryAbandoned, claimJobs, completeJob, enqueue, failJob, renewClaim } from './outbox.js';
 
@@ -113,6 +113,7 @@ export function startWorker(deps: WorkerDeps, options: WorkerOptions) {
       await pruneFinishedJobs(deps);
       await pruneRateLimits(deps.db);
       await pruneExpiredAuth(deps.db);
+      await pruneIdempotencyRecords(deps.db);
       lastPruned = now;
     }
     await runDueJobs(deps);

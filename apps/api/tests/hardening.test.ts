@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { pruneExpiredAuth } from '../src/lib/retention.js';
+import { pruneExpiredAuth, pruneIdempotencyRecords } from '../src/lib/retention.js';
 import { PostgresRateLimitStore, pruneRateLimits } from '../src/middleware/rate-limit-store.js';
 import { getPreCsrf, login, makeApp, ORIGIN, resetDb, seedAgency, testDb } from './helpers.js';
 
@@ -156,8 +156,37 @@ describe('retention of short-lived security records (NFR-12)', () => {
         { userId: user.id, tokenHash: 'f'.padEnd(64, '0'), createdAt: at(-2), expiresAt: at(-1) },
       ],
     });
-    expect(await pruneExpiredAuth(db)).toEqual({ sessions: 2, resetTokens: 1 });
+    await db.mfaChallenge.createMany({
+      data: [
+        { userId: user.id, tokenHash: 'g'.padEnd(64, '0'), createdAt: at(-32), expiresAt: at(-31) },
+        { userId: user.id, tokenHash: 'h'.padEnd(64, '0'), createdAt: at(-2), expiresAt: at(-1) },
+      ],
+    });
+    expect(await pruneExpiredAuth(db)).toEqual({ sessions: 2, resetTokens: 1, mfaChallenges: 1 });
     expect((await db.session.findMany()).map((s) => s.tokenHash[0]).sort()).toEqual(['b', 'd']);
+    expect((await db.mfaChallenge.findMany()).map((c) => c.tokenHash[0])).toEqual(['h']);
+  });
+
+  it('removes idempotency records after 30 days, when no retry can still arrive', async () => {
+    const user = await db.user.findFirstOrThrow({ where: { emailNorm: 'owner@agency.test' } });
+    const at = (d: number) => new Date(Date.now() + d * 86_400_000);
+    const rec = (scope: string, createdAt: Date) => ({
+      agencyId: user.agencyId,
+      actorId: user.id,
+      scope,
+      key: crypto.randomUUID(),
+      requestHash: '0'.repeat(64),
+      resultId: crypto.randomUUID(),
+      createdAt,
+    });
+    await db.idempotencyRecord.createMany({
+      data: [rec('old', at(-31)), rec('recent', at(-29)), rec('today', at(0))],
+    });
+    expect(await pruneIdempotencyRecords(db)).toEqual({ idempotencyRecords: 1 });
+    expect((await db.idempotencyRecord.findMany()).map((r) => r.scope).sort()).toEqual([
+      'recent',
+      'today',
+    ]);
   });
 });
 
