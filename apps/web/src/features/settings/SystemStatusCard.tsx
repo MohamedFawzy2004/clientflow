@@ -38,6 +38,8 @@ export function SystemStatusCard() {
             ],
             ['Server running for', duration(s.uptimeSeconds)],
             ['Server memory', `${s.memoryMb} MB`],
+            // Should be your own public address; a proxy's address means TRUST_PROXY is wrong.
+            ['Your address, as the server sees it', s.clientIp],
           ];
           return (
             <>
@@ -46,6 +48,13 @@ export function SystemStatusCard() {
                   <Badge tone="warning">Background jobs are behind</Badge>
                 ) : (
                   <Badge tone="success">Background jobs on time</Badge>
+                )}
+                {s.scanner === 'ok' ? (
+                  <Badge tone="success">Virus scanner on</Badge>
+                ) : s.scanner === 'unreachable' ? (
+                  <Badge tone="danger">Virus scanner not reachable: uploads paused</Badge>
+                ) : (
+                  <Badge tone="warning">No virus scanner: built-in checks only</Badge>
                 )}
                 <Badge tone={s.rateLimits === 'postgres' ? 'success' : 'warning'}>
                   {s.rateLimits === 'postgres'

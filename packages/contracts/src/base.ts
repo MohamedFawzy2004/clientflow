@@ -61,6 +61,7 @@ export type ErrorCode =
   | 'PAYLOAD_TOO_LARGE'
   | 'RATE_LIMITED'
   | 'SERVICE_UNAVAILABLE'
+  | 'MFA_SETUP_REQUIRED'
   | 'INTERNAL_ERROR';
 
 export interface ApiErrorBody {
@@ -121,11 +122,64 @@ export interface SessionUser {
   };
   /** CLIENT users only: the organization they belong to. */
   clientOrg: { id: string; name: string } | null;
+  /** Two-step sign-in (ADR-069). `required` and not `enabled`: setup comes before anything else. */
+  mfa: { enabled: boolean; required: boolean };
 }
 
 export interface LoginResponse {
   user: SessionUser;
   csrfToken: string;
+}
+
+/** The password was right and the account uses two-step sign-in: a code comes next. */
+export interface MfaChallengeResponse {
+  mfaRequired: true;
+}
+
+export type LoginResult = LoginResponse | MfaChallengeResponse;
+
+// ---------------------------------------------------------------------------
+// Two-step sign-in (ADR-069)
+// ---------------------------------------------------------------------------
+
+const totpCodeField = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/\s/g, ''))
+  .pipe(z.string().regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app.'));
+const currentPassword = z.string().min(1, 'Enter your password.').max(128);
+
+export const mfaSetupStartSchema = z.object({ password: currentPassword }).strict();
+export const mfaEnableSchema = z.object({ code: totpCodeField }).strict();
+export const mfaConfirmSchema = z
+  .object({ password: currentPassword, code: totpCodeField })
+  .strict();
+export const mfaVerifySchema = z.union([
+  z.object({ code: totpCodeField }).strict(),
+  z
+    .object({
+      recoveryCode: z
+        .string()
+        .trim()
+        .regex(
+          /^[A-Za-z2-7]{4}-?[A-Za-z2-7]{4}-?[A-Za-z2-7]{4}$/,
+          'Recovery codes look like ABCD-EFGH-JKLM.',
+        ),
+    })
+    .strict(),
+]);
+export type MfaVerifyInput = z.input<typeof mfaVerifySchema>;
+
+export interface MfaSetupStart {
+  /** For typing into the app by hand, in groups of four. */
+  secret: string;
+  /** otpauth:// link, shown as a QR code. */
+  otpauthUrl: string;
+}
+
+export interface MfaRecoveryCodes {
+  /** Shown once. Only their hashes are stored. */
+  recoveryCodes: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -286,11 +340,14 @@ export interface InvitationSummary {
   invitedBy: { id: string; name: string };
 }
 
+/** What happened to an invitation email. `failed`: the provider refused it; share the link. */
+export type EmailDelivery = 'sent' | 'failed' | 'sent_to_dev_sink' | 'disabled';
+
 export interface InvitationCreated {
   invitation: InvitationSummary;
   /** Shown once to the inviter so the invite works even without email delivery. */
   acceptUrl: string;
-  emailDelivery: 'sent_to_dev_sink' | 'disabled';
+  emailDelivery: EmailDelivery;
 }
 
 export interface InvitationPreview {
@@ -317,6 +374,8 @@ export interface TeamMember {
   status: MemberStatus;
   lastLoginAt: string | null;
   activeSessions: number;
+  /** Two-step sign-in is on (ADR-069). */
+  mfaEnabled: boolean;
   createdAt: string;
   version: number;
   isSelf: boolean;

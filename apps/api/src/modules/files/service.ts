@@ -174,6 +174,47 @@ export async function uploadFile(
     throw validationFailed({ file: [reason] });
   }
 
+  // Antivirus (ADR-070): the stored file, decrypted, goes to the scanner. With a scanner
+  // configured, no answer means no file: uploads fail closed.
+  let scanDetail = 'Built-in checks passed: type signature, active content, test signature.';
+  if (deps.scanner) {
+    const rejectScanned = async (reason: string, signature?: string) => {
+      await storage.remove(key);
+      await writeAudit(db, {
+        agencyId: actor.agencyId,
+        actorId: actor.id,
+        action: 'file.rejected',
+        outcome: 'FAILURE',
+        targetType: 'project',
+        targetId: p.id,
+        requestId: req.requestId,
+        metadata: { reason, extension: ext, ...(signature ? { signature } : {}) },
+      });
+    };
+    let verdict;
+    try {
+      verdict = await deps.scanner.scan(storage.get(key, meta));
+    } catch (err) {
+      await rejectScanned('scanner_unavailable');
+      deps.logger.error(
+        { err: err instanceof Error ? err.message : String(err), requestId: req.requestId },
+        'Antivirus scanner unavailable; upload refused',
+      );
+      throw new AppError(
+        503,
+        'SERVICE_UNAVAILABLE',
+        'The virus scanner is not reachable, so uploads are paused. Try again in a few minutes.',
+      );
+    }
+    if (!verdict.clean) {
+      await rejectScanned('malware', verdict.signature);
+      throw validationFailed({
+        file: ['The virus scanner flagged this file, so it was not stored.'],
+      });
+    }
+    scanDetail = `Built-in checks and ${deps.scanner.name} passed.`;
+  }
+
   const name = safeFileName(rawName, ext);
   try {
     const row = await db.$transaction(async (tx) => {
@@ -189,7 +230,7 @@ export async function uploadFile(
           sizeBytes: result.size,
           sha256: result.sha256,
           scanStatus: 'CLEAN',
-          scanDetail: 'Built-in checks passed: type signature, active content, test signature.',
+          scanDetail,
           scannedAt: new Date(),
           encIv: meta.iv ? Buffer.from(meta.iv) : null,
           encTag: meta.tag ? Buffer.from(meta.tag) : null,

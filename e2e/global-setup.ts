@@ -31,7 +31,7 @@ export default async function globalSetup() {
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   await client.query(
-    'TRUNCATE TABLE rate_limit_counters, outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE mfa_challenges, mfa_recovery_codes, rate_limit_counters, outbox_jobs, notifications, notification_preferences, audit_events, activities, payments, invoice_items, invoices, cost_rates, project_comment_revisions, project_comments, change_decisions, change_versions, change_requests, deliverable_reviews, deliverable_versions, deliverables, files, time_entries, task_dependencies, tasks, project_portal_shares, idempotency_records, handoff_checklist_items, project_milestones, project_members, projects, proposal_reviews, proposal_items, proposal_versions, proposals, service_catalog, deals, pipeline_stages, pipelines, contacts, import_runs, sessions, password_reset_tokens, invitations, users, client_organizations, agencies RESTART IDENTITY CASCADE',
   );
 
   const password = () => randomBytes(18).toString('base64url');
@@ -44,6 +44,8 @@ export default async function globalSetup() {
     pm: { email: 'pm@e2e.test', password: password() },
     member: { email: 'member@e2e.test', password: password() },
     finance: { email: 'finance@e2e.test', password: password() },
+    // Owned by the M12.1 two-step sign-in test, which turns it on for this user.
+    mfaUser: { email: 'mfa.user@e2e.test', password: password() },
   };
 
   run(
@@ -71,6 +73,7 @@ export default async function globalSetup() {
     ['pm', 'Pat Morgan', 'PM'],
     ['member', 'Mina Adel', 'MEMBER'],
     ['finance', 'Tarek Habib', 'FINANCE'],
+    ['mfaUser', 'Layla Kamal', 'MEMBER'],
   ] as const) {
     const passwordHash = await hash(creds[key].password, {
       algorithm: 2,

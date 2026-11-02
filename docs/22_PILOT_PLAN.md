@@ -4,6 +4,8 @@ Spec §7.6 and §27 ask for tests with **3 to 5 real agency users** and **one pe
 client**. Those sessions have **not happened yet**. Recruiting people is the project owner's call.
 This plan makes the sessions quick to run and the results comparable.
 
+Ready-to-use kit: [session checklist](pilot/session-checklist.md) and [feedback sheet](pilot/feedback-sheet.csv) (one row per finding; open it in any spreadsheet).
+
 ## Who
 
 | Seat                    | Ideal participant                             | Signs in as (demo)                     |

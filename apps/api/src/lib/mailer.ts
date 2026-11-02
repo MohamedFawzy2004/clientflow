@@ -18,7 +18,7 @@ export interface MailMessage {
 }
 
 export interface Mailer {
-  readonly delivery: 'sent_to_dev_sink' | 'disabled';
+  readonly delivery: 'sent' | 'sent_to_dev_sink' | 'disabled';
   send(message: MailMessage): Promise<void>;
 }
 
@@ -88,5 +88,101 @@ export class MemoryMailer implements Mailer {
   lastToken(kind: string): string | undefined {
     const msg = [...this.messages].reverse().find((m) => m.kind === kind);
     return msg?.text.match(/#token=([A-Za-z0-9_-]+)/)?.[1];
+  }
+}
+
+/**
+ * Resend (ADR-068): one HTTPS call per email, plain text only. The outbox's idempotency key goes
+ * to Resend as `Idempotency-Key`, so a retried job never sends twice within Resend's 24 hours.
+ * Logs carry the kind and Resend's message id, never the recipient or the body.
+ */
+export class ResendMailer implements Mailer {
+  readonly delivery = 'sent' as const;
+
+  constructor(
+    private readonly apiKey: string,
+    private readonly from: string,
+    private readonly logger: Logger,
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly endpoint = 'https://api.resend.com/emails',
+  ) {}
+
+  async send(message: MailMessage) {
+    const res = await this.fetchImpl(this.endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        ...(message.idempotencyKey
+          ? { 'Idempotency-Key': message.idempotencyKey.slice(0, 256) }
+          : {}),
+      },
+      body: JSON.stringify({
+        from: this.from,
+        to: [message.to],
+        subject: message.subject,
+        text: message.text,
+        tags: [{ name: 'kind', value: message.kind.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 256) }],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      // Resend's error message can quote the address, so only its error name is logged.
+      const name = await res
+        .json()
+        .then((b: unknown) => {
+          const name = (b as { name?: unknown } | null)?.name;
+          return typeof name === 'string' ? name : undefined;
+        })
+        .catch(() => undefined);
+      this.logger.warn(
+        { kind: message.kind, status: res.status, error: name },
+        'Resend refused an email',
+      );
+      throw new Error(`The email provider refused the message (HTTP ${res.status}).`);
+    }
+    const { id } = (await res.json().catch(() => ({}))) as { id?: string };
+    this.logger.info({ kind: message.kind, providerId: id }, 'Email sent');
+  }
+}
+
+/** The mailer the configuration asks for (server and background worker). */
+export function createMailer(
+  env: {
+    MAIL_TRANSPORT: 'dev-sink' | 'disabled' | 'resend';
+    MAIL_SINK_DIR: string;
+    RESEND_API_KEY?: string | undefined;
+    MAIL_FROM?: string | undefined;
+  },
+  logger: Logger,
+): Mailer {
+  if (env.MAIL_TRANSPORT === 'resend') {
+    return new ResendMailer(env.RESEND_API_KEY!, env.MAIL_FROM!, logger);
+  }
+  return env.MAIL_TRANSPORT === 'dev-sink'
+    ? new DevSinkMailer(env.MAIL_SINK_DIR, logger)
+    : new DisabledMailer(logger);
+}
+
+export type EmailDelivery = Mailer['delivery'] | 'failed';
+
+/**
+ * For emails sent during a request whose link is also shown on screen (invitations): a provider
+ * outage must not fail the request, so the person sharing the link is told to send it themselves.
+ */
+export async function sendOrReport(
+  mailer: Mailer,
+  logger: Logger,
+  message: MailMessage,
+): Promise<EmailDelivery> {
+  try {
+    await mailer.send(message);
+    return mailer.delivery;
+  } catch (err) {
+    logger.error(
+      { kind: message.kind, err: err instanceof Error ? err.message : String(err) },
+      'Email could not be sent; the link is shown on screen instead',
+    );
+    return 'failed';
   }
 }

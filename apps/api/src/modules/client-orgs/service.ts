@@ -9,6 +9,7 @@ import type { Db } from '../../db/client.js';
 import type { Invitation } from '../../generated/prisma/client.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, staleVersion } from '../../lib/errors.js';
+import { sendOrReport } from '../../lib/mailer.js';
 import { normalizeEmail } from '../../lib/normalize.js';
 import { recordActivity } from '../../lib/timeline.js';
 import { generateToken, sha256Hex } from '../../lib/tokens.js';
@@ -122,7 +123,7 @@ export async function invitePortalUser(
   email: string,
   requestId: string,
 ): Promise<PortalInvitationCreated> {
-  const { db, mailer, config } = deps;
+  const { db, mailer, config, logger } = deps;
   const org = await findOrg(db, actor, orgId);
   if (org.archivedAt) throw conflict('This client organization is archived.');
   const emailNorm = normalizeEmail(email);
@@ -166,7 +167,7 @@ export async function invitePortalUser(
 
   const agency = await db.agency.findUniqueOrThrow({ where: { id: actor.agencyId } });
   const acceptUrl = `${config.publicUrl}/activate-invite#token=${token}`;
-  await mailer.send({
+  const emailDelivery = await sendOrReport(mailer, logger, {
     kind: 'portal_invitation',
     to: emailNorm,
     subject: `${agency.name} invited you to their client portal`,
@@ -180,7 +181,7 @@ export async function invitePortalUser(
       'If you were not expecting this, you can ignore this email.',
     ].join('\n'),
   });
-  return { invitation: toInvitation(invitation), acceptUrl, emailDelivery: mailer.delivery };
+  return { invitation: toInvitation(invitation), acceptUrl, emailDelivery };
 }
 
 export async function revokePortalInvitation(

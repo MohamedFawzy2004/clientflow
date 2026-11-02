@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
-import { canAny, type Permission } from '@clientflow/contracts';
+import { canAny, type Permission, type Role } from '@clientflow/contracts';
 import type { Db } from '../db/client.js';
-import { csrfInvalid, forbidden, unauthenticated } from '../lib/errors.js';
+import { AppError, csrfInvalid, forbidden, unauthenticated } from '../lib/errors.js';
 import {
   type CookieSettings,
   resolveSession,
@@ -76,5 +76,33 @@ export function requirePermission(...permissions: Permission[]): RequestHandler 
     if (!req.auth) return next(unauthenticated());
     if (!canAny(req.auth.user.role, permissions)) return next(forbidden());
     next();
+  };
+}
+
+/** What a person whose role needs two-step sign-in may do before setting it up (ADR-069). */
+const MFA_SETUP_ALLOWED = new Set([
+  'GET /auth/me',
+  'GET /auth/csrf',
+  'POST /auth/logout',
+  'POST /auth/mfa/setup',
+  'POST /auth/mfa/enable',
+]);
+
+/**
+ * Until a required role has two-step sign-in on, every other API call answers 403
+ * MFA_SETUP_REQUIRED. Enforced here, on the server, not only by the screens.
+ */
+export function requireMfaSetup(requiredRoles: readonly Role[]): RequestHandler {
+  return (req, _res, next) => {
+    const auth = req.auth;
+    if (!auth || auth.mfaEnabled || !requiredRoles.includes(auth.user.role)) return next();
+    if (MFA_SETUP_ALLOWED.has(`${req.method} ${req.path}`)) return next();
+    next(
+      new AppError(
+        403,
+        'MFA_SETUP_REQUIRED',
+        'Turn on two-step sign-in to continue. Your role requires it.',
+      ),
+    );
   };
 }

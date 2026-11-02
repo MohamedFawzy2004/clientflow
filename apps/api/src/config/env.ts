@@ -1,3 +1,4 @@
+import { ROLES, type Role } from '@clientflow/contracts';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -24,10 +25,23 @@ const envSchema = z.object({
   /** Public base URL used in emailed links. Defaults to the first APP_ORIGINS entry. */
   APP_PUBLIC_URL: z.string().url().optional(),
   /**
-   * `dev-sink` writes emails to local files (never sent). `disabled` sends nothing.
-   * A real provider adapter arrives with the owner's choice of provider (ADR-016).
+   * `dev-sink` writes emails to local files (never sent). `disabled` sends nothing. `resend`
+   * sends through Resend (ADR-068) and needs RESEND_API_KEY and MAIL_FROM.
    */
-  MAIL_TRANSPORT: z.enum(['dev-sink', 'disabled']).default('dev-sink'),
+  MAIL_TRANSPORT: z.enum(['dev-sink', 'disabled', 'resend']).default('dev-sink'),
+  RESEND_API_KEY: z
+    .string()
+    .regex(/^re_[A-Za-z0-9_]{8,}$/, 'RESEND_API_KEY must be a Resend API key (re_…)')
+    .optional(),
+  /** Sender, e.g. `ClientFlow <noreply@crm.youragency.com>`, on a domain verified in Resend. */
+  MAIL_FROM: z
+    .string()
+    .trim()
+    .regex(
+      /^(?:[^<>@]{1,100} <[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>|[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+)$/,
+      'MAIL_FROM must be an address or "Name <address>"',
+    )
+    .optional(),
   MAIL_SINK_DIR: z.string().min(1).default('.mail-sink'),
   /** Private upload storage (encrypted files). Never inside the web root; a volume in containers. */
   FILE_STORAGE_DIR: z.string().min(1).default('.storage'),
@@ -71,6 +85,14 @@ const envSchema = z.object({
    * A demo deployment (ADR-066): allows `npm run demo:reset` and never sends real email. A reset
    * still refuses any database whose agency is not marked as a demo.
    */
+  /**
+   * Roles that must use two-step sign-in (ADR-069), comma-separated, or `none`. Default: OWNER
+   * and ADMIN in production (not in a demo), none elsewhere.
+   */
+  MFA_REQUIRED_ROLES: z.string().trim().optional(),
+  /** ClamAV (clamd) for uploads (ADR-070). Unset: built-in checks only. */
+  CLAMAV_HOST: z.string().trim().min(1).optional(),
+  CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
   DEMO_MODE: z
     .enum(['true', 'false'])
     .default('false')
@@ -92,7 +114,12 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment configuration: ${issues}`);
   }
   const env = parsed.data;
-  const secrets = [env.CSRF_SECRET, env.DATABASE_URL, env.FILE_ENCRYPTION_KEY];
+  const secrets = [
+    env.CSRF_SECRET,
+    env.DATABASE_URL,
+    env.FILE_ENCRYPTION_KEY,
+    env.RESEND_API_KEY ?? '',
+  ];
   if (secrets.some((s) => PLACEHOLDER_MARKERS.some((m) => s.includes(m)))) {
     throw new Error('Environment still contains placeholder secrets from .env.example.');
   }
@@ -111,9 +138,28 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (env.NODE_ENV === 'production' && env.MAIL_TRANSPORT === 'dev-sink') {
     throw new Error('MAIL_TRANSPORT=dev-sink is not allowed in production.');
   }
+  if (env.MAIL_TRANSPORT === 'resend' && (!env.RESEND_API_KEY || !env.MAIL_FROM)) {
+    throw new Error('MAIL_TRANSPORT=resend needs RESEND_API_KEY and MAIL_FROM.');
+  }
   // Demo visitors can type any address into an invitation: a demo must never deliver email.
   if (env.DEMO_MODE && !NON_SENDING_TRANSPORTS.includes(env.MAIL_TRANSPORT)) {
     throw new Error('DEMO_MODE needs a transport that sends nothing (dev-sink or disabled).');
   }
+  mfaRequiredRoles(env); // fails here on an unknown role name
   return env;
+}
+
+/** The roles that must use two-step sign-in (ADR-069). */
+export function mfaRequiredRoles(env: Env): Role[] {
+  const raw = env.MFA_REQUIRED_ROLES;
+  if (raw === undefined) {
+    return env.NODE_ENV === 'production' && !env.DEMO_MODE ? ['OWNER', 'ADMIN'] : [];
+  }
+  if (raw === '' || raw.toLowerCase() === 'none') return [];
+  const roles = raw.split(',').map((r) => r.trim().toUpperCase());
+  const unknown = roles.filter((r) => !(ROLES as readonly string[]).includes(r));
+  if (unknown.length > 0) {
+    throw new Error(`MFA_REQUIRED_ROLES has unknown roles: ${unknown.join(', ')}`);
+  }
+  return roles as Role[];
 }

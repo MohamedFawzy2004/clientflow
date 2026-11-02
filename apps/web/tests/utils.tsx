@@ -20,6 +20,7 @@ export const USER: SessionUser = {
     isDemo: false,
   },
   clientOrg: null,
+  mfa: { enabled: false, required: false },
 };
 
 type Handler = (

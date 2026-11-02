@@ -10,6 +10,9 @@ import { NotFoundPage } from './NotFoundPage';
 // The shells load after sign-in (M11, NFR-03): the sign-in page does not need either of them.
 const AppShell = lazy(() => import('./AppShell').then((m) => ({ default: m.AppShell })));
 const PortalShell = lazy(() => import('./PortalShell').then((m) => ({ default: m.PortalShell })));
+const MfaRequiredPage = lazy(() =>
+  import('../features/account/MfaRequiredPage').then((m) => ({ default: m.MfaRequiredPage })),
+);
 
 function FullPageLoader() {
   return (
@@ -73,6 +76,14 @@ function RequireSession({ children, area }: { children: ReactNode; area: 'app' |
   // Staff never see the portal shell and portal users never see the staff app (spec §1.1).
   const inPortal = session.data.role === 'CLIENT';
   if (inPortal !== (area === 'portal')) return <Navigate to={homeFor(session.data.role)} replace />;
+  // A role that must use two-step sign-in sets it up before anything else (ADR-069).
+  if (session.data.mfa.required && !session.data.mfa.enabled) {
+    return (
+      <Suspense fallback={<FullPageLoader />}>
+        <MfaRequiredPage />
+      </Suspense>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -121,6 +132,13 @@ export const router = createBrowserRouter([
         lazy: screen(
           () => import('../features/notifications/NotificationsPage'),
           'NotificationsPage',
+        ),
+      },
+      {
+        path: 'account',
+        lazy: screen(
+          () => import('../features/account/AccountSecurityPage'),
+          'AccountSecurityPage',
         ),
       },
       {

@@ -186,6 +186,14 @@ const EVERYONE: Role[] = [...STAFF, 'CLIENT'];
 
 const ENDPOINTS: Endpoint[] = [
   { name: 'GET /auth/me', method: 'get', path: () => '/api/v1/auth/me', allowed: EVERYONE },
+  // M12.1 two-step sign-in: everyone signed in may start setup for their own account.
+  {
+    name: 'POST /auth/mfa/setup',
+    method: 'post',
+    path: () => '/api/v1/auth/mfa/setup',
+    body: () => ({ password: PASSWORD }),
+    allowed: EVERYONE,
+  },
   // Contacts
   { name: 'GET /contacts', method: 'get', path: () => '/api/v1/contacts', allowed: SALES_SIDE },
   {
@@ -332,6 +340,12 @@ const ENDPOINTS: Endpoint[] = [
     method: 'post',
     path: (f) => `/api/v1/users/${f.userRevoke}/revoke-sessions`,
     allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'POST /users/:id/mfa-reset',
+    method: 'post',
+    path: (f) => `/api/v1/users/${f.userRevoke}/mfa-reset`,
+    allowed: ['OWNER'],
   },
   {
     name: 'GET /invitations',

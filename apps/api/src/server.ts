@@ -1,7 +1,9 @@
 import { createApp } from './app.js';
-import { loadEnv } from './config/env.js';
+import { loadEnv, mfaRequiredRoles } from './config/env.js';
 import { createDb } from './db/client.js';
-import { DevSinkMailer, DisabledMailer } from './lib/mailer.js';
+import { ClamdScanner } from './lib/clamav.js';
+import { createMailer } from './lib/mailer.js';
+import { deriveMfaKey } from './lib/totp.js';
 import { startWorker } from './jobs/worker.js';
 import { createLogger } from './middleware/logger.js';
 import { LocalEncryptedStorage } from './modules/files/storage.js';
@@ -10,23 +12,35 @@ const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
 const db = createDb(env.DATABASE_URL);
 
-const mailer =
-  env.MAIL_TRANSPORT === 'dev-sink'
-    ? new DevSinkMailer(env.MAIL_SINK_DIR, logger)
-    : new DisabledMailer(logger);
+const mailer = createMailer(env, logger);
 
 const storage = new LocalEncryptedStorage(
   env.FILE_STORAGE_DIR,
   Buffer.from(env.FILE_ENCRYPTION_KEY, 'hex'),
 );
 
+try {
+  storage.checkWritable();
+} catch (err) {
+  logger.fatal(
+    { dir: env.FILE_STORAGE_DIR, err: err instanceof Error ? err.message : String(err) },
+    'File storage folder is not writable; check the disk mount and its owner',
+  );
+  process.exit(1);
+}
+
 const publicUrl = (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, '');
+
+const scanner = env.CLAMAV_HOST ? new ClamdScanner(env.CLAMAV_HOST, env.CLAMAV_PORT) : undefined;
+if (!scanner)
+  logger.warn('No antivirus scanner configured (CLAMAV_HOST): uploads get built-in checks only');
 
 const app = createApp({
   db,
   logger,
   mailer,
   storage,
+  ...(scanner ? { scanner } : {}),
   sharedRateLimits: true,
   config: {
     isProduction: env.NODE_ENV === 'production',
@@ -41,6 +55,10 @@ const app = createApp({
     publicUrl,
     ...(env.WEB_DIST_DIR ? { webDistDir: env.WEB_DIST_DIR } : {}),
     files: { maxBytes: env.FILE_MAX_BYTES, projectQuotaBytes: env.FILE_PROJECT_QUOTA_BYTES },
+    mfa: {
+      key: deriveMfaKey(Buffer.from(env.FILE_ENCRYPTION_KEY, 'hex')),
+      requiredRoles: mfaRequiredRoles(env),
+    },
   },
 });
 

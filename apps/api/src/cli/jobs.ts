@@ -5,7 +5,7 @@ import { loadEnv } from '../config/env.js';
 import { createDb } from '../db/client.js';
 import { runReminderScan } from '../jobs/reminders.js';
 import { runDueJobs, startWorker } from '../jobs/worker.js';
-import { DevSinkMailer, DisabledMailer } from '../lib/mailer.js';
+import { createMailer } from '../lib/mailer.js';
 import { createLogger } from '../middleware/logger.js';
 
 const mode = process.argv[2];
@@ -17,10 +17,7 @@ if (mode !== 'once' && mode !== 'worker') {
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
 const db = createDb(env.DATABASE_URL);
-const mailer =
-  env.MAIL_TRANSPORT === 'dev-sink'
-    ? new DevSinkMailer(env.MAIL_SINK_DIR, logger)
-    : new DisabledMailer(logger);
+const mailer = createMailer(env, logger);
 const deps = {
   db,
   mailer,

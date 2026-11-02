@@ -3,6 +3,7 @@ import type { LoginResponse } from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
 import type { Agency, User } from '../../generated/prisma/client.js';
 import { writeAudit } from '../../lib/audit.js';
+import { mfaStatus } from './mfa.js';
 import {
   cookieSettings,
   createSession,
@@ -60,6 +61,7 @@ export async function signIn(
         isDemo: user.agency.isDemo,
       },
       clientOrg,
+      mfa: mfaStatus(config, user.role, user.mfaEnabledAt !== null),
     },
     csrfToken: sessionCsrfToken(config.csrfSecret, tokenHash),
   };

@@ -1,7 +1,7 @@
 // Private file storage (SEC-12). A port with one adapter today: encrypted files on a local disk
 // volume. An S3-compatible adapter can implement the same port once hosting is chosen (ADR-043).
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { Readable, Transform } from 'node:stream';
@@ -36,6 +36,17 @@ export class LocalEncryptedStorage implements FileStorage {
   ) {
     if (key.length !== 32) throw new Error('File encryption key must be 32 bytes.');
     this.root = resolve(dir);
+  }
+
+  /**
+   * Startup check (ADR-067): the folder exists and this process can write to it. A disk mounted
+   * with the wrong owner then fails the deploy at once, not the first upload.
+   */
+  checkWritable() {
+    mkdirSync(this.root, { recursive: true });
+    const probe = join(this.root, `.write-check-${process.pid}`);
+    writeFileSync(probe, 'ok');
+    unlinkSync(probe);
   }
 
   private pathFor(key: string) {

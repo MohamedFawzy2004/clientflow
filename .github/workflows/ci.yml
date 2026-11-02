@@ -162,8 +162,14 @@ jobs:
             -v "$PWD/.trivyignore:/.trivyignore:ro" aquasec/trivy:0.76.0 image \
             --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
             --ignorefile /.trivyignore --no-progress --skip-version-check clientflow:ci
-      - name: Migrate an empty database with the migrate image
-        run: docker run --rm --network host -e DATABASE_URL="$SMOKE_DB" clientflow-migrate:ci
+      # The runtime image migrates on its own (Render's pre-deploy step, ADR-067); Prisma's own
+      # migrate image must then find nothing to do and nothing changed.
+      - name: Migrate an empty database with the runtime image, then check it with Prisma
+        run: |
+          docker run --rm --network host -e DATABASE_URL="$SMOKE_DB" clientflow:ci node apps/api/dist/cli/migrate.js
+          docker run --rm --network host -e DATABASE_URL="$SMOKE_DB" clientflow-migrate:ci | tee prisma-deploy.txt
+          grep -q "No pending migrations to apply" prisma-deploy.txt
+          ! grep -q "modified since they were applied" prisma-deploy.txt
       - name: Start the runtime image in production mode
         run: |
           secret=$(openssl rand -base64 48 | tr -d '\n=+/')

@@ -16,7 +16,7 @@ import { Field, Select } from '../../components/ui/form';
 import { useSession } from '../auth/session';
 import { useMemberAction, type MemberAction } from './api';
 
-type Step = 'overview' | 'confirm-deactivate' | 'confirm-signout';
+type Step = 'overview' | 'confirm-deactivate' | 'confirm-signout' | 'confirm-mfa-reset';
 
 /** Why the current user may not manage this member, or null. Mirrors the API rules (UI hint only). */
 export function manageBlockReason(
@@ -94,6 +94,32 @@ export function ManageMemberDialog({
           onClick={() => run({ kind: 'deactivate' }, `${member.name} was deactivated`)}
         >
           Deactivate
+        </Button>
+      </>
+    );
+  } else if (step === 'confirm-mfa-reset') {
+    body = (
+      <Banner tone="warning" title={`Reset two-step sign-in for ${member.name}?`}>
+        Use this when they lost their phone and their recovery codes. Two-step sign-in is turned off
+        and they are signed out everywhere. If their role requires it, they set it up again the next
+        time they sign in.
+      </Banner>
+    );
+    footer = (
+      <>
+        <Button variant="secondary" onClick={() => setStep('overview')} disabled={action.isPending}>
+          Back
+        </Button>
+        <Button
+          variant="danger"
+          data-autofocus
+          loading={action.isPending}
+          loadingLabel="Resetting…"
+          onClick={() =>
+            run({ kind: 'mfa-reset' }, `Two-step sign-in was reset for ${member.name}`)
+          }
+        >
+          Reset two-step sign-in
         </Button>
       </>
     );
@@ -187,6 +213,11 @@ export function ManageMemberDialog({
                     >
                       Deactivate
                     </Button>
+                    {user.role === 'OWNER' && member.mfaEnabled && !member.isSelf ? (
+                      <Button variant="secondary" onClick={() => setStep('confirm-mfa-reset')}>
+                        Reset two-step sign-in
+                      </Button>
+                    ) : null}
                   </>
                 ) : (
                   <Button

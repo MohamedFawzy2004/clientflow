@@ -16,6 +16,8 @@ export interface AuthContext {
   user: AuthUser;
   agency: { id: string; name: string; defaultCurrency: string; timezone: string; isDemo: boolean };
   clientOrg: { id: string; name: string } | null;
+  /** Two-step sign-in is turned on for this account (ADR-069). */
+  mfaEnabled: boolean;
 }
 
 declare global {

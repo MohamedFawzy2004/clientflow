@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -8,6 +9,7 @@ import { Button } from '../../components/ui/button';
 import { Banner } from '../../components/ui/feedback';
 import { Field, Input, PasswordInput } from '../../components/ui/form';
 import { Wordmark } from '../../components/ui/brand';
+import { MfaStep } from './MfaStep';
 import { useLogin, useSession } from './session';
 
 /** Where each kind of user starts: staff in the app, client portal users in the portal. */
@@ -74,6 +76,7 @@ export function LoginPage() {
   const login = useLogin();
   const requested = params.get('next');
   const expired = params.get('expired') === '1';
+  const [codeStep, setCodeStep] = useState(false);
 
   const form = useForm<LoginRequest>({
     resolver: zodResolver(loginRequestSchema),
@@ -88,7 +91,10 @@ export function LoginPage() {
 
   const onSubmit = form.handleSubmit((values) =>
     login.mutate(values, {
-      onSuccess: (data) => navigate(safeNextPath(requested, data.user.role), { replace: true }),
+      onSuccess: (data) => {
+        if ('user' in data) navigate(safeNextPath(requested, data.user.role), { replace: true });
+        else setCodeStep(true);
+      },
       onError: () => form.setValue('password', ''),
     }),
   );
@@ -146,59 +152,75 @@ export function LoginPage() {
           <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[28px] md:leading-9">
             Sign in
           </h1>
-          <p className="mt-1.5 text-sm text-muted">Use the email your agency admin invited.</p>
+          <p className="mt-1.5 text-sm text-muted">
+            {codeStep
+              ? 'Two-step sign-in is on for this account.'
+              : 'Use the email your agency admin invited.'}
+          </p>
+          {codeStep ? (
+            <MfaStep
+              onSignedIn={(role) => navigate(safeNextPath(requested, role), { replace: true })}
+              onRestart={() => {
+                setCodeStep(false);
+                login.reset();
+                form.reset({ email: form.getValues('email'), password: '' });
+              }}
+            />
+          ) : (
+            <>
+              <div className="mt-6 flex flex-col gap-3" aria-live="polite">
+                {expired && !failure ? (
+                  <Banner tone="info" title="Your session ended.">
+                    Sign in again to continue where you left off.
+                  </Banner>
+                ) : null}
+                {failure ? (
+                  <Banner tone="danger" title={failure.title}>
+                    {failure.body}
+                  </Banner>
+                ) : null}
+              </div>
 
-          <div className="mt-6 flex flex-col gap-3" aria-live="polite">
-            {expired && !failure ? (
-              <Banner tone="info" title="Your session ended.">
-                Sign in again to continue where you left off.
-              </Banner>
-            ) : null}
-            {failure ? (
-              <Banner tone="danger" title={failure.title}>
-                {failure.body}
-              </Banner>
-            ) : null}
-          </div>
-
-          <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
-            <Field label="Email" required error={errors.email?.message}>
-              {(p) => (
-                <Input
-                  {...p}
-                  type="email"
-                  autoComplete="username"
-                  inputMode="email"
-                  autoFocus
-                  {...form.register('email')}
-                />
-              )}
-            </Field>
-            <Field label="Password" required error={errors.password?.message}>
-              {(p) => (
-                <PasswordInput
-                  {...p}
-                  autoComplete="current-password"
-                  {...form.register('password')}
-                />
-              )}
-            </Field>
-            <Link
-              to="/forgot-password"
-              className="-mt-2 self-start text-[13px] font-medium text-primary-strong hover:underline"
-            >
-              Forgot password?
-            </Link>
-            <Button
-              type="submit"
-              size="lg"
-              className="mt-1 w-full"
-              loading={login.isPending}
-              loadingLabel="Signing in…"
-            >
-              Sign in
-            </Button>
-          </form>
+              <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
+                <Field label="Email" required error={errors.email?.message}>
+                  {(p) => (
+                    <Input
+                      {...p}
+                      type="email"
+                      autoComplete="username"
+                      inputMode="email"
+                      autoFocus
+                      {...form.register('email')}
+                    />
+                  )}
+                </Field>
+                <Field label="Password" required error={errors.password?.message}>
+                  {(p) => (
+                    <PasswordInput
+                      {...p}
+                      autoComplete="current-password"
+                      {...form.register('password')}
+                    />
+                  )}
+                </Field>
+                <Link
+                  to="/forgot-password"
+                  className="-mt-2 self-start text-[13px] font-medium text-primary-strong hover:underline"
+                >
+                  Forgot password?
+                </Link>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="mt-1 w-full"
+                  loading={login.isPending}
+                  loadingLabel="Signing in…"
+                >
+                  Sign in
+                </Button>
+              </form>
+            </>
+          )}
 
           <p className="mt-8 border-t border-border pt-5 text-xs leading-[18px] text-muted">
             There is no public sign-up. New team members join through an invitation from their

@@ -80,6 +80,8 @@ COPY --from=build /app/packages/contracts/dist packages/contracts/dist
 COPY apps/api/package.json apps/api/
 COPY --from=build /app/apps/api/dist apps/api/dist
 COPY --from=build /app/apps/web/dist apps/web/dist
+# SQL migrations for `node apps/api/dist/cli/migrate.js` (Render's pre-deploy step, ADR-067).
+COPY prisma/migrations prisma/migrations
 USER node
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
