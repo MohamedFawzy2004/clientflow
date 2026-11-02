@@ -225,6 +225,12 @@ model Contact {
   @@index([agencyId, emailNorm])
   @@index([agencyId, phoneNorm])
   @@index([importRunId])
+  // Trigram indexes for `contains` search (pg_trgm, migration 20261102120000). Declared here so
+  // `migrate dev` keeps them; the extension itself is created by that migration.
+  @@index([fullName(ops: raw("gin_trgm_ops"))], type: Gin, map: "contacts_full_name_trgm_idx")
+  @@index([companyName(ops: raw("gin_trgm_ops"))], type: Gin, map: "contacts_company_name_trgm_idx")
+  @@index([emailNorm(ops: raw("gin_trgm_ops"))], type: Gin, map: "contacts_email_norm_trgm_idx")
+  @@index([phoneNorm(ops: raw("gin_trgm_ops"))], type: Gin, map: "contacts_phone_norm_trgm_idx")
   @@map("contacts")
 }
 

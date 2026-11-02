@@ -17,6 +17,8 @@ One container image (`Dockerfile`) runs the API **and** serves the built web app
 
 Any platform that runs a container and a managed PostgreSQL 17 works: Render, Railway, Fly.io, a VPS with Docker, and so on.
 
+The migrations create the `pg_trgm` extension, which indexes contact search. It ships with PostgreSQL, is a trusted extension, and Render, Railway and most managed services allow it. If a server does not offer it, the migration logs a warning and skips those indexes; search still works, only more slowly on large lists.
+
 ## Requirements
 
 - **PostgreSQL 17**, reachable only from the app. Use a dedicated database user that **is not a superuser** (risk O2). It needs `CREATE`/`ALTER` on its own database for migrations.
