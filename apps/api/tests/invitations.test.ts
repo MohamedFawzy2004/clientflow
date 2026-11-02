@@ -295,3 +295,62 @@ describe('revoke and resend', () => {
     ).toBe(404);
   });
 });
+
+describe('security audit F4: the inviter gets the link only when the email did not go out', () => {
+  /** Makes the test mailer report a real delivery, as Resend does in production. */
+  function deliverForReal() {
+    Object.defineProperty(t.mailer, 'delivery', { value: 'sent' });
+  }
+
+  const reveals = () => db.auditEvent.findMany({ where: { action: 'invitation.link_revealed' } });
+
+  it('omits the staff link once the email was sent, and writes no reveal row', async () => {
+    deliverForReal();
+    const { res } = await invite('sent.hire@agency.test', 'MEMBER');
+    expect(res.status).toBe(201);
+    expect(res.body.data.emailDelivery).toBe('sent');
+    expect(res.body.data.acceptUrl).toBeNull();
+    expect(JSON.stringify(res.body)).not.toContain('#token=');
+    expect(t.mailer.lastToken('invitation')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await reveals()).toHaveLength(0);
+  });
+
+  it('returns the staff link when the email failed, and audits the reveal', async () => {
+    deliverForReal();
+    t.mailer.failures.push({ afterSend: false });
+    const { res } = await invite('failed.hire@agency.test', 'MEMBER');
+    expect(res.status).toBe(201);
+    expect(res.body.data.emailDelivery).toBe('failed');
+    expect(res.body.data.acceptUrl).toMatch(/#token=/);
+    const rows = await reveals();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      actorId: seeded.users.owner!.id,
+      targetType: 'invitation',
+      targetId: res.body.data.invitation.id,
+      metadataRedacted: { delivery: 'failed' },
+    });
+  });
+
+  it('applies the same rule to client portal invitations', async () => {
+    deliverForReal();
+    const owner = await asUser('owner');
+    const contact = (await owner.post('/api/v1/contacts', { fullName: 'Karim Nasser' })).body.data;
+    const org = await owner.post(`/api/v1/contacts/${contact.id}/client-org`, {
+      name: 'Nasser Pharmacies',
+    });
+    expect(org.status).toBe(201);
+    const path = `/api/v1/client-orgs/${org.body.data.id}/invitations`;
+
+    const sent = await owner.post(path, { email: 'nadia@nasser.test' });
+    expect(sent.status).toBe(201);
+    expect(sent.body.data.emailDelivery).toBe('sent');
+    expect(sent.body.data.acceptUrl).toBeNull();
+
+    t.mailer.failures.push({ afterSend: false });
+    const failed = await owner.post(path, { email: 'omar@nasser.test' });
+    expect(failed.status).toBe(201);
+    expect(failed.body.data.acceptUrl).toMatch(/#token=/);
+    expect(await reveals()).toHaveLength(1);
+  });
+});

@@ -10,7 +10,7 @@ import type { AppDeps } from '../../app.js';
 import type { Invitation, Role, User } from '../../generated/prisma/client.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, tokenInvalid, validationFailed } from '../../lib/errors.js';
-import { sendOrReport } from '../../lib/mailer.js';
+import { sendOrReport, type EmailDelivery } from '../../lib/mailer.js';
 import { normalizeEmail } from '../../lib/normalize.js';
 import {
   checkPasswordPolicy,
@@ -137,9 +137,44 @@ export async function createInvitation(
 
   return {
     invitation: toInvitationSummary(invitation, now),
-    acceptUrl,
+    acceptUrl: await linkForInviter(
+      deps,
+      actor,
+      invitation.id,
+      acceptUrl,
+      emailDelivery,
+      requestId,
+    ),
     emailDelivery,
   };
+}
+
+/**
+ * The accept link goes back to the inviter only when the email did not reach a real inbox
+ * (disabled, failed, or the local dev sink), so they can pass it on by hand. Once it was sent,
+ * only the invitee has it: an inviter cannot activate the account and act as that person, for
+ * example as a client approving a proposal (security audit F4). Every reveal is audited.
+ */
+export async function linkForInviter(
+  deps: AppDeps,
+  actor: AuthUser,
+  invitationId: string,
+  acceptUrl: string,
+  delivery: EmailDelivery,
+  requestId: string,
+): Promise<string | null> {
+  if (delivery === 'sent') return null;
+  await writeAudit(deps.db, {
+    agencyId: actor.agencyId,
+    actorId: actor.id,
+    action: 'invitation.link_revealed',
+    outcome: 'SUCCESS',
+    targetType: 'invitation',
+    targetId: invitationId,
+    requestId,
+    metadata: { delivery },
+  });
+  return acceptUrl;
 }
 
 async function findAgencyInvitation(deps: AppDeps, actor: AuthUser, id: string) {

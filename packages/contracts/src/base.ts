@@ -345,8 +345,11 @@ export type EmailDelivery = 'sent' | 'failed' | 'sent_to_dev_sink' | 'disabled';
 
 export interface InvitationCreated {
   invitation: InvitationSummary;
-  /** Shown once to the inviter so the invite works even without email delivery. */
-  acceptUrl: string;
+  /**
+   * Shown once to the inviter only when the email did not reach an inbox, so the invite still
+   * works; null once it was sent (only the invitee holds the link).
+   */
+  acceptUrl: string | null;
   emailDelivery: EmailDelivery;
 }
 
