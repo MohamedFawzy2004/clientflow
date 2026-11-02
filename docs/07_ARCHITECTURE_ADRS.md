@@ -18,7 +18,7 @@ Prebuilt Windows/Linux/macOS binaries, no node-gyp toolchain needed. Parameters:
 
 ## ADR-004 — CSRF: session-bound synchronizer token + Origin check (ACCEPTED)
 
-Every state-changing `/api/v1` request needs (a) an `Origin`/`Referer` in the configured allowlist and (b) an `X-CSRF-Token` header. For authenticated requests, the token is bound to the session row (`sessions.csrf_hash`). For the pre-session login request, the token is a signed double-submit cookie (`cf_csrf_pre`, HMAC-SHA256 using `CSRF_SECRET`). SameSite is defence in depth, never the only control.
+Every state-changing `/api/v1` request needs (a) an `Origin`/`Referer` in the configured allowlist and (b) an `X-CSRF-Token` header. For authenticated requests, the token is `HMAC-SHA256(CSRF_SECRET, session token hash)`. It is bound to the session, never stored, and can be re-served by `GET /auth/csrf` after a page reload. (Implementation note: the first draft planned a stored `csrf_hash` column, which became unnecessary.) For the pre-session login request, the token is a signed double-submit cookie (`cf_csrf_pre`, nonce + HMAC). SameSite is defence in depth, never the only control.
 
 ## ADR-005 — Same-origin dev via Vite proxy, closed CORS (ACCEPTED)
 
@@ -51,3 +51,15 @@ The spec expects `package-lock.json`. Layout: `apps/api`, `apps/web`, `packages/
 ## ADR-012 — Public GitHub repository for transparency (ACCEPTED, owner request 2026-10-24)
 
 The project owner asked for the code and task tracking to be public on GitHub. Consequences: no secrets or real client data in the repo (enforced via `.gitignore` and `.env.example` placeholders), commits use the GitHub noreply address, and the backlog is tracked as GitHub milestones and issues linked to requirement IDs.
+
+## ADR-013 — Test databases are migrated, never reset by tooling (ACCEPTED, 2026-10-24)
+
+Prisma 7 refuses `migrate reset` when it detects an AI agent, unless the user gives explicit consent. That is a good guard. Tests do not need a reset anyway: `npm test` runs the non-destructive `prisma migrate deploy` on `clientflow_test`, and each test file empties its tables with `TRUNCATE` (which also skips the audit append-only trigger, as intended for disposable data). E2E uses a third database, `clientflow_e2e`. `scripts/with-test-db.mjs` refuses to run if the test URL equals `DATABASE_URL`.
+
+## ADR-014 — Automation starts the API without `tsx watch` (ACCEPTED, 2026-10-24)
+
+On Windows, `tsx watch` stalled silently when spawned by non-terminal parents (the Playwright `webServer` and the desktop preview launcher), while the same command works in a terminal. Automation therefore uses `npm run dev:once -w @clientflow/api` (plain `tsx`). Interactive development keeps `npm run dev` with watch mode. Revisit when tsx is upgraded.
+
+## ADR-015 — Dialogs own initial focus and focus return (ACCEPTED, 2026-10-24)
+
+Radix Dialog returns focus only to its own `Trigger`, but ClientFlow opens dialogs from ordinary buttons (header and mobile CTAs). `components/ui/dialog.tsx` records the focused element when a dialog opens, focuses the first `[data-autofocus]` field, and restores focus on close. React `autoFocus` is not used inside dialogs, because it moves focus before the opener can be recorded. Covered by the E2E keyboard test.

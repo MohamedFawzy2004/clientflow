@@ -4,16 +4,16 @@
 
 ## Workspace audit (commands run on the owner's Windows 11 machine)
 
-| Check | Result |
-|---|---|
-| Workspace | Fresh folder: only `CLIENTFLOW_MASTER_SPEC.md`, not a git repository |
-| `node --version` | v24.19.0 (LTS, inside Prisma's `^24.11.0` engines range) |
-| `npm --version` | 11.17.0 (pnpm 11.24.0 also present, not used) |
-| `git --version` | 2.45.1.windows.1 |
+| Check                                         | Result                                                                                       |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Workspace                                     | Fresh folder: only `CLIENTFLOW_MASTER_SPEC.md`, not a git repository                         |
+| `node --version`                              | v24.19.0 (LTS, inside Prisma's `^24.11.0` engines range)                                     |
+| `npm --version`                               | 11.17.0 (pnpm 11.24.0 also present, not used)                                                |
+| `git --version`                               | 2.45.1.windows.1                                                                             |
 | `docker --version` / `docker compose version` | 29.9.2 / v5.6.1. The daemon was **not running** at audit time, so Docker Desktop was started |
-| `psql` | Not installed (not required: `docker exec` is used) |
-| Ports 5433 / 4000 / 5173 | Free |
-| `REQUIREMENTS_TRACEABILITY.csv` | Not supplied, so it was **generated** from the spec |
+| `psql`                                        | Not installed (not required: `docker exec` is used)                                          |
+| Ports 5433 / 4000 / 5173                      | Free                                                                                         |
+| `REQUIREMENTS_TRACEABILITY.csv`               | Not supplied, so it was **generated** from the spec                                          |
 
 ## Outputs
 
