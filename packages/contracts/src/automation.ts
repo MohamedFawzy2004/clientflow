@@ -253,3 +253,18 @@ export interface ImportUndoResult {
   /** Records changed since the import are left as they are. */
   keptChanged: number;
 }
+
+// ---------------------------------------------------------------------------
+// System status (M11, Owner/Admin). Numbers only: no hosts, versions of dependencies or secrets.
+// ---------------------------------------------------------------------------
+
+export interface OpsStatus {
+  /** APP_RELEASE set by the deployment (e.g. a git SHA), or null. */
+  release: string | null;
+  uptimeSeconds: number;
+  database: { latencyMs: number };
+  jobs: { pending: number; dead: number; oldestDueSeconds: number; lagging: boolean };
+  /** Where sign-in limits are counted: shared in PostgreSQL, or per instance in memory. */
+  rateLimits: 'postgres' | 'memory';
+  memoryMb: number;
+}

@@ -31,7 +31,9 @@ export default defineConfig({
     {
       // Plain tsx: `tsx watch` stalls when spawned without a terminal (seen on Windows).
       command: 'npm run dev:once -w @clientflow/api',
-      url: `http://127.0.0.1:${API_PORT}/health/ready`,
+      // Liveness, not readiness: Playwright starts servers before global setup migrates the
+      // database, and readiness checks tables that do not exist yet on a fresh CI database.
+      url: `http://127.0.0.1:${API_PORT}/health/live`,
       reuseExistingServer: false,
       timeout: 60_000,
       env: {

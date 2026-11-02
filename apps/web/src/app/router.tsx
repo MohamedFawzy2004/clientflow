@@ -1,4 +1,4 @@
-import { useEffect, type ComponentType, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ComponentType, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, useLocation, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
@@ -7,8 +7,9 @@ import { ErrorState } from '../components/ui/feedback';
 import { SESSION_KEY, useSession } from '../features/auth/session';
 import { homeFor, LoginPage } from '../features/auth/LoginPage';
 import { NotFoundPage } from './NotFoundPage';
-import { PortalShell } from './PortalShell';
-import { AppShell } from './AppShell';
+// The shells load after sign-in (M11, NFR-03): the sign-in page does not need either of them.
+const AppShell = lazy(() => import('./AppShell').then((m) => ({ default: m.AppShell })));
+const PortalShell = lazy(() => import('./PortalShell').then((m) => ({ default: m.PortalShell })));
 
 function FullPageLoader() {
   return (
@@ -23,7 +24,7 @@ function FullPageLoader() {
 
 /**
  * Route-level code splitting (M5): each screen is its own chunk, loaded when first visited.
- * Sign-in and the app shells stay in the main bundle so the first screen paints at once.
+ * Sign-in stays in the main bundle so the first screen paints at once; the shells load after it.
  */
 function screen<M extends Record<string, unknown>>(load: () => Promise<M>, name: keyof M) {
   return async () => ({ Component: (await load())[name] as ComponentType });
@@ -103,7 +104,9 @@ export const router = createBrowserRouter([
     path: '/app',
     element: (
       <RequireSession area="app">
-        <AppShell />
+        <Suspense fallback={<FullPageLoader />}>
+          <AppShell />
+        </Suspense>
       </RequireSession>
     ),
     hydrateFallbackElement: <FullPageLoader />,
@@ -237,7 +240,9 @@ export const router = createBrowserRouter([
     path: '/portal',
     element: (
       <RequireSession area="portal">
-        <PortalShell />
+        <Suspense fallback={<FullPageLoader />}>
+          <PortalShell />
+        </Suspense>
       </RequireSession>
     ),
     hydrateFallbackElement: <FullPageLoader />,

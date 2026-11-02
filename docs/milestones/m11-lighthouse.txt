@@ -1,0 +1,21 @@
+# Lighthouse 13.5.0 (NFR-03), 3 runs each. Edge headless on Windows 11, i7-13650HX, 16 GB.
+# Server: production build of the API + web app (node apps/api/dist/server.js, WEB_DIST_DIR set)
+# on the E2E database (about 2,000 contacts), 127.0.0.1, no reverse proxy or CDN.
+# Mobile = Lighthouse default (simulated slow 4G, 4x CPU slowdown). Desktop = --preset=desktop.
+
+Before M11 (no compression, both app shells in the first bundle)
+  /login          mobile  perf 52   LCP 5981 ms  TBT 502 ms   (a11y 98, best practices 92)
+
+After compressing the web app's static files
+  /login          mobile  perf 85 / 84 / 85    LCP ~3170 ms  TBT ~210 ms
+
+After also loading the app shells on demand and fetching the screen's chunks in parallel
+  /login          mobile  perf 91 / 94 / 92    LCP 2582-2834 ms  TBT 61-151 ms
+  /app/dashboard  mobile  perf 82 / 83 / 84    LCP 3724-4006 ms  TBT 73-138 ms   (a11y 100, best practices 96)
+  /login          desktop perf 100 / 100 / 100 LCP ~610 ms   TBT 0 ms
+  /app/dashboard  desktop perf 91 / 99 / 99    LCP 827-894 ms  TBT 0 ms
+
+Result: target >= 85 met for /login on both profiles and for /app/dashboard on desktop.
+NOT met for /app/dashboard on the mobile profile (82-84): its largest paint waits for the
+dashboard data request after the session check. Scores vary between runs and machines; this is
+a measurement on one setup, not a promise.

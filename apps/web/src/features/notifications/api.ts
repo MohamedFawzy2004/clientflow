@@ -3,6 +3,7 @@ import {
   can,
   type ApiSuccess,
   type JobSummary,
+  type OpsStatus,
   type NotificationPage,
   type NotificationPreferencesInput,
   type NotificationPreferenceView,
@@ -102,5 +103,15 @@ export function useRetryJob() {
     mutationFn: (id: string) =>
       api.post<ApiSuccess<JobSummary>>(`/api/v1/jobs/${encodeURIComponent(id)}/retry`),
     onSuccess: (res) => qc.setQueryData([...key, 'jobs'], res),
+  });
+}
+
+export function useOpsStatus(enabled: boolean) {
+  const key = useUserKey();
+  return useQuery({
+    queryKey: [...key, 'ops-status'],
+    enabled,
+    refetchInterval: 60_000,
+    queryFn: ({ signal }) => api.get<ApiSuccess<OpsStatus>>('/api/v1/ops/status', { signal }),
   });
 }

@@ -1,3 +1,4 @@
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -13,6 +14,7 @@ import {
   DEFAULT_RATE_LIMITS,
   type RateLimitConfig,
 } from './middleware/rate-limit.js';
+import { PostgresRateLimitStore } from './middleware/rate-limit-store.js';
 import { requestId } from './middleware/request-id.js';
 import { noStore, originCheck, securityHeaders } from './middleware/security.js';
 import { authRouter } from './modules/auth/routes.js';
@@ -37,6 +39,7 @@ import { commentsRouter } from './modules/comments/routes.js';
 import { invoicesRouter } from './modules/invoices/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
 import { importsRouter } from './modules/imports/routes.js';
+import { opsRouter } from './modules/ops/routes.js';
 import type { FileStorage } from './modules/files/storage.js';
 
 export interface AppConfig {
@@ -62,6 +65,11 @@ export interface AppDeps {
   storage: FileStorage;
   /** Test-only fault injection (T-HAND-02). Never set by server.ts. */
   hooks?: { beforeHandoffCommit?: () => void | Promise<void> };
+  /**
+   * Keep sign-in and one-time-link limits in PostgreSQL, shared by every instance (ADR-062).
+   * The server sets it; tests leave it off so each test app counts on its own.
+   */
+  sharedRateLimits?: boolean;
   /** Receives work that continues after a response is sent (tests await it). */
   background?: (work: Promise<unknown>) => void;
 }
@@ -70,7 +78,10 @@ export interface AppDeps {
 export function createApp(deps: AppDeps): Express {
   const { db, logger, config } = deps;
   const cookies = cookieSettings(config.isProduction);
-  const limiters = createRateLimiters({ ...DEFAULT_RATE_LIMITS, ...config.rateLimits });
+  const limiters = createRateLimiters(
+    { ...DEFAULT_RATE_LIMITS, ...config.rateLimits },
+    deps.sharedRateLimits ? (name) => new PostgresRateLimitStore(db, name) : undefined,
+  );
 
   const app = express();
   app.disable('x-powered-by');
@@ -116,6 +127,7 @@ export function createApp(deps: AppDeps): Express {
   api.use(commentsRouter(deps));
   api.use(notificationsRouter(deps));
   api.use(importsRouter(deps));
+  api.use(opsRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', apiHeaders, api);
@@ -136,6 +148,9 @@ function webApp(dir: string, isProduction: boolean): RequestHandler {
   if (!existsSync(index)) throw new Error(`WEB_DIST_DIR has no index.html: ${root}`);
   const router = express.Router();
   router.use(securityHeaders(isProduction, 'web'));
+  // Gzip/Brotli for the app's own files only (NFR-03). API JSON is never compressed here: it can
+  // mix secrets (CSRF tokens) with reflected input, the BREACH pattern (ADR-065).
+  router.use(compression());
   router.use(
     '/assets',
     express.static(join(root, 'assets'), { immutable: true, maxAge: '365d', index: false }),

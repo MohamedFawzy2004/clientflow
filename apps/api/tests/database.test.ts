@@ -61,7 +61,7 @@ describe('health endpoints', () => {
     const live = await request(app).get('/health/live').expect(200);
     expect(live.body).toEqual({ status: 'ok' });
     const ready = await request(app).get('/health/ready').expect(200);
-    expect(ready.body).toEqual({ status: 'ok', checks: { database: 'ok' } });
+    expect(ready.body).toEqual({ status: 'ok', checks: { database: 'ok', jobs: 'ok' } });
     expect(JSON.stringify(ready.body)).not.toMatch(/postgres|5433|password/i);
   });
 
