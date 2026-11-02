@@ -218,6 +218,18 @@ export async function uploadFile(
   const name = safeFileName(rawName, ext);
   try {
     const row = await db.$transaction(async (tx) => {
+      // The quota again, now under a per-project lock: two uploads at once both passed the early
+      // check above, but only those that still fit are kept (the catch below removes the blob).
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('clientflow.file-quota'), hashtext(${p.id}))`;
+      const now = await tx.storedFile.aggregate({
+        where: { projectId: p.id },
+        _sum: { sizeBytes: true },
+      });
+      if ((now._sum.sizeBytes ?? 0) + result.size > projectQuotaBytes) {
+        throw conflict(
+          `This project has used its ${formatBytes(projectQuotaBytes)} of file storage.`,
+        );
+      }
       const f = await tx.storedFile.create({
         data: {
           agencyId: actor.agencyId,

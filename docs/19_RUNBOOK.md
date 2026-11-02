@@ -38,6 +38,17 @@ DELETE FROM "_prisma_migrations" WHERE migration_name = '<name>' AND finished_at
 
 Never delete a row whose `finished_at` is set: that migration was applied.
 
+### Stored files without a row, and rows without a file
+
+An upload writes the encrypted object first and its database row second, so a crash between the two leaves an object nothing points to. Such objects only take disk space. The report finds them, and also finds rows whose object is missing (those files cannot be downloaded):
+
+```bash
+npm run files:orphans                # report only, changes nothing
+npm run files:orphans -- --delete    # also removes orphans older than 24 hours
+```
+
+In the server shell, run `node apps/api/dist/cli/files-orphans.js` (add `--delete` to remove). Run it with the `DATABASE_URL` and `FILE_STORAGE_DIR` of the **same** environment. Deletion is refused when the two do not look like a pair: for example, no file rows at all, or more than half the objects without a row (a restored database or another environment's folder). Exit code 1 means some rows have no object: restore that volume from backup, and never delete those rows to make the report clean. Exit code 2 means deletion was refused.
+
 ## Security incident
 
 Examples: a leaked password or key, an unknown admin account, data seen by the wrong client, a suspicious upload.
@@ -75,5 +86,6 @@ Examples: a leaked password or key, an unknown admin account, data seen by the w
 | Every release | Back up, run migrations, deploy, check `/health/ready`                                      |
 | Weekly        | Look at Settings → Background jobs (failed) and System status                               |
 | Monthly       | Rebuild and redeploy the image (base-image security fixes); review `npm audit` and CI scans |
+| Monthly       | `npm run files:orphans` (report); remove old orphans with `--delete` if it lists any        |
 | Quarterly     | Restore drill into an isolated database; keep the output                                    |
 | Yearly        | Review roles, the people with Owner/Admin, and this runbook                                 |
