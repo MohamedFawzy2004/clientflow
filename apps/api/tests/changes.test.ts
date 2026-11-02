@@ -174,7 +174,9 @@ describe('change requests: estimate, approval, send (FR-S01, FR-S02)', () => {
     await drainJobs(); // emails go through the outbox (ADR-058)
     const mail = mailer.messages.filter((m) => m.kind === 'change_sent');
     expect(mail.map((m) => m.to)).toEqual(['a@client.test']);
-    expect(mail[0]!.text).not.toContain('12');
+    // The price (12,500.00) is never in the email, in any number format. The email holds a
+    // link with a random id, so a bare digit check like '12' fails at random.
+    expect(mail[0]!.text).not.toMatch(/12[,.\s]?500/);
   });
 
   it('a change without a price is sent directly; submitting it is refused', async () => {
@@ -254,7 +256,8 @@ describe('the client decides; only acceptance changes the baseline (FR-S03, FR-S
     });
     // Internal estimates never reach the client.
     expect(JSON.stringify(view)).not.toContain('estimateMinutes');
-    expect(JSON.stringify(view)).not.toContain('1200');
+    // The estimate value (1200) is not a field value anywhere; ids and hashes may contain the digits.
+    expect(JSON.stringify(view)).not.toMatch(/:\s*"?1200"?[,}]/);
 
     const accept = { decision: 'ACCEPT', contentHash: hash };
     const results = await Promise.all([
