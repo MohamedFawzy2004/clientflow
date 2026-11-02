@@ -12,6 +12,7 @@ import type { Deal, Prisma } from '../../generated/prisma/client.js';
 import { parseDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, staleVersion, validationFailed } from '../../lib/errors.js';
+import { idempotent } from '../../lib/idempotency.js';
 import { assertAssignableOwner } from '../../lib/sales-owner.js';
 import { actorSelect, recordActivity, toTimelineEntry } from '../../lib/timeline.js';
 import type { AuthUser } from '../../types/express.js';
@@ -169,55 +170,68 @@ export async function createDeal(
     nextStepAt?: string | undefined;
   },
   requestId: string,
-) {
+  idempotencyKey?: string,
+): Promise<{ deal: Awaited<ReturnType<typeof getDeal>>; replayed: boolean }> {
   assertCanWriteDeals(actor);
   const amountMinor = toMinor(input.amount, input.currency);
-  const id = await db.$transaction(async (tx) => {
-    // The contact must be visible to the actor: a deal cannot be attached to a hidden record.
-    const contact = await tx.contact.findFirst({
-      where: { AND: [contactReadScope(actor), { id: input.contactId }] },
-    });
-    if (!contact) throw validationFailed({ contactId: ['Choose a lead from your list.'] });
-    const pipeline = await getDefaultPipeline(tx, actor.agencyId);
-    const stage = input.stageId
-      ? pipeline.stages.find((s) => s.id === input.stageId)
-      : pipeline.stages[0];
-    if (!stage) throw validationFailed({ stageId: ['Choose a stage from the pipeline.'] });
+  // Optional: a retried or doubled request with the same key returns the first deal (F15a).
+  const once = idempotent(actor, 'deal.create', idempotencyKey, input, 'deal');
+  const earlier = await once?.earlier(db);
+  if (earlier) return { deal: await getDeal(db, actor, earlier), replayed: true };
+  let id: string;
+  try {
+    id = await db.$transaction(async (tx) => {
+      // The contact must be visible to the actor: a deal cannot be attached to a hidden record.
+      const contact = await tx.contact.findFirst({
+        where: { AND: [contactReadScope(actor), { id: input.contactId }] },
+      });
+      if (!contact) throw validationFailed({ contactId: ['Choose a lead from your list.'] });
+      const pipeline = await getDefaultPipeline(tx, actor.agencyId);
+      const stage = input.stageId
+        ? pipeline.stages.find((s) => s.id === input.stageId)
+        : pipeline.stages[0];
+      if (!stage) throw validationFailed({ stageId: ['Choose a stage from the pipeline.'] });
 
-    const deal = await tx.deal.create({
-      data: {
+      const deal = await tx.deal.create({
+        data: {
+          agencyId: actor.agencyId,
+          contactId: contact.id,
+          ownerId: actor.id,
+          pipelineId: pipeline.id,
+          stageId: stage.id,
+          title: input.title,
+          amountMinor,
+          currency: input.currency,
+          expectedCloseOn: input.expectedCloseOn ? parseDateOnly(input.expectedCloseOn) : null,
+          nextStep: input.nextStep ?? null,
+          nextStepAt: input.nextStepAt ? new Date(input.nextStepAt) : null,
+        },
+      });
+      await recordOnBoth(
+        tx,
+        actor,
+        deal,
+        'deal.created',
+        `Deal “${deal.title}” created by ${actor.name} in ${stage.name}`,
+      );
+      await writeAudit(tx, {
         agencyId: actor.agencyId,
-        contactId: contact.id,
-        ownerId: actor.id,
-        pipelineId: pipeline.id,
-        stageId: stage.id,
-        title: input.title,
-        amountMinor,
-        currency: input.currency,
-        expectedCloseOn: input.expectedCloseOn ? parseDateOnly(input.expectedCloseOn) : null,
-        nextStep: input.nextStep ?? null,
-        nextStepAt: input.nextStepAt ? new Date(input.nextStepAt) : null,
-      },
+        actorId: actor.id,
+        action: 'deal.create',
+        outcome: 'SUCCESS',
+        targetType: 'deal',
+        targetId: deal.id,
+        requestId,
+      });
+      await once?.remember(tx, deal.id);
+      return deal.id;
     });
-    await recordOnBoth(
-      tx,
-      actor,
-      deal,
-      'deal.created',
-      `Deal “${deal.title}” created by ${actor.name} in ${stage.name}`,
-    );
-    await writeAudit(tx, {
-      agencyId: actor.agencyId,
-      actorId: actor.id,
-      action: 'deal.create',
-      outcome: 'SUCCESS',
-      targetType: 'deal',
-      targetId: deal.id,
-      requestId,
-    });
-    return deal.id;
-  });
-  return getDeal(db, actor, id);
+  } catch (err) {
+    const raced = await once?.afterRace(db, err);
+    if (!raced) throw err;
+    return { deal: await getDeal(db, actor, raced), replayed: true };
+  }
+  return { deal: await getDeal(db, actor, id), replayed: false };
 }
 
 /** Loads a deal the actor may change. Closed deals are read-only until reopened (spec §9). */

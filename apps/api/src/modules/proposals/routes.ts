@@ -7,6 +7,7 @@ import {
   proposalVersionActionSchema,
 } from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
+import { optionalIdempotencyKey } from '../../lib/idempotency.js';
 import { notFound } from '../../lib/errors.js';
 import { parseOrThrow } from '../../lib/validation.js';
 import { requirePermission } from '../../middleware/auth.js';
@@ -58,7 +59,9 @@ export function proposalsRouter(deps: AppDeps) {
     write,
     wrap(async (req, res) => {
       const input = parseOrThrow(proposalCreateSchema, req.body);
-      ok(req, res, await createProposal(deps, req.auth!.user, input, req.requestId), 201);
+      const key = optionalIdempotencyKey(req.get('idempotency-key'));
+      const result = await createProposal(deps, req.auth!.user, input, req.requestId, key);
+      ok(req, res, result.proposal, result.replayed ? 200 : 201);
     }),
   );
 

@@ -10,6 +10,7 @@ import {
   type PageMeta,
 } from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
+import { optionalIdempotencyKey } from '../../lib/idempotency.js';
 import { parseOrThrow } from '../../lib/validation.js';
 import { requireAuth } from '../../middleware/auth.js';
 import {
@@ -58,7 +59,9 @@ export function dealsRouter({ db }: AppDeps) {
     '/',
     wrap(async (req, res) => {
       const input = parseOrThrow(dealCreateSchema, req.body);
-      ok(req, res, await createDeal(db, req.auth!.user, input, req.requestId), 201);
+      const key = optionalIdempotencyKey(req.get('idempotency-key'));
+      const result = await createDeal(db, req.auth!.user, input, req.requestId, key);
+      ok(req, res, result.deal, result.replayed ? 200 : 201);
     }),
   );
 

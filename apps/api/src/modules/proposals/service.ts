@@ -21,6 +21,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { addDays, agencyToday, parseDateOnly, formatDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, staleVersion, validationFailed } from '../../lib/errors.js';
+import { idempotent } from '../../lib/idempotency.js';
 import { notify, usersWithPermission } from '../../lib/notify.js';
 import { recordActivity } from '../../lib/timeline.js';
 import { enqueue } from '../../jobs/outbox.js';
@@ -183,8 +184,13 @@ export async function createProposal(
   actor: AuthUser,
   input: ProposalCreateInput,
   requestId: string,
-) {
+  idempotencyKey?: string,
+): Promise<{ proposal: Awaited<ReturnType<typeof getProposal>>; replayed: boolean }> {
   assertCanWrite(actor);
+  // Optional: a retried or doubled request with the same key returns the first proposal (F15a).
+  const once = idempotent(actor, 'proposal.create', idempotencyKey, input, 'proposal');
+  const earlier = await once?.earlier(db);
+  if (earlier) return { proposal: await getProposal(db, actor, earlier), replayed: true };
   // A deal the user cannot see answers exactly like an unknown deal.
   const deal = await db.deal.findFirst({
     where: { AND: [dealReadScope(actor), { id: input.dealId }] },
@@ -194,51 +200,59 @@ export async function createProposal(
   if (deal.status !== 'OPEN') throw conflict('Proposals can only be created for open deals.');
 
   const today = await agencyTodayFor(db, actor.agencyId);
-  const id = await db.$transaction(async (tx) => {
-    // Atomic per-agency counter: concurrent creates never get the same reference number.
-    const { proposalSeq } = await tx.agency.update({
-      where: { id: actor.agencyId },
-      data: { proposalSeq: { increment: 1 } },
-      select: { proposalSeq: true },
-    });
-    const proposal = await tx.proposal.create({
-      data: {
-        agencyId: actor.agencyId,
-        dealId: deal.id,
-        number: proposalSeq,
-        createdById: actor.id,
-        versions: {
-          // agency_id comes from the parent through the composite relation.
-          create: {
-            versionNo: 1,
-            title: input.title ?? deal.title,
-            currency: deal.currency,
-            expiresOn: parseDateOnly(addDays(today, DEFAULT_VALIDITY_DAYS)),
-            taxRateBp: DEFAULT_TAX_RATE_BP,
-            createdById: actor.id,
+  let id: string;
+  try {
+    id = await db.$transaction(async (tx) => {
+      // Atomic per-agency counter: concurrent creates never get the same reference number.
+      const { proposalSeq } = await tx.agency.update({
+        where: { id: actor.agencyId },
+        data: { proposalSeq: { increment: 1 } },
+        select: { proposalSeq: true },
+      });
+      const proposal = await tx.proposal.create({
+        data: {
+          agencyId: actor.agencyId,
+          dealId: deal.id,
+          number: proposalSeq,
+          createdById: actor.id,
+          versions: {
+            // agency_id comes from the parent through the composite relation.
+            create: {
+              versionNo: 1,
+              title: input.title ?? deal.title,
+              currency: deal.currency,
+              expiresOn: parseDateOnly(addDays(today, DEFAULT_VALIDITY_DAYS)),
+              taxRateBp: DEFAULT_TAX_RATE_BP,
+              createdById: actor.id,
+            },
           },
         },
-      },
+      });
+      await recordOnDeal(
+        tx,
+        actor,
+        deal.id,
+        'proposal.created',
+        `Proposal ${proposalReference(proposalSeq)} created by ${actor.name}`,
+      );
+      await writeAudit(tx, {
+        agencyId: actor.agencyId,
+        actorId: actor.id,
+        action: 'proposal.create',
+        outcome: 'SUCCESS',
+        targetType: 'proposal',
+        targetId: proposal.id,
+        requestId,
+      });
+      await once?.remember(tx, proposal.id);
+      return proposal.id;
     });
-    await recordOnDeal(
-      tx,
-      actor,
-      deal.id,
-      'proposal.created',
-      `Proposal ${proposalReference(proposalSeq)} created by ${actor.name}`,
-    );
-    await writeAudit(tx, {
-      agencyId: actor.agencyId,
-      actorId: actor.id,
-      action: 'proposal.create',
-      outcome: 'SUCCESS',
-      targetType: 'proposal',
-      targetId: proposal.id,
-      requestId,
-    });
-    return proposal.id;
-  });
-  return getProposal(db, actor, id);
+  } catch (err) {
+    const raced = await once?.afterRace(db, err);
+    if (!raced) throw err;
+    return { proposal: await getProposal(db, actor, raced), replayed: true };
+  }
+  return { proposal: await getProposal(db, actor, id), replayed: false };
 }
 
 /** Converts validated form input into stored rows with exact totals, using the version currency. */
