@@ -16,6 +16,7 @@ import { useProjectContext } from '../projects/ProjectOverview';
 import { useDeliverable, useDeliverableAction, useFiles } from './api';
 import { startDownload, UploadButton } from './FilesPage';
 import { deliveryMessage } from './TaskBoardPage';
+import { CommentsThread } from '../changes/CommentsThread';
 
 /** Adds the next version: an uploaded file of this project that no other version uses. */
 function AddVersion({ deliverableId }: { deliverableId: string }) {
@@ -253,6 +254,11 @@ export function DeliverablePage() {
           </div>
         ) : null}
       </Card>
+
+      <CommentsThread
+        thread={{ entityType: 'deliverable', entityId: d.id, projectId: p.id }}
+        readOnly={p.state === 'ARCHIVED'}
+      />
 
       <ConfirmDialog
         open={confirm !== null}

@@ -1,5 +1,14 @@
 import { type Request, type Response, Router } from 'express';
-import { clientDecisionSchema, deliverableDecisionSchema } from '@clientflow/contracts';
+import {
+  changeCreateSchema,
+  changeDecisionSchema,
+  changeVersionActionSchema,
+  clientDecisionSchema,
+  commentCreateSchema,
+  commentThreadQuerySchema,
+  commentUpdateSchema,
+  deliverableDecisionSchema,
+} from '@clientflow/contracts';
 import type { AppDeps } from '../../app.js';
 import { parseOrThrow } from '../../lib/validation.js';
 import { requirePermission } from '../../middleware/auth.js';
@@ -11,6 +20,19 @@ import {
 } from './service.js';
 import { sendPdf } from '../proposals/routes.js';
 import { createDownloadLink } from '../files/service.js';
+import {
+  createPortalChange,
+  decideOnChange,
+  getPortalChange,
+  listPortalChanges,
+} from '../changes/service.js';
+import {
+  portalAddComment,
+  portalCommentHistory,
+  portalDeleteComment,
+  portalListComments,
+  portalUpdateComment,
+} from '../comments/service.js';
 import {
   decideOnDeliverable,
   getPortalDeliverable,
@@ -115,6 +137,109 @@ export function portalRouter(deps: AppDeps) {
         req,
         res,
         await createDownloadLink(deps, req.auth!.user, String(req.params.fileId), req.requestId),
+      ),
+    ),
+  );
+
+  // Change requests on shared projects (M8).
+  router.get(
+    '/projects/:id/changes',
+    wrap(async (req, res) =>
+      ok(
+        req,
+        res,
+        await listPortalChanges(db, req.auth!.user, String(req.params.id), req.requestId),
+      ),
+    ),
+  );
+
+  router.post(
+    '/projects/:id/changes',
+    wrap(async (req, res) => {
+      const input = parseOrThrow(changeCreateSchema, req.body);
+      res.status(201);
+      ok(
+        req,
+        res,
+        await createPortalChange(deps, req.auth!.user, String(req.params.id), input, req.requestId),
+      );
+    }),
+  );
+
+  router.get(
+    '/changes/:id',
+    wrap(async (req, res) =>
+      ok(req, res, await getPortalChange(db, req.auth!.user, String(req.params.id), req.requestId)),
+    ),
+  );
+
+  router.post(
+    '/changes/:id/decision',
+    wrap(async (req, res) => {
+      const input = parseOrThrow(changeDecisionSchema, req.body);
+      ok(
+        req,
+        res,
+        await decideOnChange(deps, req.auth!.user, String(req.params.id), input, req.requestId),
+      );
+    }),
+  );
+
+  // Comments on deliverables and changes the client can see (M8, FR-X08).
+  router.get(
+    '/comments',
+    wrap(async (req, res) => {
+      const q = parseOrThrow(commentThreadQuerySchema, req.query);
+      ok(req, res, await portalListComments(db, req.auth!.user, q, req.requestId));
+    }),
+  );
+
+  router.post(
+    '/comments',
+    wrap(async (req, res) => {
+      const input = parseOrThrow(commentCreateSchema, req.body);
+      res.status(201);
+      ok(req, res, await portalAddComment(deps, req.auth!.user, input, req.requestId));
+    }),
+  );
+
+  router.patch(
+    '/comments/:id',
+    wrap(async (req, res) => {
+      const input = parseOrThrow(commentUpdateSchema, req.body);
+      ok(
+        req,
+        res,
+        await portalUpdateComment(db, req.auth!.user, String(req.params.id), input, req.requestId),
+      );
+    }),
+  );
+
+  router.post(
+    '/comments/:id/delete',
+    wrap(async (req, res) => {
+      const { version } = parseOrThrow(changeVersionActionSchema, req.body);
+      ok(
+        req,
+        res,
+        await portalDeleteComment(
+          db,
+          req.auth!.user,
+          String(req.params.id),
+          version,
+          req.requestId,
+        ),
+      );
+    }),
+  );
+
+  router.get(
+    '/comments/:id/history',
+    wrap(async (req, res) =>
+      ok(
+        req,
+        res,
+        await portalCommentHistory(db, req.auth!.user, String(req.params.id), req.requestId),
       ),
     ),
   );

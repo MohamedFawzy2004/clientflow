@@ -1,5 +1,6 @@
 // M7 contracts: tasks, time entries, private files, deliverables and the client portal for projects.
 import { z } from 'zod';
+import { TASK_SCOPES, type TaskScope } from './changes.js';
 import type { MilestoneStatus, ProjectState } from './projects.js';
 
 const uuid = z.uuid({ message: 'Choose an item from the list.' });
@@ -66,6 +67,27 @@ const estimateMinutes = z
   .min(0, 'The estimate cannot be negative.')
   .max(MAX_ESTIMATE_MINUTES, 'Keep the estimate under 10,000 hours.');
 
+/** FR-S05: a change task names an accepted change; an exception says why (10+ characters). */
+function scopeConsistent(
+  v: { scope?: TaskScope; changeRequestId?: string | null; scopeNote?: string | null },
+  ctx: z.RefinementCtx,
+) {
+  if (v.scope === 'CHANGE' && !v.changeRequestId) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['changeRequestId'],
+      message: 'Choose the accepted change this work belongs to.',
+    });
+  }
+  if (v.scope === 'EXCEPTION' && (v.scopeNote ?? '').length < 10) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['scopeNote'],
+      message: 'Explain in a sentence why this work is done without a change request.',
+    });
+  }
+}
+
 export const taskCreateSchema = z
   .object({
     title,
@@ -75,8 +97,12 @@ export const taskCreateSchema = z
     dueOn: isoDate.nullish(),
     priority: z.enum(TASK_PRIORITIES).default('MEDIUM'),
     estimateMinutes: estimateMinutes.nullish(),
+    scope: z.enum(TASK_SCOPES).default('BASELINE'),
+    changeRequestId: uuid.nullish(),
+    scopeNote: optionalText(500),
   })
-  .strict();
+  .strict()
+  .superRefine(scopeConsistent);
 export type TaskCreateInput = z.input<typeof taskCreateSchema>;
 
 export const taskUpdateSchema = z
@@ -89,8 +115,14 @@ export const taskUpdateSchema = z
     dueOn: clearableDate,
     priority: z.enum(TASK_PRIORITIES).optional(),
     estimateMinutes: z.union([z.null(), estimateMinutes]).optional(),
+    scope: z.enum(TASK_SCOPES).optional(),
+    changeRequestId: clearableUuid,
+    scopeNote: optionalText(500).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((v, ctx) => {
+    if (v.scope !== undefined) scopeConsistent(v, ctx);
+  });
 export type TaskUpdateInput = z.input<typeof taskUpdateSchema>;
 
 export const taskStatusSchema = z
@@ -126,6 +158,10 @@ export interface TaskView {
   overdue: boolean;
   estimateMinutes: number | null;
   loggedMinutes: number;
+  /** FR-S05: original scope, an accepted change, or a documented exception. */
+  scope: TaskScope;
+  change: { id: string; reference: string } | null;
+  scopeNote: string | null;
   /** Tasks this one waits for that are not done or canceled yet. */
   openBlockers: TaskLink[];
   completedAt: string | null;
@@ -201,6 +237,8 @@ export interface ProjectTime {
   /** `all` for the project manager, Owner and Admin; `own` for everyone else. */
   scope: 'all' | 'own';
   totals: { minutes: number; billableMinutes: number };
+  /** Original scope versus extra work (spec J4 step 5). */
+  byScope: Record<TaskScope, number>;
   byPerson: Array<{ user: { id: string; name: string }; minutes: number; billableMinutes: number }>;
   entries: TimeEntryView[];
 }

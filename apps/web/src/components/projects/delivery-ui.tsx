@@ -1,4 +1,8 @@
 import {
+  CHANGE_STATUS_LABELS,
+  TASK_SCOPE_LABELS,
+  type ChangeStatus,
+  type TaskScope,
   DELIVERABLE_STATUS_LABELS,
   PORTAL_DELIVERABLE_STATE_LABELS,
   TASK_PRIORITY_LABELS,
@@ -59,4 +63,28 @@ export function PortalDeliverableBadge({ state }: { state: PortalDeliverableStat
 
 export function OverdueBadge() {
   return <Badge tone="danger">Overdue</Badge>;
+}
+
+const CHANGE_TONE = {
+  REQUESTED: 'info',
+  ESTIMATING: 'neutral',
+  IN_REVIEW: 'warning',
+  AWAITING_CLIENT: 'primary',
+  ACCEPTED: 'success',
+  REJECTED: 'danger',
+  WITHDRAWN: 'neutral',
+} as const;
+
+export function ChangeStatusBadge({ status }: { status: ChangeStatus }) {
+  return <Badge tone={CHANGE_TONE[status]}>{CHANGE_STATUS_LABELS[status]}</Badge>;
+}
+
+/** Marks extra work on task cards (FR-S05); original-scope tasks show nothing. */
+export function TaskScopeBadge({ scope, reference }: { scope: TaskScope; reference?: string }) {
+  if (scope === 'BASELINE') return null;
+  return (
+    <Badge tone={scope === 'CHANGE' ? 'info' : 'warning'}>
+      {scope === 'CHANGE' && reference ? `Extra: ${reference}` : TASK_SCOPE_LABELS[scope]}
+    </Badge>
+  );
 }

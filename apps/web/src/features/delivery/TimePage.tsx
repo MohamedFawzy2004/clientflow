@@ -43,6 +43,24 @@ export function TimePage() {
           </p>
         </Card>
       </div>
+      {t.byScope.CHANGE + t.byScope.EXCEPTION > 0 ? (
+        <Card title="Original scope and extra work">
+          <dl className="grid gap-3 text-sm sm:grid-cols-3">
+            {(
+              [
+                ['BASELINE', 'Original scope'],
+                ['CHANGE', 'Accepted changes'],
+                ['EXCEPTION', 'Exceptions'],
+              ] as const
+            ).map(([k, label]) => (
+              <div key={k}>
+                <dt className="text-xs text-muted">{label}</dt>
+                <dd className="tabular-nums text-text">{formatMinutes(t.byScope[k])}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+      ) : null}
       {t.scope === 'all' && t.byPerson.length > 0 ? (
         <Card title="By person">
           <ul className="flex flex-col divide-y divide-border">

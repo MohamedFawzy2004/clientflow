@@ -73,6 +73,26 @@ interface Fixtures {
   pmId: string;
   memberId: string;
   d: DeliveryFixtures;
+  m8: ScopeFixtures;
+}
+
+/** M8: change requests in each state, and comments written by the role under test. */
+interface ScopeFixtures {
+  readProject: string;
+  changeRead: string;
+  changeDraft: string;
+  changeSubmit: string;
+  changeReview: string;
+  changeSend: string;
+  changeWithdraw: string;
+  portalChange: string;
+  portalDecide: { id: string; hash: string };
+  commentEdit: string;
+  commentDelete: string;
+  commentHistory: string;
+  portalCommentEdit: string;
+  portalCommentDelete: string;
+  portalCommentHistory: string;
 }
 
 /** M7: tasks, time, files, deliverables, shares and the portal for projects. */
@@ -732,6 +752,95 @@ const ENDPOINTS: Endpoint[] = [
     path: (f) => `/api/v1/projects/${f.d.revokeProject}/shares/${f.d.shareUser}/revoke`,
     allowed: PROJECT_MANAGERS,
   },
+  // Scope changes and comments (M8)
+  {
+    name: 'GET /projects/:id/changes',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.m8.readProject}/changes`,
+    allowed: PROJECT_READERS,
+  },
+  {
+    name: 'POST /projects/:id/changes',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.d.project}/changes`,
+    body: (r) => ({ title: `Change by ${r}`, description: 'Matrix change request' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'GET /changes/:id',
+    method: 'get',
+    path: (f) => `/api/v1/changes/${f.m8.changeRead}`,
+    allowed: PROJECT_READERS,
+  },
+  {
+    name: 'PUT /changes/:id/draft',
+    method: 'put',
+    path: (f) => `/api/v1/changes/${f.m8.changeDraft}/draft`,
+    body: () => ({ version: 1, scope: 'Matrix scope', price: '100.00' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /changes/:id/submit',
+    method: 'post',
+    path: (f) => `/api/v1/changes/${f.m8.changeSubmit}/submit`,
+    body: () => ({ version: 1 }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /changes/:id/review',
+    method: 'post',
+    path: (f) => `/api/v1/changes/${f.m8.changeReview}/review`,
+    body: () => ({ version: 1, decision: 'APPROVE' }),
+    allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'POST /changes/:id/send',
+    method: 'post',
+    path: (f) => `/api/v1/changes/${f.m8.changeSend}/send`,
+    body: () => ({ version: 1 }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'POST /changes/:id/withdraw',
+    method: 'post',
+    path: (f) => `/api/v1/changes/${f.m8.changeWithdraw}/withdraw`,
+    body: () => ({ version: 1, reason: 'Matrix withdraw' }),
+    allowed: PROJECT_MANAGERS,
+  },
+  {
+    name: 'GET /projects/:id/comments',
+    method: 'get',
+    path: (f) =>
+      `/api/v1/projects/${f.m8.readProject}/comments?entityType=change&entityId=${f.m8.changeRead}`,
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /projects/:id/comments',
+    method: 'post',
+    path: (f) => `/api/v1/projects/${f.m8.readProject}/comments`,
+    body: (r, f) => ({ entityType: 'change', entityId: f.m8.changeRead, body: `Comment by ${r}` }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'PATCH /comments/:id (own)',
+    method: 'patch',
+    path: (f) => `/api/v1/comments/${f.m8.commentEdit}`,
+    body: () => ({ version: 1, body: 'Edited in the matrix' }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'POST /comments/:id/delete (own)',
+    method: 'post',
+    path: (f) => `/api/v1/comments/${f.m8.commentDelete}/delete`,
+    body: () => ({ version: 1 }),
+    allowed: DELIVERY,
+  },
+  {
+    name: 'GET /comments/:id/history',
+    method: 'get',
+    path: (f) => `/api/v1/comments/${f.m8.commentHistory}/history`,
+    allowed: DELIVERY,
+  },
   // Client portal (M4)
   {
     name: 'GET /portal/proposals',
@@ -786,6 +895,69 @@ const ENDPOINTS: Endpoint[] = [
     name: 'POST /portal/files/:id/download-url',
     method: 'post',
     path: (f) => `/api/v1/portal/files/${f.d.portalFile}/download-url`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/projects/:id/changes',
+    method: 'get',
+    path: (f) => `/api/v1/portal/projects/${f.d.portalProject}/changes`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'POST /portal/projects/:id/changes',
+    method: 'post',
+    path: (f) => `/api/v1/portal/projects/${f.d.portalProject}/changes`,
+    body: () => ({ title: 'Client matrix request', description: 'Please add a page' }),
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/changes/:id',
+    method: 'get',
+    path: (f) => `/api/v1/portal/changes/${f.m8.portalChange}`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'POST /portal/changes/:id/decision',
+    method: 'post',
+    path: (f) => `/api/v1/portal/changes/${f.m8.portalDecide.id}/decision`,
+    body: (_r, f) => ({ decision: 'ACCEPT', contentHash: f.m8.portalDecide.hash }),
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/comments',
+    method: 'get',
+    path: (f) => `/api/v1/portal/comments?entityType=change&entityId=${f.m8.portalChange}`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'POST /portal/comments',
+    method: 'post',
+    path: () => '/api/v1/portal/comments',
+    body: (_r, f) => ({
+      entityType: 'change',
+      entityId: f.m8.portalChange,
+      body: 'Client comment',
+    }),
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'PATCH /portal/comments/:id',
+    method: 'patch',
+    path: (f) => `/api/v1/portal/comments/${f.m8.portalCommentEdit}`,
+    body: () => ({ version: 1, body: 'Client edit' }),
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'POST /portal/comments/:id/delete',
+    method: 'post',
+    path: (f) => `/api/v1/portal/comments/${f.m8.portalCommentDelete}/delete`,
+    body: () => ({ version: 1 }),
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/comments/:id/history',
+    method: 'get',
+    path: (f) => `/api/v1/portal/comments/${f.m8.portalCommentHistory}/history`,
     allowed: CLIENT_ONLY,
   },
 ];
@@ -946,9 +1118,11 @@ async function freshFixtures(seeded: SeededAgency, role?: Role): Promise<Fixture
     ]);
   const convertDeal = (await won()).dealId;
   const d = await deliveryFixtures(seeded, role, portal.orgId, portal.clientUserId);
+  const m8 = await scopeFixtures(seeded, role, projRead.projectId, d, portal.clientUserId);
 
   return {
     d,
+    m8,
     projRead: projRead.projectId,
     projPatch: projPatch.projectId,
     projState: projState.projectId,
@@ -1135,6 +1309,102 @@ async function deliveryFixtures(
   };
 }
 
+/** M8 fixtures. Staff comments for the "own" endpoints are written by the role under test. */
+async function scopeFixtures(
+  seeded: SeededAgency,
+  role: Role | undefined,
+  readProject: string,
+  d: DeliveryFixtures,
+  clientUserId: string,
+): Promise<ScopeFixtures> {
+  const { agencyId } = seeded;
+  const pmId = seeded.users.pm!.id;
+  const memberId = seeded.users.member!.id;
+  const author = role && DELIVERY.includes(role) ? seeded.users[KEY_FOR_ROLE[role]!]!.id : memberId;
+  let n = 0;
+  const change = async (
+    projectId: string,
+    status: 'REQUESTED' | 'ESTIMATING' | 'IN_REVIEW' | 'AWAITING_CLIENT',
+    versionStatus?: 'DRAFT' | 'IN_REVIEW' | 'APPROVED_INTERNAL' | 'SENT',
+  ) => {
+    n += 1;
+    const c = await db.changeRequest.create({
+      data: {
+        agencyId,
+        projectId,
+        number: n,
+        title: `Change ${n}`,
+        description: 'Matrix fixture',
+        status,
+        currentVersionNo: versionStatus ? 1 : 0,
+        requestedById: pmId,
+      },
+    });
+    const hash = n.toString(16).padStart(64, '0');
+    if (versionStatus) {
+      const sent = versionStatus === 'SENT';
+      await db.changeVersion.create({
+        data: {
+          agencyId,
+          projectId,
+          changeRequestId: c.id,
+          versionNo: 1,
+          status: versionStatus,
+          scope: 'Fixture scope',
+          priceMinor: 10_000n,
+          currency: 'EGP',
+          taxMinor: 1_400n,
+          totalMinor: 11_400n,
+          createdById: pmId,
+          ...(versionStatus === 'APPROVED_INTERNAL'
+            ? { approvedAt: new Date(), approvedById: seeded.users.owner!.id }
+            : {}),
+          ...(sent ? { sentAt: new Date(), sentById: pmId, contentHash: hash } : {}),
+        },
+      });
+    }
+    return { id: c.id, hash };
+  };
+  const changeRead = await change(readProject, 'ESTIMATING', 'DRAFT');
+  const changeDraft = await change(d.project, 'REQUESTED');
+  const changeSubmit = await change(d.project, 'ESTIMATING', 'DRAFT');
+  const changeReview = await change(d.project, 'IN_REVIEW', 'IN_REVIEW');
+  const changeSend = await change(d.project, 'IN_REVIEW', 'APPROVED_INTERNAL');
+  const changeWithdraw = await change(d.project, 'REQUESTED');
+  const portalChange = await change(d.portalProject, 'AWAITING_CLIENT', 'SENT');
+  const portalDecide = await change(d.portalProject, 'AWAITING_CLIENT', 'SENT');
+  const comment = (projectId: string, entityId: string, authorId: string) =>
+    db.projectComment.create({
+      data: {
+        agencyId,
+        projectId,
+        entityType: 'change',
+        entityId,
+        authorId,
+        body: 'Fixture comment',
+      },
+    });
+  const staffThread = (who: string) => comment(readProject, changeRead.id, who);
+  const portalThread = () => comment(d.portalProject, portalChange.id, clientUserId);
+  return {
+    readProject,
+    changeRead: changeRead.id,
+    changeDraft: changeDraft.id,
+    changeSubmit: changeSubmit.id,
+    changeReview: changeReview.id,
+    changeSend: changeSend.id,
+    changeWithdraw: changeWithdraw.id,
+    portalChange: portalChange.id,
+    portalDecide,
+    commentEdit: (await staffThread(author)).id,
+    commentDelete: (await staffThread(author)).id,
+    commentHistory: (await staffThread(memberId)).id,
+    portalCommentEdit: (await portalThread()).id,
+    portalCommentDelete: (await portalThread()).id,
+    portalCommentHistory: (await portalThread()).id,
+  };
+}
+
 describe('role × endpoint matrix', () => {
   it.each(EVERYONE)('%s gets exactly the access spec §1.1 grants', async (role) => {
     await resetDb();
@@ -1218,7 +1488,15 @@ describe('role × endpoint matrix', () => {
     }
     if (!PROJECT_MANAGERS.includes(role)) {
       expect(await db.project.count()).toBe(12);
-      expect(await db.project.count({ where: { version: { gt: 1 } } })).toBe(0);
+      // A client accepting a change updates that project's baseline: the one allowed change.
+      expect(
+        await db.project.count({
+          where: {
+            version: { gt: 1 },
+            ...(role === 'CLIENT' ? { id: { not: f.d.portalProject } } : {}),
+          },
+        }),
+      ).toBe(0);
       expect(await db.projectMilestone.count({ where: { status: { not: 'PLANNED' } } })).toBe(0);
       expect(await db.handoffChecklistItem.count({ where: { doneAt: { not: null } } })).toBe(0);
       expect(await db.projectMember.count()).toBe(6);
@@ -1247,6 +1525,26 @@ describe('role × endpoint matrix', () => {
         (await db.deliverable.findUniqueOrThrow({ where: { id: f.d.delivPublish.id } })).status,
       ).toBe('READY');
       expect(await db.projectShare.count({ where: { revokedAt: null } })).toBe(2);
+    }
+    if (!PROJECT_MANAGERS.includes(role)) {
+      // Nobody without manage rights created, estimated, sent or withdrew a change. Only the
+      // client's own request and decision are allowed below.
+      expect(await db.changeRequest.count()).toBe(role === 'CLIENT' ? 9 : 8);
+      expect(
+        await db.changeRequest.count({
+          where: { version: { gt: 1 }, id: { not: f.m8.portalDecide.id } },
+        }),
+      ).toBe(0);
+      expect(await db.changeVersion.count()).toBe(6);
+    }
+    if (role === 'CLIENT') {
+      expect(await db.changeDecision.count()).toBe(1);
+    } else {
+      expect(await db.changeDecision.count()).toBe(0);
+    }
+    if (!DELIVERY.includes(role) && role !== 'CLIENT') {
+      expect(await db.projectComment.count()).toBe(6);
+      expect(await db.projectCommentRevision.count()).toBe(0);
     }
     if (role === 'CLIENT') {
       expect(await db.deliverableReview.count()).toBe(1);

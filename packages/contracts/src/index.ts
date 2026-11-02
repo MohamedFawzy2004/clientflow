@@ -9,3 +9,4 @@ export * from './proposals.js';
 export * from './insights.js';
 export * from './projects.js';
 export * from './delivery.js';
+export * from './changes.js';
