@@ -52,9 +52,9 @@ async function noOverflow(page: Page, where: string) {
 
 /** JSON API call with the page's session and CSRF token (setup steps, not what is under test). */
 async function api(page: Page, method: 'POST' | 'PUT' | 'PATCH', path: string, data: object) {
-  const csrf = await page.evaluate(
-    async () => (await (await fetch('/api/v1/auth/csrf')).json()).data.csrfToken,
-  );
+  const csrfRes = await page.request.get('/api/v1/auth/csrf');
+  expect(csrfRes.ok(), `GET /auth/csrf → ${csrfRes.status()} ${await csrfRes.text()}`).toBe(true);
+  const csrf = (await csrfRes.json()).data.csrfToken as string;
   const req: APIRequestContext = page.request;
   const res = await req.fetch(path, {
     method,
@@ -187,10 +187,12 @@ const SCREENS: Record<'owner' | 'salesA', string[]> = {
     '/app/deals',
     '/app/proposals',
     '/app/services',
+    '/app/projects',
     '/app/team',
     '/app/settings',
   ],
   salesA: [
+    '/app/projects',
     '/app/dashboard',
     '/app/reminders',
     '/app/leads',

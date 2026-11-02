@@ -20,6 +20,7 @@ import { NextAction } from '../leads/LeadsListPage';
 import { useAssignableOwners, useDeal, useDealAction, usePipeline } from './api';
 import { DealFormDialog } from './DealFormDialog';
 import { DealProposalsCard } from '../proposals/DealProposalsCard';
+import { DealHandoffCard } from '../projects/DealHandoffCard';
 
 type Dialog = 'edit' | 'lost' | 'won' | 'reopen' | 'reassign' | null;
 
@@ -287,6 +288,7 @@ export function DealDetailPage() {
           >
             <DealActions deal={deal} onOpen={setOpen} />
           </section>
+          <DealHandoffCard deal={deal} />
           <DealProposalsCard deal={deal} />
           <section
             aria-label="Details"

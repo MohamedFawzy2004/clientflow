@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { CircleCheck, Circle, Plus, Users } from 'lucide-react';
 import { can } from '@clientflow/contracts';
 import { useBoard } from '../deals/api';
+import { DeliveryDashboardSection } from './DeliveryDashboard';
 import { RemindersCard, SalesDashboard } from './SalesDashboard';
 import { canSeeLeads } from '../../app/AppShell';
 import { Avatar } from '../../components/ui/brand';
@@ -174,13 +175,18 @@ export function DashboardPage() {
       </p>
       <div className="mt-6">
         {canSeeLeads(user.role) ? (
-          <LeadsOverview timeZone={timeZone} canInvite={can(user.role, 'team.invite')} />
+          <div className="flex flex-col gap-8">
+            <LeadsOverview timeZone={timeZone} canInvite={can(user.role, 'team.invite')} />
+            {can(user.role, 'dashboard.delivery') ? <DeliveryDashboardSection /> : null}
+          </div>
+        ) : can(user.role, 'dashboard.delivery') ? (
+          <DeliveryDashboardSection />
         ) : (
           <div className="rounded-lg border border-border bg-surface shadow-card">
             <EmptyState
               icon={<Users aria-hidden className="size-5" />}
               title="Your workspace is being set up"
-              description="Projects, tasks and invoices for your role arrive in upcoming releases. Nothing is hidden from you by mistake."
+              description="Invoices for your role arrive in an upcoming release. Nothing is hidden from you by mistake."
             />
           </div>
         )}

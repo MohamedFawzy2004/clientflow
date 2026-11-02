@@ -48,6 +48,7 @@ export function toDealDetail(
       versionNo: number;
       proposal: { id: string; number: number };
     } | null;
+    project?: { id: string; title: string } | null;
   },
   activities: TimelineEntry[],
 ): DealDetail {
@@ -63,6 +64,7 @@ export function toDealDetail(
           versionNo: d.acceptedProposalVersion.versionNo,
         }
       : null,
+    project: d.project ? { id: d.project.id, title: d.project.title } : null,
     activities,
   };
 }

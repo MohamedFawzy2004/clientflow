@@ -29,6 +29,13 @@ const envSchema = z.object({
    */
   MAIL_TRANSPORT: z.enum(['dev-sink', 'disabled']).default('dev-sink'),
   MAIL_SINK_DIR: z.string().min(1).default('.mail-sink'),
+  /**
+   * Test/development only: raise the per-IP limits for sign-in and one-time-token endpoints
+   * (the E2E suite signs in many times from one address). Refused in production.
+   */
+  LOGIN_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).max(10_000).optional(),
+  TOKEN_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).max(10_000).optional(),
+  API_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).max(100_000).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -51,6 +58,14 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error('APP_ORIGINS must use https:// in production.');
   }
   // The dev sink writes tokens to disk in plain text: never acceptable in production.
+  if (
+    env.NODE_ENV === 'production' &&
+    (env.LOGIN_RATE_LIMIT_PER_IP !== undefined ||
+      env.TOKEN_RATE_LIMIT_PER_IP !== undefined ||
+      env.API_RATE_LIMIT_PER_IP !== undefined)
+  ) {
+    throw new Error('Rate-limit overrides are for tests only and are not allowed in production.');
+  }
   if (env.NODE_ENV === 'production' && env.MAIL_TRANSPORT === 'dev-sink') {
     throw new Error('MAIL_TRANSPORT=dev-sink is not allowed in production.');
   }

@@ -48,6 +48,7 @@ export async function makeProposal(
     expiresOn?: string;
     hash?: string;
     internalNotes?: string;
+    milestones?: string;
   },
 ) {
   const status = opts.status;
@@ -75,6 +76,7 @@ export async function makeProposal(
       currency: 'EGP',
       expiresOn: new Date(`${opts.expiresOn ?? '2099-12-31'}T00:00:00Z`),
       internalNotes: opts.internalNotes ?? null,
+      milestones: opts.milestones ?? null,
       subtotalMinor: 100_000n,
       taxMinor: 14_000n,
       totalMinor: 114_000n,
@@ -129,4 +131,35 @@ export async function makeClientOrg(
     },
   });
   return { orgId: org.id, clientUserId: user.id, clientEmail: user.emailNorm };
+}
+
+/** A project with one milestone and one checklist item, optionally from a won deal. */
+export async function makeProject(
+  db: Db,
+  opts: {
+    agencyId: string;
+    managerId: string;
+    createdById: string;
+    title?: string;
+    dealId?: string;
+    baselineVersionId?: string;
+    memberIds?: string[];
+  },
+) {
+  const p = await db.project.create({
+    data: {
+      agencyId: opts.agencyId,
+      title: opts.title ?? 'Fixture project',
+      managerId: opts.managerId,
+      createdById: opts.createdById,
+      dealId: opts.dealId ?? null,
+      baselineVersionId: opts.baselineVersionId ?? null,
+      currency: 'EGP',
+      milestones: { create: [{ title: 'Kick-off', sequence: 0 }] },
+      checklist: { create: [{ label: 'Kick-off scheduled', sequence: 0 }] },
+      members: { create: (opts.memberIds ?? []).map((userId) => ({ userId })) },
+    },
+    include: { milestones: true, checklist: true },
+  });
+  return { projectId: p.id, milestoneId: p.milestones[0]!.id, checklistItemId: p.checklist[0]!.id };
 }

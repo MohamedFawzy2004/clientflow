@@ -22,6 +22,11 @@ const app = createApp({
     appOrigins: env.APP_ORIGINS,
     csrfSecret: env.CSRF_SECRET,
     trustProxy: env.TRUST_PROXY,
+    rateLimits: {
+      ...(env.LOGIN_RATE_LIMIT_PER_IP ? { loginPerIp: env.LOGIN_RATE_LIMIT_PER_IP } : {}),
+      ...(env.TOKEN_RATE_LIMIT_PER_IP ? { tokenPerIp: env.TOKEN_RATE_LIMIT_PER_IP } : {}),
+      ...(env.API_RATE_LIMIT_PER_IP ? { apiPerIp: env.API_RATE_LIMIT_PER_IP } : {}),
+    },
     publicUrl: (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, ''),
     ...(env.WEB_DIST_DIR ? { webDistDir: env.WEB_DIST_DIR } : {}),
   },

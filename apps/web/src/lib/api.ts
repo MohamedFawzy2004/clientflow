@@ -99,6 +99,8 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Set for auth endpoints, where a 401 is an expected answer and not a session loss. */
   skipAuthRedirect?: boolean;
+  /** Extra request headers, e.g. Idempotency-Key. */
+  headers?: Record<string, string>;
 }
 
 export async function apiRequest<T>(
@@ -107,7 +109,7 @@ export async function apiRequest<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   const send = async () => {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...options.headers };
     if (MUTATING.has(method)) headers['X-CSRF-Token'] = csrfToken ?? (await fetchCsrfToken());
     return rawRequest<T>(method, path, options.body, headers, options.signal);
   };

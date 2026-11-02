@@ -4,6 +4,7 @@ import {
   Briefcase,
   CalendarClock,
   FileText,
+  FolderKanban,
   Layers,
   LayoutDashboard,
   LogOut,
@@ -63,6 +64,18 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
         label: 'Services',
         icon: Layers,
         visible: (r) => can(r, 'services.read'),
+      },
+    ],
+  },
+  {
+    group: 'Delivery',
+    items: [
+      {
+        to: '/app/projects',
+        label: 'Projects',
+        icon: FolderKanban,
+        visible: (r) =>
+          canAny(r, ['projects.read.all', 'projects.read.member', 'projects.read.linked']),
       },
     ],
   },

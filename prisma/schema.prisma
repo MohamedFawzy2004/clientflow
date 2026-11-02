@@ -78,6 +78,8 @@ model Agency {
   proposals           Proposal[]
   proposalVersions    ProposalVersion[]
   proposalReviews     ProposalReview[]
+  projects            Project[]
+  idempotencyRecords  IdempotencyRecord[]
 
   @@map("agencies")
 }
@@ -98,20 +100,24 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  agency              Agency               @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  agency              Agency                 @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   sessions            Session[]
-  ownedContacts       Contact[]            @relation("ContactOwner")
+  ownedContacts       Contact[]              @relation("ContactOwner")
   activities          Activity[]
   auditEvents         AuditEvent[]
-  invitationsSent     Invitation[]         @relation("InvitedBy")
-  invitationsAccepted Invitation[]         @relation("AcceptedUser")
+  invitationsSent     Invitation[]           @relation("InvitedBy")
+  invitationsAccepted Invitation[]           @relation("AcceptedUser")
   passwordResetTokens PasswordResetToken[]
-  ownedDeals          Deal[]               @relation("DealOwner")
-  closedDeals         Deal[]               @relation("DealClosedBy")
-  clientOrg           ClientOrganization?  @relation("PortalUsers", fields: [clientOrgId], references: [id], onDelete: Restrict)
-  proposalsCreated    Proposal[]           @relation("ProposalCreatedBy")
-  versionsCreated     ProposalVersion[]    @relation("VersionCreatedBy")
+  ownedDeals          Deal[]                 @relation("DealOwner")
+  closedDeals         Deal[]                 @relation("DealClosedBy")
+  clientOrg           ClientOrganization?    @relation("PortalUsers", fields: [clientOrgId], references: [id], onDelete: Restrict)
+  proposalsCreated    Proposal[]             @relation("ProposalCreatedBy")
+  versionsCreated     ProposalVersion[]      @relation("VersionCreatedBy")
   proposalReviews     ProposalReview[]
+  managedProjects     Project[]              @relation("ProjectManager")
+  createdProjects     Project[]              @relation("ProjectCreatedBy")
+  projectMemberships  ProjectMember[]
+  checklistDone       HandoffChecklistItem[] @relation("ChecklistDoneBy")
 
   @@unique([agencyId, emailNorm])
   // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
@@ -165,6 +171,7 @@ model Contact {
   deals     Deal[]
   /// Plain FK (nullable); the service checks that the organization is in the same agency.
   clientOrg ClientOrganization? @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
+  projects  Project[]
 
   // Target of the deals composite FK (deal and contact in the same agency).
   @@unique([agencyId, id])
@@ -336,6 +343,7 @@ model Deal {
   closedBy                User?            @relation("DealClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
   acceptedProposalVersion ProposalVersion? @relation("DealAcceptedVersion", fields: [acceptedProposalVersionId], references: [id], onDelete: Restrict)
   proposals               Proposal[]
+  project                 Project?
 
   // Target of the proposals composite FK.
   @@unique([agencyId, id])
@@ -362,6 +370,7 @@ model ClientOrganization {
   portalUsers User[]       @relation("PortalUsers")
   invitations Invitation[]
   proposals   Proposal[]
+  projects    Project[]
 
   @@unique([agencyId, id])
   @@index([agencyId, name])
@@ -478,6 +487,7 @@ model ProposalVersion {
   items        ProposalItem[]
   reviews      ProposalReview[]
   acceptedDeal Deal?            @relation("DealAcceptedVersion")
+  project      Project?
 
   @@unique([proposalId, versionNo])
   @@unique([agencyId, id])
@@ -539,4 +549,136 @@ model ProposalReview {
 
   @@index([versionId, occurredAt])
   @@map("proposal_reviews")
+}
+
+// M6: projects, membership, milestones, handoff checklist and stored idempotency results.
+
+enum ProjectState {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectRole {
+  MANAGER
+  MEMBER
+}
+
+enum MilestoneStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+}
+
+// A delivery project (spec §8.1 projects). Created by the won-deal handoff (one project per deal,
+// unique link) or manually by Owner/Admin/PM. The scope baseline is the accepted proposal
+// version, which is immutable (ADR-030), so the project points at it instead of copying it.
+model Project {
+  id                String       @id @default(uuid(7)) @db.Uuid
+  agencyId          String       @map("agency_id") @db.Uuid
+  title             String       @db.VarChar(200)
+  state             ProjectState @default(PLANNED)
+  /// Set when the project came from a won deal. At most one project per deal.
+  dealId            String?      @unique @map("deal_id") @db.Uuid
+  /// The client-accepted proposal version used as the scope baseline (FR-Q10).
+  baselineVersionId String?      @unique @map("baseline_version_id") @db.Uuid
+  contactId         String?      @map("contact_id") @db.Uuid
+  clientOrgId       String?      @map("client_org_id") @db.Uuid
+  managerId         String       @map("manager_id") @db.Uuid
+  startOn           DateTime?    @map("start_on") @db.Date
+  dueOn             DateTime?    @map("due_on") @db.Date
+  /// Budget baseline excluding tax, in minor units of `currency` (ADR-039).
+  budgetMinor       BigInt       @default(0) @map("budget_minor")
+  currency          String       @db.Char(3)
+  createdById       String       @map("created_by_id") @db.Uuid
+  version           Int          @default(1)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency          Agency                 @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  manager         User                   @relation("ProjectManager", fields: [agencyId, managerId], references: [agencyId, id], onDelete: Restrict)
+  createdBy       User                   @relation("ProjectCreatedBy", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  /// Plain FKs (nullable); the service checks they belong to the same agency (ADR-025 pattern).
+  deal            Deal?                  @relation(fields: [dealId], references: [id], onDelete: Restrict)
+  baselineVersion ProposalVersion?       @relation(fields: [baselineVersionId], references: [id], onDelete: Restrict)
+  contact         Contact?               @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  clientOrg       ClientOrganization?    @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
+  members         ProjectMember[]
+  milestones      ProjectMilestone[]
+  checklist       HandoffChecklistItem[]
+
+  @@unique([agencyId, id])
+  @@index([agencyId, state, updatedAt(sort: Desc)])
+  @@index([agencyId, managerId])
+  @@map("projects")
+}
+
+model ProjectMember {
+  projectId String      @map("project_id") @db.Uuid
+  agencyId  String      @map("agency_id") @db.Uuid
+  userId    String      @map("user_id") @db.Uuid
+  role      ProjectRole @default(MEMBER)
+  addedAt   DateTime    @default(now()) @map("added_at") @db.Timestamptz(3)
+
+  project Project @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Cascade)
+  user    User    @relation(fields: [agencyId, userId], references: [agencyId, id], onDelete: Restrict)
+
+  @@id([projectId, userId])
+  @@index([agencyId, userId])
+  @@map("project_members")
+}
+
+model ProjectMilestone {
+  id        String          @id @default(uuid(7)) @db.Uuid
+  projectId String          @map("project_id") @db.Uuid
+  agencyId  String          @map("agency_id") @db.Uuid
+  title     String          @db.VarChar(200)
+  dueOn     DateTime?       @map("due_on") @db.Date
+  status    MilestoneStatus @default(PLANNED)
+  sequence  Int
+  version   Int             @default(1)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  project Project @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Cascade)
+
+  @@unique([projectId, sequence])
+  @@index([agencyId, dueOn])
+  @@map("project_milestones")
+}
+
+model HandoffChecklistItem {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  projectId String    @map("project_id") @db.Uuid
+  agencyId  String    @map("agency_id") @db.Uuid
+  label     String    @db.VarChar(200)
+  sequence  Int
+  doneAt    DateTime? @map("done_at") @db.Timestamptz(3)
+  doneById  String?   @map("done_by_id") @db.Uuid
+
+  project Project @relation(fields: [agencyId, projectId], references: [agencyId, id], onDelete: Cascade)
+  doneBy  User?   @relation("ChecklistDoneBy", fields: [doneById], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, sequence])
+  @@map("handoff_checklist_items")
+}
+
+// The stored result of an idempotent request (spec §11.6): a retry with the same key and the same
+// request returns the same result; the same key with a different request is refused.
+model IdempotencyRecord {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  agencyId    String   @map("agency_id") @db.Uuid
+  actorId     String   @map("actor_id") @db.Uuid
+  scope       String   @db.VarChar(60)
+  key         String   @db.Uuid
+  requestHash String   @map("request_hash") @db.Char(64)
+  resultId    String   @map("result_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+
+  @@unique([agencyId, scope, key])
+  @@map("idempotency_records")
 }
