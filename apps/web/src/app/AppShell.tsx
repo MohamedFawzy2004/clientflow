@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import {
+  BarChart3,
   Briefcase,
+  Coins,
   CalendarClock,
   FileText,
   FolderKanban,
@@ -9,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Receipt,
   Settings,
   UserCog,
   Users,
@@ -76,6 +79,29 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
         icon: FolderKanban,
         visible: (r) =>
           canAny(r, ['projects.read.all', 'projects.read.member', 'projects.read.linked']),
+      },
+    ],
+  },
+  {
+    group: 'Finance',
+    items: [
+      {
+        to: '/app/invoices',
+        label: 'Invoices',
+        icon: Receipt,
+        visible: (r) => canAny(r, ['invoices.read.all', 'invoices.read.project']),
+      },
+      {
+        to: '/app/reports/finance',
+        label: 'Finance report',
+        icon: BarChart3,
+        visible: (r) => can(r, 'finance.view'),
+      },
+      {
+        to: '/app/finance/cost-rates',
+        label: 'Cost rates',
+        icon: Coins,
+        visible: (r) => can(r, 'finance.view'),
       },
     ],
   },

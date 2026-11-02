@@ -62,6 +62,8 @@ model Agency {
   version         Int      @default(1)
   /// Last proposal reference number issued (P-0001, P-0002, ...). Incremented atomically.
   proposalSeq     Int      @default(0) @map("proposal_seq")
+  /// Last invoice number issued (INV-0001, ...). Incremented atomically on issue.
+  invoiceSeq      Int      @default(0) @map("invoice_seq")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -135,6 +137,12 @@ model User {
   changeVersionsSent  ChangeVersion[]        @relation("ChangeVersionsSent")
   changeDecisions     ChangeDecision[]       @relation("ChangeDecisions")
   comments            ProjectComment[]       @relation("CommentsWritten")
+  invoicesCreated     Invoice[]              @relation("InvoicesCreated")
+  invoicesIssued      Invoice[]              @relation("InvoicesIssued")
+  invoicesVoided      Invoice[]              @relation("InvoicesVoided")
+  paymentsRecorded    Payment[]              @relation("PaymentsRecorded")
+  costRates           CostRate[]             @relation("CostRates")
+  costRatesSet        CostRate[]             @relation("CostRatesSet")
 
   @@unique([agencyId, emailNorm])
   // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
@@ -388,6 +396,7 @@ model ClientOrganization {
   invitations Invitation[]
   proposals   Proposal[]
   projects    Project[]
+  invoices    Invoice[]
 
   @@unique([agencyId, id])
   @@index([agencyId, name])
@@ -634,6 +643,7 @@ model Project {
   changeRequests      ChangeRequest[]
   changeVersions      ChangeVersion[]
   comments            ProjectComment[]
+  invoices            Invoice[]
 
   @@unique([agencyId, id])
   @@index([agencyId, state, updatedAt(sort: Desc)])
@@ -1154,4 +1164,159 @@ model ProjectCommentRevision {
 
   @@index([commentId, replacedAt])
   @@map("project_comment_revisions")
+}
+
+// M9: invoice tracking (no payment processing), payments and internal cost rates.
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+enum PaymentKind {
+  PAYMENT
+  /// Undoes one earlier payment (mistakes are reversed, never edited).
+  REVERSAL
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHEQUE
+  OTHER
+}
+
+enum InvoiceLineSource {
+  MILESTONE
+  CHANGE
+  OTHER
+}
+
+// An invoice snapshot (spec §8.1 invoices, FR-F01, FR-F02). Drafts are edited freely; issuing
+// assigns the number and freezes customer, issuer, lines and totals (DB trigger). OVERDUE is
+// derived from the due date and the open balance, never stored. Money is in minor units.
+model Invoice {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  agencyId        String        @map("agency_id") @db.Uuid
+  clientOrgId     String        @map("client_org_id") @db.Uuid
+  projectId       String?       @map("project_id") @db.Uuid
+  /// Agency-wide number, shown as INV-0001. Assigned on issue, so drafts never use one up.
+  number          Int?
+  status          InvoiceStatus @default(DRAFT)
+  currency        String        @db.Char(3)
+  taxRateBp       Int           @default(1400) @map("tax_rate_bp")
+  dueOn           DateTime      @map("due_on") @db.Date
+  issuedOn        DateTime?     @map("issued_on") @db.Date
+  /// Client-visible payment terms or bank details text (no card data).
+  terms           String?       @db.VarChar(2000)
+  /// Internal only: never in the portal.
+  internalNote    String?       @map("internal_note") @db.VarChar(2000)
+  subtotalMinor   BigInt        @default(0) @map("subtotal_minor")
+  taxMinor        BigInt        @default(0) @map("tax_minor")
+  totalMinor      BigInt        @default(0) @map("total_minor")
+  /// Sum of payments minus reversals, kept in the same transaction as each payment.
+  paidMinor       BigInt        @default(0) @map("paid_minor")
+  /// Snapshot of who is billed and who bills, fixed on issue (FR-F02).
+  billedToName    String?       @map("billed_to_name") @db.VarChar(200)
+  billedToContact String?       @map("billed_to_contact") @db.VarChar(200)
+  issuerName      String?       @map("issuer_name") @db.VarChar(200)
+  issuerDetails   String?       @map("issuer_details") @db.VarChar(1000)
+  issuedAt        DateTime?     @map("issued_at") @db.Timestamptz(3)
+  issuedById      String?       @map("issued_by_id") @db.Uuid
+  /// When the client organization can see it in the portal.
+  publishedAt     DateTime?     @map("published_at") @db.Timestamptz(3)
+  voidedAt        DateTime?     @map("voided_at") @db.Timestamptz(3)
+  voidedById      String?       @map("voided_by_id") @db.Uuid
+  voidReason      String?       @map("void_reason") @db.VarChar(500)
+  createdById     String        @map("created_by_id") @db.Uuid
+  version         Int           @default(1)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  clientOrg ClientOrganization @relation(fields: [agencyId, clientOrgId], references: [agencyId, id], onDelete: Restrict)
+  /// Plain FK (nullable, ADR-025); the service checks the project's agency and client.
+  project   Project?           @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  createdBy User               @relation("InvoicesCreated", fields: [agencyId, createdById], references: [agencyId, id], onDelete: Restrict)
+  issuedBy  User?              @relation("InvoicesIssued", fields: [issuedById], references: [id], onDelete: Restrict)
+  voidedBy  User?              @relation("InvoicesVoided", fields: [voidedById], references: [id], onDelete: Restrict)
+  items     InvoiceItem[]
+  payments  Payment[]
+
+  @@unique([agencyId, number])
+  @@unique([agencyId, id])
+  @@index([agencyId, status, dueOn])
+  @@index([projectId])
+  @@index([agencyId, clientOrgId])
+  @@map("invoices")
+}
+
+// One line, priced exactly: quantity in hundredths, unit price excluding tax (spec §8.1 invoice_items).
+model InvoiceItem {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  invoiceId      String            @map("invoice_id") @db.Uuid
+  position       Int
+  description    String            @db.VarChar(500)
+  quantityCenti  Int               @map("quantity_centi")
+  unitPriceMinor BigInt            @map("unit_price_minor")
+  lineTotalMinor BigInt            @map("line_total_minor")
+  /// What the line bills for (spec J5 step 3: milestones or change orders).
+  source         InvoiceLineSource @default(OTHER)
+  sourceId       String?           @map("source_id") @db.Uuid
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, position])
+  @@map("invoice_items")
+}
+
+// A confirmed manual payment or a reversal of one (spec §8.1 payments, FR-F03). Append-only.
+model Payment {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  agencyId     String        @map("agency_id") @db.Uuid
+  invoiceId    String        @map("invoice_id") @db.Uuid
+  kind         PaymentKind   @default(PAYMENT)
+  /// Always positive; a reversal subtracts its amount.
+  amountMinor  BigInt        @map("amount_minor")
+  currency     String        @db.Char(3)
+  receivedOn   DateTime      @map("received_on") @db.Date
+  method       PaymentMethod @default(BANK_TRANSFER)
+  /// Bank or receipt reference. Never card numbers or bank credentials (SEC-14).
+  reference    String?       @db.VarChar(120)
+  note         String?       @db.VarChar(500)
+  /// For a reversal: the payment it undoes (at most one reversal each).
+  reversesId   String?       @unique @map("reverses_id") @db.Uuid
+  recordedById String        @map("recorded_by_id") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  invoice    Invoice  @relation(fields: [agencyId, invoiceId], references: [agencyId, id], onDelete: Restrict)
+  recordedBy User     @relation("PaymentsRecorded", fields: [agencyId, recordedById], references: [agencyId, id], onDelete: Restrict)
+  reverses   Payment? @relation("PaymentReversal", fields: [reversesId], references: [id], onDelete: Restrict)
+  reversedBy Payment? @relation("PaymentReversal")
+
+  @@index([invoiceId, createdAt])
+  @@index([agencyId, receivedOn])
+  @@map("payments")
+}
+
+// An internal hourly cost rate for a person, from a date on (FR-F06). History is kept: a new
+// rate starts a new row. Only Owner/Admin set rates; PMs never see them.
+model CostRate {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  agencyId      String   @map("agency_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  hourlyMinor   BigInt   @map("hourly_minor")
+  currency      String   @db.Char(3)
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  setById       String   @map("set_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User @relation("CostRates", fields: [agencyId, userId], references: [agencyId, id], onDelete: Restrict)
+  setBy User @relation("CostRatesSet", fields: [agencyId, setById], references: [agencyId, id], onDelete: Restrict)
+
+  @@unique([userId, effectiveFrom])
+  @@index([agencyId, userId, effectiveFrom(sort: Desc)])
+  @@map("cost_rates")
 }

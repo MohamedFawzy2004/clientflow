@@ -189,6 +189,22 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        path: 'invoices',
+        lazy: screen(() => import('../features/invoices/InvoicesPage'), 'InvoicesPage'),
+      },
+      {
+        path: 'invoices/:id',
+        lazy: screen(() => import('../features/invoices/InvoicePage'), 'InvoicePage'),
+      },
+      {
+        path: 'reports/finance',
+        lazy: screen(() => import('../features/invoices/FinanceReportPage'), 'FinanceReportPage'),
+      },
+      {
+        path: 'finance/cost-rates',
+        lazy: screen(() => import('../features/invoices/CostRatesPage'), 'CostRatesPage'),
+      },
+      {
         path: 'services',
         lazy: screen(() => import('../features/services/ServicesPage'), 'ServicesPage'),
       },
@@ -228,6 +244,14 @@ export const router = createBrowserRouter([
       {
         path: 'changes/:id',
         lazy: screen(() => import('../features/portal/PortalChangePage'), 'PortalChangePage'),
+      },
+      {
+        path: 'invoices',
+        lazy: screen(() => import('../features/portal/PortalInvoices'), 'PortalInvoicesPage'),
+      },
+      {
+        path: 'invoices/:id',
+        lazy: screen(() => import('../features/portal/PortalInvoices'), 'PortalInvoicePage'),
       },
       {
         path: 'deliverables/:id',

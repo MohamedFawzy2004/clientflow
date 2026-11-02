@@ -368,3 +368,40 @@ Deliverables and change requests have one comment thread each (FR-X08).
 - **Edit and delete:** authors edit or delete only their own comments. Each edit or delete appends the earlier text to `project_comment_revisions` (append-only, DB trigger); a deleted comment shows as "deleted".
 - **History:** the team sees the history of every comment; clients see the history of their own comments.
 - **Notifications:** a client comment sends the project manager a link-only email. In-app notifications arrive with M10.
+
+## ADR-054 — Invoices are tracked, not collected; issuing freezes a snapshot (ACCEPTED, M9)
+
+ClientFlow records invoices and the payments the agency confirms. It never moves money, stores card data or connects to a bank (FR-F01). Every invoice screen says so.
+
+- **States:** `DRAFT → ISSUED → PARTIALLY_PAID → PAID`, plus `VOID`. `OVERDUE` is derived (issued or partly paid, past due, balance open) and is never stored.
+- **Drafts:** they are edited as a whole (lines, tax %, due date, terms, internal note) under the invoice's `version`. Lines bill a milestone or an accepted change of the invoice's project, or free text. The invoice uses its project's currency.
+- **Issuing:** under a row lock, issuing takes the next number, computes the totals with the proposal math (exact minor units, tax rounded half up, ADR-030), and copies the customer name, contact and the agency's issuer details onto the invoice (FR-F02).
+- **Database rules:** a trigger freezes the content once an invoice is issued, makes void final and blocks deleting an issued invoice. Lines change only on drafts. Checks keep the status consistent with the paid amount, and keep the paid amount between 0 and the total.
+- **Portal:** an issued invoice reaches the portal only when it is published. Clients see their own organization's published invoices, without internal notes, payment references or staff names (FR-X03). Anything else is a 404 with a DENIED audit event.
+
+## ADR-055 — Payments are append-only, idempotent and never overpay (ACCEPTED, M9)
+
+Only Finance and the Owner record payments (FR-F04; Admins manage invoices but do not touch money).
+
+- **Recording:** each payment is a new row: amount, received date, method, reference and note (FR-F03). It needs an `Idempotency-Key` header. A retry with the same key and body returns the first result (200, `replayed`). The same key with a different body is a 409 (SEC-15).
+- **Overpayment:** the invoice row is locked, so two people paying the same balance cannot both land. An amount above the open balance is refused with the exact balance in the message.
+- **Mistakes:** a payment is never edited or deleted (DB trigger). It is reversed by a REVERSAL row linked to it, with a reason, and the balance reopens. Each payment and reversal is audited.
+- **Void:** voiding needs a reason, and is allowed only when nothing is paid (reverse the payments first). The number and history stay.
+- **Card numbers:** references and notes that look like a card number (13 or more digits) are refused by the API and by a DB check (SEC-14).
+
+## ADR-056 — Cost rates and estimated margin (ACCEPTED, M9)
+
+Cost rates are internal hourly costs per person with an "effective from" date. Changes keep the earlier rates for earlier time, and every change is audited (FR-A06 for this setting).
+
+- **Time cost:** for each logged minute, the rate in effect that day, counting only rates in the project's currency. There is no currency conversion.
+- **Margin:** the agreed budget (proposal plus accepted changes) minus that cost. It is always labelled "estimated", and it says what share of logged time had a usable rate and whose time had none (FR-F06, FR-F07, US-23).
+- **Kept apart:** expected (budget, excluding tax), invoiced (issued, not void) and received (cash) are separate figures, never mixed (FR-F05).
+- **Reports:** totals are per currency and are never added across currencies. The CSV export is limited to what the reader may see; cells are neutralized against formula injection, and each export is audited (FR-F09).
+
+## ADR-057 — Defaults chosen for open M9 questions (PROPOSED, M9 — owner to confirm)
+
+The owner did not answer these, so M9 ships with these defaults. Each can be changed later without a data migration:
+
+1. **Numbering:** one agency-wide sequence, `INV-0001`, `INV-0002`, … A number is taken only when an invoice is issued; drafts have none, and void invoices keep theirs. Per-year or per-client prefixes would be a formatting change.
+2. **Who sees cost rates:** Owner and Admin set them, Finance reads them. Nobody else sees them, including the person whose rate it is.
+3. **What a PM sees:** for projects they manage, the money summary and the estimated margin, but not other people's rates (only the names of people without a rate). PMs read their projects' invoices but cannot change them or record payments.
