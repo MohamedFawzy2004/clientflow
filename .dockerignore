@@ -16,3 +16,11 @@ test-results
 playwright-report
 docs/milestones/*-screenshots
 *.log
+# Security audit F12: local backups, demo and restore copies and crash dumps may hold real data.
+backups
+**/backups
+**/.demo-storage
+**/.restore-storage
+*.stackdump
+**/*.dump
+**/*.sql.gz

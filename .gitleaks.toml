@@ -8,9 +8,13 @@ useDefault = true
 description = "Fictional test fixtures (not credentials for any system)"
 regexTarget = "secret"
 regexes = [
-  # Convention for test passphrases: three or more lowercase words and two digits,
-  # e.g. "amber-orchard-signal-77". Real API keys and tokens never have this shape.
-  '''^[a-z]+(?:-[a-z]+){2,}-[0-9]{2}$''',
+  # Test passphrases, listed one by one (security audit F9). A shape rule such as
+  # word-word-word-NN would also hide a real passphrase someone pastes into a file, so a new
+  # fixture passphrase must be added here by name.
+  '''^(?:amber-orchard-signal-(?:47|77|78)|quiet-harbor-lantern-58|violet-lantern-meadow-42)$''',
+  '''^(?:tidal-copper-meadow-29|second-amber-violin-34|sahel-orchid-lantern-58)$''',
+  '''^(?:river-nile-lantern-42|harbor-violet-quartz-63|delta-harbour-violet-77)$''',
+  '''^(?:another-strong-phrase-91|amber-delta-window-73)$''',
   # Throwaway CSRF secrets used only inside unit/integration tests.
   '''^test-csrf-secret-that-is-long-enough-1234567890$''',
   '''^unit-test-secret-unit-test-secret-123$''',
