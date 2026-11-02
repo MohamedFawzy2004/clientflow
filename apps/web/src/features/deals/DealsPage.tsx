@@ -31,7 +31,10 @@ function DealCard({
     <li
       draggable
       onDragStart={(e) => {
+        // Playwright's WebKit returns custom types such as text/deal-id empty on drop (Safari's
+        // engine); text/plain reaches the drop in every engine.
         e.dataTransfer.setData('text/deal-id', deal.id);
+        e.dataTransfer.setData('text/plain', deal.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
       className="cursor-grab rounded-md border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(16,36,60,0.06)] active:cursor-grabbing"
@@ -164,7 +167,9 @@ function Board({ timeZone, onNew }: { timeZone: string; onNew: () => void }) {
             onDrop={(e) => {
               e.preventDefault();
               setOver(null);
-              const deal = all.find((d) => d.id === e.dataTransfer.getData('text/deal-id'));
+              const id =
+                e.dataTransfer.getData('text/deal-id') || e.dataTransfer.getData('text/plain');
+              const deal = all.find((x) => x.id === id);
               if (deal) onMove(deal, col.id);
             }}
             className={cn(

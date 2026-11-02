@@ -14,7 +14,7 @@ export interface AuthContext {
   sessionId: string;
   sessionTokenHash: string;
   user: AuthUser;
-  agency: { id: string; name: string; defaultCurrency: string; timezone: string };
+  agency: { id: string; name: string; defaultCurrency: string; timezone: string; isDemo: boolean };
   clientOrg: { id: string; name: string } | null;
 }
 

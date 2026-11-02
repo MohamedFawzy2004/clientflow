@@ -16,7 +16,8 @@
     "jobs:once": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/jobs.ts once",
     "jobs:worker": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/jobs.ts worker",
     "backup": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/backup.ts",
-    "restore": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/restore.ts"
+    "restore": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/restore.ts",
+    "demo:reset": "tsx --conditions=development --env-file-if-exists=../../.env src/cli/demo-reset.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.2",

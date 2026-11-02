@@ -9,9 +9,12 @@ const WEB_PORT = 5174;
 const WEB_ORIGIN = `http://localhost:${WEB_PORT}`;
 export const E2E_MAIL_SINK = fileURLToPath(new URL('./e2e/.mail-sink', import.meta.url));
 export const E2E_STORAGE = fileURLToPath(new URL('./e2e/.storage', import.meta.url));
+const BROWSER = (process.env.E2E_BROWSER ?? 'chromium') as 'chromium' | 'firefox' | 'webkit';
 
 export default defineConfig({
   testDir: 'e2e',
+  // The demo tour has its own config and database (playwright.demo.config.ts).
+  testIgnore: 'demo/**',
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
@@ -20,10 +23,17 @@ export default defineConfig({
   timeout: 60_000,
   use: {
     baseURL: WEB_ORIGIN,
-    // Uses the Microsoft Edge already installed on Windows. No browser download needed.
-    // Windows: the installed Edge (no download). CI sets PLAYWRIGHT_CHANNEL=chromium.
-    channel:
-      process.env.PLAYWRIGHT_CHANNEL ?? (process.platform === 'win32' ? 'msedge' : 'chromium'),
+    // E2E_BROWSER=firefox or webkit runs the suite in Playwright's own builds of those engines
+    // (`npx playwright install firefox webkit`). Default: Chromium; on Windows the installed
+    // Edge (no download). CI sets PLAYWRIGHT_CHANNEL=chromium.
+    browserName: BROWSER,
+    ...(BROWSER === 'chromium'
+      ? {
+          channel:
+            process.env.PLAYWRIGHT_CHANNEL ??
+            (process.platform === 'win32' ? 'msedge' : 'chromium'),
+        }
+      : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

@@ -111,7 +111,14 @@ export interface SessionUser {
   name: string;
   email: string;
   role: Role;
-  agency: { id: string; name: string; defaultCurrency: string; timezone: string };
+  agency: {
+    id: string;
+    name: string;
+    defaultCurrency: string;
+    timezone: string;
+    /** A demo workspace with fictional data only (ADR-066). */
+    isDemo: boolean;
+  };
   /** CLIENT users only: the organization they belong to. */
   clientOrg: { id: string; name: string } | null;
 }

@@ -1,5 +1,7 @@
 # Deploying ClientFlow (staging / demo)
 
+> **Status (M12):** a demo workspace can be built and reset safely (see [Demo workspace](#demo-workspace)).
+>
 > **Status (M11):** the production image is built, scanned in CI and smoke-tested locally against PostgreSQL. A backup was restored into an isolated database and reconciled (`docs/milestones/m11-restore-drill.txt`). **Nothing has been deployed.** A hosting provider and an email provider still have to be chosen by the project owner. Read `docs/18_PRIVACY_RETENTION.md` and `docs/19_RUNBOOK.md` before real client data goes in.
 
 ## What you deploy
@@ -40,6 +42,7 @@ Set these as secrets in the platform. Never put them in the image or the reposit
 | `LOG_LEVEL`                                   | no       | `info`                                                                                                                                                              |
 | `JOBS_ENABLED`                                | no       | `true` (default): the background worker runs inside the app. Set `false` only if a separate `node apps/api/dist/cli/jobs.js worker` process runs it                 |
 | `JOBS_POLL_SECONDS` / `REMINDER_SCAN_MINUTES` | no       | Defaults 10 s and 15 min                                                                                                                                            |
+| `DEMO_MODE`                                   | no       | `false` (default). `true` only on a demo deployment: allows `demo-reset` and refuses a sending mail transport (ADR-066)                                             |
 | `APP_RELEASE`                                 | no       | The release name or git SHA, shown to Owner/Admin in Settings → System status                                                                                       |
 
 The app **refuses to start** with placeholder secrets, an `http://` origin, or the development mail sink.
@@ -107,6 +110,37 @@ Two things make up a backup: the **database** and the **encrypted file volume** 
 ## Image security
 
 CI builds the image and fails on HIGH/CRITICAL advisories that have a fix (Trivy). Exceptions are listed in `.trivyignore`, each with a reason. The runtime image has no npm, npx or compilers and runs as the `node` user. Debian security updates are applied at build time; a build without mirror access fails, unless `--build-arg OS_UPDATES=0` is passed (local builds only). Rebuild and redeploy at least monthly, so base-image fixes reach production.
+
+## Demo workspace
+
+A demo is a **separate deployment with its own database and file volume**, never the real
+workspace. It holds a fictional agency with a user for every role and three client organizations
+(spec §21), built through the real API (ADR-066).
+
+- Database: a name that contains `demo`, e.g. `clientflow_demo`.
+- Environment: `DEMO_MODE=true` and `MAIL_TRANSPORT=disabled` (the app refuses a sending transport
+  in demo mode). Everything else as above.
+- Build or rebuild the demo (it deletes the current demo first):
+
+  ```bash
+  # From the repository (local or an operations machine)
+  DATABASE_URL=…/clientflow_demo DEMO_MODE=true npm run demo:reset -- --confirm clientflow_demo
+  # Inside the production image (no npm there)
+  node apps/api/dist/cli/demo-reset.js --confirm clientflow_demo
+  ```
+
+  It refuses unless `DEMO_MODE=true`, the database name contains `demo` and is typed back, and the
+  database is empty or holds only a demo workspace. Pointed at a real database by mistake, it stops
+  before deleting anything.
+
+- The new passwords are written to `apps/api/.demo-credentials.local.json` on the machine that ran
+  it. They change on every reset.
+- Every page shows a **Demo workspace** notice.
+- Locally: `npm run demo:tour` rebuilds the demo in `DEMO_DATABASE_URL` and walks each role's main
+  journey in Chromium, Firefox and WebKit.
+
+A public demo still needs the owner's hosting choice, a reset schedule (for example nightly) and a
+decision on how visitors get the demo accounts.
 
 ## Known gaps before real client data
 

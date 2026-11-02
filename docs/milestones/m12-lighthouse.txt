@@ -1,0 +1,30 @@
+# Lighthouse 13.5.0 (NFR-03, R38), M12. Edge headless on Windows 11, i7-13650HX, 16 GB.
+# Server: production build (node apps/api/dist/server.js, WEB_DIST_DIR set) on the DEMO database,
+# 127.0.0.1, no reverse proxy or CDN. Signed in as the demo owner with scripts/lighthouse.mjs.
+# Mobile = Lighthouse default (simulated slow 4G, 4x CPU slowdown). Desktop = --preset=desktop.
+# Note: in the demo the largest paint is the "Demo workspace" notice, which needs the session
+# check; M11 measured the E2E database, so the two pages are not identical.
+# Lighthouse often failed with NO_NAVSTART on this machine; the script retries a failed run.
+
+Baseline (M11 code, demo data)
+  /app/dashboard  mobile  perf 81 / 78        LCP 3984-4192 ms  FCP ~2495 ms   35 script files
+
+Tried: session request preloaded from index.html (one request, done by ~125 ms)
+  /app/dashboard  mobile  perf 80 / 78 / 81   LCP 4028-4184 ms   no measurable change: not kept
+
+Tried: one "shared" chunk for all app modules used by 2+ screens
+  /app/dashboard  mobile  perf 83 / 85 / 85   LCP 3391-3529 ms   5 script files
+  /login          mobile  perf 87 / 90         the 151 kB (gzip) chunk was preloaded on sign-in
+  Not kept: it moved the cost to the first screen every user sees.
+
+Shipped: icons in one shared chunk (was one 1 KB chunk per icon), 21 script files
+  /app/dashboard  mobile  perf 85 / 84 / 85 / 84 / 86   LCP 3355-3563 ms   TBT 93-175 ms
+  /app/dashboard  desktop perf 99 / 91 / 99             LCP 891-924 ms     TBT 1 ms
+  /login          mobile  perf 88 / 89 / 87             LCP 2769-2909 ms
+
+Same session, same conditions, M11 build for comparison
+  /login          mobile  perf 89 / 89 / 90             (M11 report: 91-94 on a quieter run)
+
+Result: dashboard mobile 84-86, median 85: the target is met on this setup, at the edge.
+/login stays above 85 (87-89; about one point below the M11 build measured at the same time).
+Scores vary between runs and machines; this is one setup, not a promise.

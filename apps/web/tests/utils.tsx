@@ -17,6 +17,7 @@ export const USER: SessionUser = {
     name: 'Lumen Digital Studio',
     defaultCurrency: 'EGP',
     timezone: 'Africa/Cairo',
+    isDemo: false,
   },
   clientOrg: null,
 };

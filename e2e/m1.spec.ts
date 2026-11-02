@@ -166,7 +166,9 @@ test.describe.serial('M1 journey', () => {
     await shot(page, `${SHOTS}/dashboard-1440.png`);
   });
 
-  test('keyboard: skip link and dialog focus management', async ({ page }) => {
+  test('keyboard: skip link and dialog focus management', async ({ page, browserName }) => {
+    // WebKit (like Safari) skips links on Tab unless the user turns on full keyboard access.
+    test.skip(browserName === 'webkit', 'Tab skips links by default in WebKit.');
     await signIn(page, creds().salesA);
     await page.goto('/app/leads');
     // Wait for the shell: before the session check finishes there is nothing to focus.

@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';
+import { DemoNotice } from '../components/DemoNotice';
 import { Avatar } from '../components/ui/brand';
 import { useLogout, useSession } from '../features/auth/session';
 import { cn } from '../lib/format';
@@ -85,6 +86,9 @@ export function PortalShell() {
           </ul>
         </nav>
       </header>
+      <div className="mx-auto w-full max-w-[1100px] px-4 md:px-6">
+        <DemoNotice user={user} className="mt-4" />
+      </div>
       <main
         id="main"
         tabIndex={-1}

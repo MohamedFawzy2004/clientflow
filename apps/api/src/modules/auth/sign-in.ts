@@ -57,6 +57,7 @@ export async function signIn(
         name: user.agency.name,
         defaultCurrency: user.agency.defaultCurrency,
         timezone: user.agency.timezone,
+        isDemo: user.agency.isDemo,
       },
       clientOrg,
     },

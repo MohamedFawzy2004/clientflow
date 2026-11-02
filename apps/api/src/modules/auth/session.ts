@@ -103,6 +103,7 @@ export async function resolveSession(
       name: user.agency.name,
       defaultCurrency: user.agency.defaultCurrency,
       timezone: user.agency.timezone,
+      isDemo: user.agency.isDemo,
     },
     clientOrg: user.clientOrg ? { id: user.clientOrg.id, name: user.clientOrg.name } : null,
   };

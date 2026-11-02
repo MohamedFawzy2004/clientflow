@@ -21,6 +21,7 @@ import {
 import { can, canAny, ROLE_LABELS, type Role, type SessionUser } from '@clientflow/contracts';
 import { toast } from 'sonner';
 import { Avatar, Wordmark } from '../components/ui/brand';
+import { DemoNotice } from '../components/DemoNotice';
 import { RadixDialog } from '../components/ui/dialog';
 import { cn } from '../lib/format';
 import { useLogout, useSession } from '../features/auth/session';
@@ -307,6 +308,9 @@ export function AppShell() {
           </p>
           <NotificationBell />
         </header>
+        <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 wide:px-8">
+          <DemoNotice user={user} className="mt-4" />
+        </div>
         <main
           id="main"
           tabIndex={-1}
