@@ -130,8 +130,9 @@ test.describe.serial('M9 invoice tracking', () => {
     await page.getByLabel(/^Amount \(EGP\)/).fill('10000');
     await page.getByLabel(/^Reference/).fill('CIB-TRX-4471');
     await page.getByRole('button', { name: 'Record payment' }).click();
-    // Exact: the history line "Payment recorded by …" can be on screen at the same time.
-    await expect(page.getByText('Payment recorded', { exact: true })).toBeVisible();
+    // The payment history line, not the toast: the toast can be gone already, and matching
+    // plain "Payment recorded" hit both at once (strict-mode failure).
+    await expect(page.getByText(/^Payment recorded by /)).toBeVisible();
     await expect(page.getByText('Partly paid', { exact: true }).first()).toBeVisible();
     await expect(
       page.getByText(/Record a payment you received \(EGP\s16,220\.00 open\)/),
