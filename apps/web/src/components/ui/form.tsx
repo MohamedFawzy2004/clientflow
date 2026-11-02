@@ -1,12 +1,13 @@
 import {
   forwardRef,
   useId,
+  useState,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { cn } from '../../lib/format';
 
 export interface FieldControlProps {
@@ -105,6 +106,39 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
           aria-hidden
           className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted"
         />
+      </div>
+    );
+  },
+);
+
+/** Password input with a show/hide toggle, so long passphrases can be checked before submit. */
+export const PasswordInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function PasswordInput({ className, ...rest }, ref) {
+    const [visible, setVisible] = useState(false);
+    return (
+      <div className="relative">
+        <Input
+          ref={ref}
+          type={visible ? 'text' : 'password'}
+          className={cn('pr-20', className)}
+          spellCheck={false}
+          autoCapitalize="off"
+          {...rest}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-pressed={visible}
+          aria-label={visible ? 'Hide password' : 'Show password'}
+          className="absolute right-1.5 top-1/2 inline-flex h-9 -translate-y-1/2 items-center gap-1.5 rounded-sm px-2.5 text-[13px] font-medium text-muted hover:bg-surface-alt hover:text-text"
+        >
+          {visible ? (
+            <EyeOff aria-hidden className="size-4" />
+          ) : (
+            <Eye aria-hidden className="size-4" />
+          )}
+          {visible ? 'Hide' : 'Show'}
+        </button>
       </div>
     );
   },

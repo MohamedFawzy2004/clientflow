@@ -10,12 +10,15 @@ import {
   contactCreateSchema,
   NOTES_MAX_LENGTH,
   type ContactCreateInput,
+  zonedLocalToUtcIso,
 } from '@clientflow/contracts';
 import { ApiError } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 import { Dialog } from '../../components/ui/dialog';
 import { Banner } from '../../components/ui/feedback';
 import { Field, Input, Select, Textarea } from '../../components/ui/form';
+import { useSession } from '../auth/session';
+import { DEFAULT_TIMEZONE } from '../../lib/format';
 import { useCreateLead } from './api';
 
 // The browser's datetime-local input has no offset, so the form keeps a local value and
@@ -24,7 +27,7 @@ const formSchema = contactCreateSchema.omit({ nextActionAt: true, lifecycle: tru
   nextActionLocal: z
     .string()
     .optional()
-    .refine((v) => !v || !Number.isNaN(new Date(v).getTime()), {
+    .refine((v) => !v || zonedLocalToUtcIso(v, 'UTC') !== null, {
       message: 'Enter a valid date and time.',
     }),
 });
@@ -50,12 +53,11 @@ const EMPTY: FormInput = {
   notes: '',
 };
 
-function toPayload(values: FormOutput): ContactCreateInput {
+/** The picked wall time means that time in the agency timezone, not the device timezone. */
+function toPayload(values: FormOutput, timeZone: string): ContactCreateInput {
   const { nextActionLocal, ...rest } = values;
-  return {
-    ...rest,
-    ...(nextActionLocal ? { nextActionAt: new Date(nextActionLocal).toISOString() } : {}),
-  };
+  const nextActionAt = nextActionLocal ? zonedLocalToUtcIso(nextActionLocal, timeZone) : null;
+  return { ...rest, ...(nextActionAt ? { nextActionAt } : {}) };
 }
 
 export function AddLeadDialog({
@@ -67,11 +69,14 @@ export function AddLeadDialog({
 }) {
   const navigate = useNavigate();
   const create = useCreateLead();
+  const timeZone = useSession().data?.agency.timezone ?? DEFAULT_TIMEZONE;
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(formSchema),
     defaultValues: EMPTY,
-    mode: 'onTouched',
+    // Validate on submit, then live: blur validation shifts the layout under the pointer.
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
   });
   const { errors, isDirty } = form.formState;
   const notesLength = useWatch({ control: form.control, name: 'notes' })?.length ?? 0;
@@ -91,7 +96,7 @@ export function AddLeadDialog({
   };
 
   const onSubmit = form.handleSubmit((values) => {
-    create.mutate(toPayload(values), {
+    create.mutate(toPayload(values, timeZone), {
       onSuccess: (res) => {
         const duplicates = res.meta.possibleDuplicates;
         close();
@@ -252,7 +257,7 @@ export function AddLeadDialog({
         </Field>
         <Field
           label="Next follow-up"
-          hint="When should someone get back to them?"
+          hint={`When should someone get back to them? Times are in ${timeZone.replace('_', ' ')} time.`}
           error={errors.nextActionLocal?.message}
           className="sm:col-span-2"
         >

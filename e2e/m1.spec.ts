@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { shot } from './shot';
 
 const creds = () =>
   JSON.parse(readFileSync('e2e/.auth/credentials.json', 'utf8')) as Record<
@@ -124,10 +125,10 @@ test.describe.serial('M1 journey', () => {
   test('screenshots and overflow checks at spec viewports', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/login');
-    await page.screenshot({ path: `${SHOTS}/login-1440.png` });
+    await shot(page, `${SHOTS}/login-1440.png`);
     await page.setViewportSize({ width: 360, height: 780 });
     await expectNoHorizontalOverflow(page);
-    await page.screenshot({ path: `${SHOTS}/login-360.png` });
+    await shot(page, `${SHOTS}/login-360.png`);
 
     await signIn(page, creds().salesA);
     for (const width of VIEWPORTS) {
@@ -135,14 +136,14 @@ test.describe.serial('M1 journey', () => {
       await page.goto('/app/leads');
       await expect(page.getByRole('link', { name: 'Salma Ibrahim' }).first()).toBeVisible();
       await expectNoHorizontalOverflow(page);
-      await page.screenshot({ path: `${SHOTS}/leads-${width}.png` });
+      await shot(page, `${SHOTS}/leads-${width}.png`);
     }
     for (const width of [360, 1440] as const) {
       await page.setViewportSize({ width, height: width < 768 ? 800 : 900 });
       await page.goto(leadUrl);
       await expect(page.getByRole('heading', { level: 1, name: 'Salma Ibrahim' })).toBeVisible();
       await expectNoHorizontalOverflow(page);
-      await page.screenshot({ path: `${SHOTS}/lead-detail-${width}.png`, fullPage: true });
+      await shot(page, `${SHOTS}/lead-detail-${width}.png`, { fullPage: true });
 
       await page.goto('/app/leads');
       await page.getByRole('button', { name: 'Add lead' }).last().click();
@@ -156,13 +157,13 @@ test.describe.serial('M1 journey', () => {
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
       expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
       await expect(dialog.getByRole('button', { name: 'Save lead' })).toBeInViewport();
-      await page.screenshot({ path: `${SHOTS}/add-lead-${width}.png` });
+      await shot(page, `${SHOTS}/add-lead-${width}.png`);
       await page.keyboard.press('Escape');
     }
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app/dashboard');
     await expect(page.getByText('Your leads')).toBeVisible();
-    await page.screenshot({ path: `${SHOTS}/dashboard-1440.png` });
+    await shot(page, `${SHOTS}/dashboard-1440.png`);
   });
 
   test('keyboard: skip link and dialog focus management', async ({ page }) => {

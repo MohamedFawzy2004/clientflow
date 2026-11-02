@@ -1,26 +1,17 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
-import { LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react';
-import type { Role, SessionUser } from '@clientflow/contracts';
+import { LayoutDashboard, LogOut, Menu, UserCog, Users, X } from 'lucide-react';
+import { can, canAny, ROLE_LABELS, type Role, type SessionUser } from '@clientflow/contracts';
 import { toast } from 'sonner';
 import { Avatar, Wordmark } from '../components/ui/brand';
 import { RadixDialog } from '../components/ui/dialog';
 import { cn } from '../lib/format';
 import { useLogout, useSession } from '../features/auth/session';
 
-const ROLE_LABELS: Record<Role, string> = {
-  OWNER: 'Owner',
-  ADMIN: 'Admin',
-  SALES_MANAGER: 'Sales manager',
-  SALES: 'Sales',
-  PM: 'Project manager',
-  MEMBER: 'Team member',
-  FINANCE: 'Finance',
-  CLIENT: 'Client',
-};
-
-/** UI hint only. The API enforces the same rule on every request (ADR-009). */
-export const LEAD_ROLES: ReadonlySet<Role> = new Set(['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES']);
+/** UI hint only: the API enforces the same matrix on every request (ADR-009). */
+export function canSeeLeads(role: Role) {
+  return canAny(role, ['contacts.read.all', 'contacts.read.own']);
+}
 
 interface NavItem {
   to: string;
@@ -39,7 +30,11 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
   },
   {
     group: 'Sales',
-    items: [{ to: '/app/leads', label: 'Leads', icon: Users, visible: (r) => LEAD_ROLES.has(r) }],
+    items: [{ to: '/app/leads', label: 'Leads', icon: Users, visible: canSeeLeads }],
+  },
+  {
+    group: 'Workspace',
+    items: [{ to: '/app/team', label: 'Team', icon: UserCog, visible: (r) => can(r, 'team.read') }],
   },
 ];
 

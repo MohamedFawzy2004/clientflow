@@ -63,3 +63,27 @@ On Windows, `tsx watch` stalled silently when spawned by non-terminal parents (t
 ## ADR-015 — Dialogs own initial focus and focus return (ACCEPTED, 2026-10-24)
 
 Radix Dialog returns focus only to its own `Trigger`, but ClientFlow opens dialogs from ordinary buttons (header and mobile CTAs). `components/ui/dialog.tsx` records the focused element when a dialog opens, focuses the first `[data-autofocus]` field, and restores focus on close. React `autoFocus` is not used inside dialogs, because it moves focus before the opener can be recorded. Covered by the E2E keyboard test.
+
+## ADR-016 — Mailer adapter with a dev sink; no real provider yet (ACCEPTED, M2)
+
+Invitations and password resets go through a `Mailer` interface. `MAIL_TRANSPORT=dev-sink` writes each message to a gitignored folder and logs only its kind and file name. `disabled` drops messages. The dev sink is refused in production, because it stores one-time links in plain text. A real provider (e.g. Resend, Postmark, SES) is the owner's decision and needs its own adapter, domain verification and bounce handling. Until then, invitations still work: the inviter sees the one-time link once and shares it directly. Password reset needs a real provider in production.
+
+## ADR-017 — One-time tokens: hashed at rest, sent in URL fragments, consumed under row locks (ACCEPTED, M2)
+
+Invitation (7 days) and reset (30 minutes) tokens are 256-bit random values. Only SHA-256 hashes are stored. Links put the token in the URL **fragment** (`#token=`), which browsers never send to servers or in `Referer`; the page reads it once, removes it from the address bar, and posts it in the request body. Consumption uses `SELECT … FOR UPDATE`, so concurrent use succeeds once (tested). Unknown, used, expired and revoked tokens all return the same `400 TOKEN_INVALID`. A partial unique index allows one open invitation per email; replacing an invite revokes the old link. The inviter sees the raw invite link once (an admin can already create accounts, so this grants no extra power). Reset tokens are never returned by the API.
+
+## ADR-018 — Partial indexes outside the Prisma schema are safe (VERIFIED, M2)
+
+Prisma's schema language cannot express the partial unique indexes or check constraints written by hand in the migrations. `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma` on 2026-10-24 produced an **empty migration**, so future `migrate dev` runs will not drop them. Re-check this command whenever a migration touches those tables.
+
+## ADR-019 — Password policy: offline zxcvbn-ts score ≥ 3 + personal-info check (ACCEPTED, M2)
+
+New passwords (bootstrap, invite acceptance, reset) must be 12–128 characters, score at least 3 with `@zxcvbn-ts` (MIT; about 49k breach-corpus passwords plus pattern matchers, fully offline), and must not contain the user's email local part or name parts of 4+ characters. Login only checks length, so tightening the policy never locks existing users out. A k-anonymity breach API (e.g. HIBP) was not chosen: it would add an external dependency and egress (SSRF-controlled, M10). It can be added later as an opt-in adapter.
+
+## ADR-020 — Forms validate on submit, then live (ACCEPTED, M2)
+
+E2E found that blur validation on an autofocused, empty field shifted the layout under the pointer, so a click on "Forgot password?" missed. All forms now use `mode: 'onSubmit'` with `reValidateMode: 'onChange'`: no errors appear before the first submit, then they update as the user types.
+
+## ADR-021 — Team management rules (ACCEPTED, M2)
+
+Owner and Admin hold `team.*`. Only owners hold `team.manage_owners`: granting OWNER, or changing, deactivating or signing out an owner. Nobody changes their own role or status through team endpoints, so the acting owner always remains, and the last-owner lock (`FOR UPDATE` on owner rows) is defense in depth for races. Role change and deactivation revoke all of the member's sessions in the same transaction; deactivation also voids unused reset links. Edits carry the member's `version`, and stale edits get `409 CONFLICT_STALE_VERSION`. CLIENT can never be granted through staff endpoints (also enforced by a check constraint on invitations).

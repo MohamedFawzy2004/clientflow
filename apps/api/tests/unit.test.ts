@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { contactCreateSchema, contactListQuerySchema } from '@clientflow/contracts';
+import {
+  can,
+  contactCreateSchema,
+  contactListQuerySchema,
+  grantableRoles,
+  utcIsoToZonedLocal,
+  zonedLocalToUtcIso,
+} from '@clientflow/contracts';
 import { loadEnv } from '../src/config/env.js';
 import { normalizeEmail, normalizePhone, slugify } from '../src/lib/normalize.js';
 import { checkPasswordPolicy, hashPassword, verifyPassword } from '../src/lib/password.js';
@@ -80,6 +87,25 @@ describe('password policy and hashing', () => {
     expect(checkPasswordPolicy('violet-lantern-meadow-42')).toBeNull();
   });
 
+  it('rejects breached/guessable passwords using the offline zxcvbn dictionary', () => {
+    for (const weak of [
+      'qwertyuiop12',
+      'iloveyou1234',
+      '123456789012',
+      'Welcome2026!',
+      'clientflow-is-great',
+    ]) {
+      expect(checkPasswordPolicy(weak), weak).toBe('too_common');
+    }
+  });
+
+  it('rejects passwords built from the user’s own name or email', () => {
+    const me = { email: 'salma.ibrahim@nile.test', name: 'Salma Ibrahim' };
+    expect(checkPasswordPolicy('salma.ibrahim2026', me)).toBe('contains_personal_info');
+    expect(checkPasswordPolicy('IbrahimRocks-forever', me)).toBe('contains_personal_info');
+    expect(checkPasswordPolicy('violet-lantern-meadow-42', me)).toBeNull();
+  });
+
   it('hashes with Argon2id and verifies', async () => {
     const hash = await hashPassword('violet-lantern-meadow-42');
     expect(hash.startsWith('$argon2id$')).toBe(true);
@@ -110,6 +136,39 @@ describe('contact policy', () => {
 
   it.each(['PM', 'MEMBER', 'FINANCE', 'CLIENT'] as const)('denies %s', (role) => {
     expect(() => contactReadScope(user(role))).toThrow(/access to leads/);
+  });
+});
+
+describe('permission matrix', () => {
+  it('only owners can grant the owner role; nobody grants CLIENT as staff', () => {
+    expect(grantableRoles('OWNER')).toContain('OWNER');
+    expect(grantableRoles('ADMIN')).not.toContain('OWNER');
+    expect(grantableRoles('ADMIN')).toContain('ADMIN');
+    expect(grantableRoles('SALES_MANAGER')).toEqual([]);
+    for (const r of ['OWNER', 'ADMIN'] as const) expect(grantableRoles(r)).not.toContain('CLIENT');
+  });
+
+  it('keeps team powers away from sales and delivery roles', () => {
+    for (const r of ['SALES_MANAGER', 'SALES', 'PM', 'MEMBER', 'FINANCE', 'CLIENT'] as const) {
+      expect(can(r, 'team.read')).toBe(false);
+      expect(can(r, 'team.manage')).toBe(false);
+    }
+  });
+});
+
+describe('agency timezone conversion (M1 risk O3)', () => {
+  it('interprets wall time in Africa/Cairo regardless of the machine timezone', () => {
+    // 1 Nov 2026 is after Egypt leaves summer time (UTC+2); 1 Oct 2026 is during it (UTC+3).
+    expect(zonedLocalToUtcIso('2026-11-01T09:00', 'Africa/Cairo')).toBe('2026-11-01T07:00:00.000Z');
+    expect(zonedLocalToUtcIso('2026-10-01T09:00', 'Africa/Cairo')).toBe('2026-10-01T06:00:00.000Z');
+    expect(zonedLocalToUtcIso('2026-11-01T09:00', 'UTC')).toBe('2026-11-01T09:00:00.000Z');
+  });
+
+  it('round-trips and rejects malformed values', () => {
+    const iso = zonedLocalToUtcIso('2026-12-24T18:30', 'Africa/Cairo')!;
+    expect(utcIsoToZonedLocal(iso, 'Africa/Cairo')).toBe('2026-12-24T18:30');
+    expect(zonedLocalToUtcIso('2026-12-24 18:30', 'Africa/Cairo')).toBeNull();
+    expect(zonedLocalToUtcIso('', 'Africa/Cairo')).toBeNull();
   });
 });
 

@@ -6,6 +6,9 @@ import { setUnauthenticatedHandler } from '../lib/api';
 import { ErrorState } from '../components/ui/feedback';
 import { SESSION_KEY, useSession } from '../features/auth/session';
 import { LoginPage } from '../features/auth/LoginPage';
+import { ActivateInvitePage } from '../features/auth/ActivateInvitePage';
+import { ForgotPasswordPage, ResetPasswordPage } from '../features/auth/PasswordResetPages';
+import { TeamPage } from '../features/team/TeamPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { LeadsListPage } from '../features/leads/LeadsListPage';
 import { LeadDetailPage } from '../features/leads/LeadDetailPage';
@@ -69,6 +72,9 @@ function RequireSession({ children }: { children: ReactNode }) {
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/app/dashboard" replace /> },
   { path: '/login', element: <LoginPage /> },
+  { path: '/activate-invite', element: <ActivateInvitePage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     path: '/app',
     element: (
@@ -81,6 +87,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'leads', element: <LeadsListPage /> },
       { path: 'leads/:id', element: <LeadDetailPage /> },
+      { path: 'team', element: <TeamPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

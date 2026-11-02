@@ -35,3 +35,7 @@ Thumbs.db
 
 # local tooling
 .claude/
+
+# dev email sink (contains one-time links)
+.mail-sink/
+e2e/.mail-sink/

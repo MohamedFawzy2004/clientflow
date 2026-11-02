@@ -57,6 +57,7 @@ model Agency {
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   users       User[]
+  invitations Invitation[]
   contacts    Contact[]
   activities  Activity[]
   auditEvents AuditEvent[]
@@ -73,14 +74,19 @@ model User {
   role         Role
   active       Boolean   @default(true)
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  // Optimistic locking for team edits: stale PATCH requests get 409 (FR-D04 pattern).
+  version      Int       @default(1)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  agency        Agency       @relation(fields: [agencyId], references: [id], onDelete: Restrict)
-  sessions      Session[]
-  ownedContacts Contact[]    @relation("ContactOwner")
-  activities    Activity[]
-  auditEvents   AuditEvent[]
+  agency              Agency               @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  sessions            Session[]
+  ownedContacts       Contact[]            @relation("ContactOwner")
+  activities          Activity[]
+  auditEvents         AuditEvent[]
+  invitationsSent     Invitation[]         @relation("InvitedBy")
+  invitationsAccepted Invitation[]         @relation("AcceptedUser")
+  passwordResetTokens PasswordResetToken[]
 
   @@unique([agencyId, emailNorm])
   // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
@@ -169,4 +175,42 @@ model AuditEvent {
   @@index([agencyId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
   @@map("audit_events")
+}
+
+// One-time staff invitation (FR-I04, FR-I05). Only the SHA-256 of the token is stored.
+// State is derived: ACCEPTED (accepted_at), REVOKED (revoked_at), EXPIRED (expires_at past), else PENDING.
+model Invitation {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  agencyId       String    @map("agency_id") @db.Uuid
+  emailNorm      String    @map("email_norm") @db.VarChar(254)
+  role           Role
+  tokenHash      String    @unique @map("token_hash") @db.Char(64)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt     DateTime? @map("accepted_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+  invitedById    String    @map("invited_by_id") @db.Uuid
+  acceptedUserId String?   @map("accepted_user_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency       Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  invitedBy    User   @relation("InvitedBy", fields: [agencyId, invitedById], references: [agencyId, id], onDelete: Restrict)
+  acceptedUser User?  @relation("AcceptedUser", fields: [acceptedUserId], references: [id], onDelete: Restrict)
+
+  @@index([agencyId, createdAt(sort: Desc)])
+  @@map("invitations")
+}
+
+// Single-use password reset token (FR-I06). Hash only, short expiry.
+model PasswordResetToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }

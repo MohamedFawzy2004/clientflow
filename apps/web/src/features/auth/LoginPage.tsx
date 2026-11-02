@@ -1,12 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { loginRequestSchema, type LoginRequest } from '@clientflow/contracts';
 import { FileCheck2, GitBranch, ShieldCheck } from 'lucide-react';
 import { ApiError } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 import { Banner } from '../../components/ui/feedback';
-import { Field, Input } from '../../components/ui/form';
+import { Field, Input, PasswordInput } from '../../components/ui/form';
 import { Wordmark } from '../../components/ui/brand';
 import { useLogin, useSession } from './session';
 
@@ -69,7 +69,9 @@ export function LoginPage() {
   const form = useForm<LoginRequest>({
     resolver: zodResolver(loginRequestSchema),
     defaultValues: { email: '', password: '' },
-    mode: 'onTouched',
+    // Validate on submit, then live: blur validation shifts the layout under the pointer.
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
   });
   const { errors } = form.formState;
 
@@ -165,14 +167,19 @@ export function LoginPage() {
             </Field>
             <Field label="Password" required error={errors.password?.message}>
               {(p) => (
-                <Input
+                <PasswordInput
                   {...p}
-                  type="password"
                   autoComplete="current-password"
                   {...form.register('password')}
                 />
               )}
             </Field>
+            <Link
+              to="/forgot-password"
+              className="-mt-2 self-start text-[13px] font-medium text-primary-strong hover:underline"
+            >
+              Forgot password?
+            </Link>
             <Button
               type="submit"
               size="lg"
@@ -185,8 +192,8 @@ export function LoginPage() {
           </form>
 
           <p className="mt-8 border-t border-border pt-5 text-xs leading-[18px] text-muted">
-            There is no public sign-up. Forgot your password? Ask your agency owner or admin.
-            Self-service reset arrives with team management.
+            There is no public sign-up. New team members join through an invitation from their
+            agency owner or admin.
           </p>
         </div>
       </section>

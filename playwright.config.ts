@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
 import 'dotenv/config';
 
@@ -6,6 +7,7 @@ import 'dotenv/config';
 const API_PORT = 4100;
 const WEB_PORT = 5174;
 const WEB_ORIGIN = `http://localhost:${WEB_PORT}`;
+export const E2E_MAIL_SINK = fileURLToPath(new URL('./e2e/.mail-sink', import.meta.url));
 
 export default defineConfig({
   testDir: 'e2e',
@@ -18,7 +20,9 @@ export default defineConfig({
   use: {
     baseURL: WEB_ORIGIN,
     // Uses the Microsoft Edge already installed on Windows. No browser download needed.
-    channel: process.env.PLAYWRIGHT_CHANNEL ?? 'msedge',
+    // Windows: the installed Edge (no download). CI sets PLAYWRIGHT_CHANNEL=chromium.
+    channel:
+      process.env.PLAYWRIGHT_CHANNEL ?? (process.platform === 'win32' ? 'msedge' : 'chromium'),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -35,6 +39,9 @@ export default defineConfig({
         APP_ORIGINS: WEB_ORIGIN,
         NODE_ENV: 'test',
         LOG_LEVEL: 'warn',
+        MAIL_TRANSPORT: 'dev-sink',
+        // Separate sink so E2E never reads or deletes development emails.
+        MAIL_SINK_DIR: E2E_MAIL_SINK,
       },
     },
     {

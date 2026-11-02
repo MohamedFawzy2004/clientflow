@@ -8,6 +8,9 @@ export interface RateLimitConfig {
   windowMs: number;
   loginPerIp: number;
   loginFailuresPerEmail: number;
+  /** Invitation preview/accept and password reset endpoints. */
+  tokenPerIp: number;
+  resetRequestsPerEmail: number;
   apiPerIp: number;
 }
 
@@ -15,6 +18,8 @@ export const DEFAULT_RATE_LIMITS: RateLimitConfig = {
   windowMs: 15 * 60 * 1000,
   loginPerIp: 30,
   loginFailuresPerEmail: 5,
+  tokenPerIp: 30,
+  resetRequestsPerEmail: 3,
   apiPerIp: 1000,
 };
 
@@ -58,6 +63,28 @@ export function createRateLimiters(config: RateLimitConfig) {
     handler: rateLimited,
   });
 
+  const tokenPerIp = rateLimit({
+    windowMs: config.windowMs,
+    limit: config.tokenPerIp,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: ipKey,
+    handler: rateLimited,
+  });
+
+  // Every reset request counts (the response is always 202), so one inbox cannot be flooded.
+  const resetRequestsPerEmail = rateLimit({
+    windowMs: config.windowMs,
+    limit: config.resetRequestsPerEmail,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+      const email = typeof req.body?.email === 'string' ? normalizeEmail(req.body.email) : '';
+      return `reset:${sha256Hex(email)}`;
+    },
+    handler: rateLimited,
+  });
+
   const api = rateLimit({
     windowMs: config.windowMs,
     limit: config.apiPerIp,
@@ -67,5 +94,5 @@ export function createRateLimiters(config: RateLimitConfig) {
     handler: rateLimited,
   });
 
-  return { loginPerIp, loginFailuresPerEmail, api };
+  return { loginPerIp, loginFailuresPerEmail, tokenPerIp, resetRequestsPerEmail, api };
 }

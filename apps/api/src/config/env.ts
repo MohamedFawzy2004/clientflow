@@ -17,6 +17,14 @@ const envSchema = z.object({
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+  /** Public base URL used in emailed links. Defaults to the first APP_ORIGINS entry. */
+  APP_PUBLIC_URL: z.string().url().optional(),
+  /**
+   * `dev-sink` writes emails to local files (never sent). `disabled` sends nothing.
+   * A real provider adapter arrives with the owner's choice of provider (ADR-016).
+   */
+  MAIL_TRANSPORT: z.enum(['dev-sink', 'disabled']).default('dev-sink'),
+  MAIL_SINK_DIR: z.string().min(1).default('.mail-sink'),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -37,6 +45,10 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   if (env.NODE_ENV === 'production' && env.APP_ORIGINS.some((o) => !o.startsWith('https://'))) {
     throw new Error('APP_ORIGINS must use https:// in production.');
+  }
+  // The dev sink writes tokens to disk in plain text: never acceptable in production.
+  if (env.NODE_ENV === 'production' && env.MAIL_TRANSPORT === 'dev-sink') {
+    throw new Error('MAIL_TRANSPORT=dev-sink is not allowed in production.');
   }
   return env;
 }
