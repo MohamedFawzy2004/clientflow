@@ -291,6 +291,56 @@ try {
     }
   }
 
+  // Fictional service catalog (M4), added once.
+  if ((await db.serviceItem.count({ where: { agencyId: agency.id } })) === 0) {
+    const SERVICES: Array<[string, string, bigint, string, string?]> = [
+      ['Discovery workshop', 'day', 1_200_000n, 'EGP', 'Goals, users and scope with your team.'],
+      ['UX/UI design', 'day', 950_000n, 'EGP'],
+      ['Web development', 'hour', 85_000n, 'EGP'],
+      ['Mobile app development', 'hour', 110_000n, 'EGP'],
+      ['Monthly maintenance', 'month', 25_000n, 'USD', 'Updates, monitoring and small fixes.'],
+    ];
+    for (const [name, unit, rateMinor, currency, description] of SERVICES) {
+      await db.serviceItem.create({
+        data: {
+          agencyId: agency.id,
+          name,
+          unit,
+          rateMinor,
+          currency,
+          description: description ?? null,
+        },
+      });
+    }
+  }
+
+  // One client organization with a portal user, for trying the client portal (M4), added once.
+  if ((await db.clientOrganization.count({ where: { agencyId: agency.id } })) === 0) {
+    const first = await db.contact.findFirst({
+      where: { agencyId: agency.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (first) {
+      const org = await db.clientOrganization.create({
+        data: { agencyId: agency.id, name: first.companyName ?? first.fullName },
+      });
+      await db.contact.update({ where: { id: first.id }, data: { clientOrgId: org.id } });
+      const email = `client@portal.${DOMAIN}`;
+      const password = generateToken(18);
+      await db.user.create({
+        data: {
+          agencyId: agency.id,
+          emailNorm: email,
+          name: `${first.fullName.split(' ')[0]} (client)`,
+          role: 'CLIENT',
+          clientOrgId: org.id,
+          passwordHash: await hashPassword(password),
+        },
+      });
+      credentials.client = { email, role: 'CLIENT', password };
+    }
+  }
+
   if (Object.keys(credentials).length > 0) {
     const file = fileURLToPath(new URL('../../.dev-credentials.local.json', import.meta.url));
     let previous: Record<string, unknown> = {};

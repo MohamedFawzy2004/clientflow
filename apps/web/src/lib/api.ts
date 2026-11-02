@@ -102,7 +102,7 @@ export interface RequestOptions {
 }
 
 export async function apiRequest<T>(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
@@ -130,6 +130,8 @@ export const api = {
   get: <T>(path: string, options?: RequestOptions) => apiRequest<T>('GET', path, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiRequest<T>('POST', path, { ...options, body }),
+  put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    apiRequest<T>('PUT', path, { ...options, body }),
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiRequest<T>('PATCH', path, { ...options, body }),
 };

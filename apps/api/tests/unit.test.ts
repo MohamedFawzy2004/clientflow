@@ -122,6 +122,7 @@ describe('contact policy', () => {
     name: 'n',
     emailNorm: 'e@x.test',
     role,
+    clientOrgId: null,
   });
 
   it('scopes SALES to owned contacts and managers to the agency', () => {

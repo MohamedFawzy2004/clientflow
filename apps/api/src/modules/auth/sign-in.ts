@@ -26,6 +26,12 @@ export async function signIn(
   const cookies = cookieSettings(config.isProduction);
   if (req.auth) await revokeSession(db, req.auth.sessionId);
 
+  const clientOrg = user.clientOrgId
+    ? await db.clientOrganization.findUnique({
+        where: { id: user.clientOrgId },
+        select: { id: true, name: true },
+      })
+    : null;
   const { token, tokenHash } = await createSession(db, user.id);
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   if (action === 'auth.login') {
@@ -52,6 +58,7 @@ export async function signIn(
         defaultCurrency: user.agency.defaultCurrency,
         timezone: user.agency.timezone,
       },
+      clientOrg,
     },
     csrfToken: sessionCsrfToken(config.csrfSecret, tokenHash),
   };

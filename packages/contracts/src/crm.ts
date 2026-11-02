@@ -252,6 +252,8 @@ export interface DealDetail extends DealSummary {
   lostReason: string | null;
   wonOverrideReason: string | null;
   closedBy: { id: string; name: string } | null;
+  /** Set when the deal was won by a client accepting a proposal version (M4). */
+  acceptedProposal: { id: string; reference: string; versionNo: number } | null;
   activities: TimelineEntry[];
 }
 
@@ -276,6 +278,8 @@ export type TimelineEntry = ActivityItem;
 
 /** Contact detail with the deals the viewer may see (scoped separately from the contact). */
 export interface ContactWithDeals extends ContactDetail {
+  /** The customer organization whose portal users receive proposals (M4). */
+  clientOrg: { id: string; name: string } | null;
   deals: DealSummary[];
 }
 

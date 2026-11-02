@@ -21,6 +21,21 @@ export const PERMISSIONS = {
   'deals.override_won': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
   /** Reopen a WON or LOST deal, with a written reason (spec §9). */
   'deals.reopen': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
+  /** Read the service catalog (to build proposals). */
+  'services.read': ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES'],
+  /** Add, edit and archive catalog services (spec §1: Admin configures the catalog). */
+  'services.manage': ['OWNER', 'ADMIN'],
+  'proposals.read.all': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
+  /** Proposals on deals the user owns. */
+  'proposals.read.own': ['SALES'],
+  /** Create and edit drafts, submit for review, send approved versions (scope still applies). */
+  'proposals.write': ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES'],
+  /** Approve a version for release, or send it back (FR-Q05, US-08). */
+  'proposals.approve': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
+  /** Create client organizations, invite and deactivate portal users. */
+  'portal.manage': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
+  /** Client portal: see what was published to the user's own organization and decide on it. */
+  'portal.access': ['CLIENT'],
   /** See team members and invitations. */
   'team.read': ['OWNER', 'ADMIN'],
   'team.invite': ['OWNER', 'ADMIN'],
@@ -40,7 +55,7 @@ export function canAny(role: Role, permissions: readonly Permission[]): boolean 
   return permissions.some((p) => can(role, p));
 }
 
-/** Roles that can be given to staff. CLIENT users belong to the client portal (M7). */
+/** Roles that can be given to staff. CLIENT users are invited to a client organization instead. */
 export const STAFF_ROLES = [
   'OWNER',
   'ADMIN',

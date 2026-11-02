@@ -19,6 +19,7 @@ import { useSession } from '../auth/session';
 import { NextAction } from '../leads/LeadsListPage';
 import { useAssignableOwners, useDeal, useDealAction, usePipeline } from './api';
 import { DealFormDialog } from './DealFormDialog';
+import { DealProposalsCard } from '../proposals/DealProposalsCard';
 
 type Dialog = 'edit' | 'lost' | 'won' | 'reopen' | 'reassign' | null;
 
@@ -54,11 +55,26 @@ function DealActions({ deal, onOpen }: { deal: DealDetail; onOpen: (d: Dialog) =
           tone={deal.status === 'WON' ? 'success' : 'info'}
           title={deal.status === 'WON' ? 'This deal is won' : 'This deal is lost'}
         >
-          {deal.status === 'WON'
-            ? deal.wonOverrideReason
-              ? `Confirmed by ${deal.closedBy?.name ?? 'a manager'} without a proposal: ${deal.wonOverrideReason}`
-              : `Closed by ${deal.closedBy?.name ?? 'someone'}.`
-            : `Reason: ${deal.lostReason ?? 'not recorded'}`}
+          {deal.status === 'WON' && deal.acceptedProposal ? (
+            <>
+              {deal.closedBy?.name ?? 'The client'} accepted{' '}
+              <Link
+                className="font-medium underline"
+                to={`/app/proposals/${deal.acceptedProposal.id}`}
+              >
+                {deal.acceptedProposal.reference} version {deal.acceptedProposal.versionNo}
+              </Link>{' '}
+              in the client portal.
+            </>
+          ) : deal.status === 'WON' ? (
+            deal.wonOverrideReason ? (
+              `Confirmed by ${deal.closedBy?.name ?? 'a manager'} without a proposal: ${deal.wonOverrideReason}`
+            ) : (
+              `Closed by ${deal.closedBy?.name ?? 'someone'}.`
+            )
+          ) : (
+            `Reason: ${deal.lostReason ?? 'not recorded'}`
+          )}
         </Banner>
         {can(user.role, 'deals.reopen') ? (
           <div>
@@ -118,7 +134,9 @@ function DealActions({ deal, onOpen }: { deal: DealDetail; onOpen: (d: Dialog) =
           onClick={() => onOpen('won')}
           disabled={!canOverride}
           title={
-            canOverride ? undefined : 'A sales manager confirms wins until proposals are available.'
+            canOverride
+              ? undefined
+              : 'Deals are won when the client accepts a proposal, or by a sales manager’s override.'
           }
         >
           Mark won
@@ -129,7 +147,8 @@ function DealActions({ deal, onOpen }: { deal: DealDetail; onOpen: (d: Dialog) =
       </div>
       {!canOverride ? (
         <p className="text-xs leading-[18px] text-muted">
-          Winning a deal needs an accepted proposal (coming soon) or a sales manager’s confirmation.
+          A deal is won when the client accepts a proposal in the portal, or by a sales manager’s
+          documented override.
         </p>
       ) : null}
     </div>
@@ -268,6 +287,7 @@ export function DealDetailPage() {
           >
             <DealActions deal={deal} onOpen={setOpen} />
           </section>
+          <DealProposalsCard deal={deal} />
           <section
             aria-label="Details"
             className="rounded-lg border border-border bg-surface shadow-card"

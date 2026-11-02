@@ -70,12 +70,14 @@ export async function resolveSession(
   const tokenHash = sha256Hex(rawToken);
   const session = await db.session.findUnique({
     where: { tokenHash },
-    include: { user: { include: { agency: true } } },
+    include: { user: { include: { agency: true, clientOrg: true } } },
   });
   if (!session || session.revokedAt) return null;
 
   const idleExpired = now.getTime() - session.lastSeenAt.getTime() > SESSION_IDLE_MS;
-  if (session.expiresAt <= now || idleExpired || !session.user.active) {
+  // A portal user whose organization was archived loses access like a deactivated user.
+  const orgClosed = Boolean(session.user.clientOrg?.archivedAt);
+  if (session.expiresAt <= now || idleExpired || !session.user.active || orgClosed) {
     await db.session.update({ where: { id: session.id }, data: { revokedAt: now } });
     return null;
   }
@@ -94,6 +96,7 @@ export async function resolveSession(
       name: user.name,
       emailNorm: user.emailNorm,
       role: user.role,
+      clientOrgId: user.clientOrgId,
     },
     agency: {
       id: user.agency.id,
@@ -101,6 +104,7 @@ export async function resolveSession(
       defaultCurrency: user.agency.defaultCurrency,
       timezone: user.agency.timezone,
     },
+    clientOrg: user.clientOrg ? { id: user.clientOrg.id, name: user.clientOrg.name } : null,
   };
 }
 

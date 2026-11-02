@@ -21,6 +21,10 @@ import { salesRouter } from './modules/sales/routes.js';
 import { healthRouter } from './modules/health/routes.js';
 import { invitationsRouter } from './modules/invitations/routes.js';
 import { teamRouter } from './modules/team/routes.js';
+import { clientOrgsRouter } from './modules/client-orgs/routes.js';
+import { portalRouter } from './modules/portal/routes.js';
+import { proposalsRouter } from './modules/proposals/routes.js';
+import { servicesRouter } from './modules/services/routes.js';
 
 export interface AppConfig {
   isProduction: boolean;
@@ -72,7 +76,11 @@ export function createApp(deps: AppDeps): Express {
   api.use('/deals', dealsRouter(deps));
   api.use('/invitations', invitationsRouter(deps, limiters));
   api.use('/users', requireAuth, teamRouter(deps));
+  api.use('/proposals', proposalsRouter(deps));
+  api.use('/services', servicesRouter(deps));
+  api.use('/portal', portalRouter(deps));
   api.use(salesRouter(deps));
+  api.use(clientOrgsRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', api);

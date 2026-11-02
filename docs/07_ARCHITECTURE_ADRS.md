@@ -110,3 +110,44 @@ Owner, contact, pipeline and stage use composite `(agency_id, …)` foreign keys
 - **Archived contacts** are hidden from lists by default, stay readable by ID, and are read-only: every write returns 409 until the contact is restored.
 - **Timeline entries** (note, call, email, meeting) may be back-dated but not dated more than 5 minutes in the future. They are ordered by `occurred_at`.
 - **Deal visibility:** Sales see deals they own; managers see all deals in the agency. A deal cannot be attached to a contact the user cannot see. That returns 422 on `contactId`, the same response as an unknown ID, so it reveals nothing.
+
+## ADR-027 — Clients accept proposals only in a signed-in portal session (ACCEPTED, M4)
+
+Spec §1.1 says client approval needs "a verified portal session with organization association", not a shared link. The M3 report had proposed a one-time acceptance link; that was dropped, and the owner approved building a minimal portal in M4 instead.
+
+- `client_organizations` hold the customer company. A contact may belong to one.
+- CLIENT users are ordinary `users` rows with `role = CLIENT` and a required `client_org_id` (DB check: CLIENT ⇔ organization). There is no separate `client_portal_users` table: the role plus the column give the same boundary with less code. Spec §8.1 lists that table, so this is a deliberate simplification.
+- People join through the existing hashed, one-time, 7-day invitation flow. The `invitations_staff_roles_only` check became `invitations_client_org_matches_role`.
+- CLIENT users hold only `portal.access`, so every staff endpoint returns 403. Team and invitation screens never list them. An archived organization ends its users' sessions.
+- `client_org_id` on contacts, users, invitations and proposals is a plain FK (nullable, see ADR-025); services check the agency.
+
+## ADR-028 — Proposal arithmetic (ACCEPTED, M4)
+
+- Prices are entered **excluding tax**. The default is VAT 14% (Egypt), editable per proposal, along with an optional whole-proposal discount.
+- Rates are stored in basis points (1400 = 14.00%). Quantities are stored in hundredths (150 = 1.5). Amounts are BigInt minor units.
+- line = quantity × unit price; discount = subtotal × discount%; tax = (subtotal − discount) × tax%. Each step rounds **half up** to the minor unit. The UI shows the rule and the base each percentage applies to.
+- `computeProposalTotals` lives in the shared contracts, so the editor preview and the server use the same code. The server is authoritative, and a DB check keeps `total = subtotal − discount + tax`.
+- Currency is fixed per proposal (from the deal). Only catalog services in that currency can be added.
+
+## ADR-029 — Acceptance is "operational approval", not an e-signature (ACCEPTED, M4)
+
+The owner chose this wording (FR-Q11, risk R8). The portal, the confirmation dialog, the staff view and the printed version all say that accepting records operational approval of an exact version and is not a formal electronic signature. The record still holds who, when, which version and the SHA-256 hash of the terms shown. Legal review is needed before presenting it as binding.
+
+## ADR-030 — Immutable versions and serialized workflow, enforced by the database (ACCEPTED, M4)
+
+- A trigger on `proposal_versions` refuses content changes once a version leaves DRAFT (status and workflow timestamps may still move forward). Client decisions are final, and non-draft versions cannot be deleted.
+- A trigger on `proposal_items` refuses inserts, updates and deletes unless the parent version is DRAFT.
+- `proposal_reviews` is append-only, like audit events.
+- Partial unique indexes allow one version in preparation, one SENT and one ACCEPTED per proposal, and one client decision per version.
+- Every workflow action (edit, submit, review, send, revise, client decision) locks the proposal row (`SELECT … FOR UPDATE`), so concurrent requests see each other's results. On top of that, versioned bodies return 409 on stale input.
+- Approvers may approve proposals they wrote. Small agencies often have one owner; the review record keeps who approved.
+
+## ADR-031 — Client decisions name the version by its content hash (ACCEPTED, M4)
+
+The portal sends the hash of the version it displayed. The server accepts the decision only if that hash is the currently SENT, unexpired version. A superseded version returns "a newer version was sent". The same decision repeated (double click) returns 200 with no new records; a different decision on a decided version returns 409.
+
+Sending a new version supersedes the old one. Accepting withdraws any version still in preparation, wins the deal through the normal path (`closed_by` = the client user, `accepted_proposal_version_id` set) and converts a lead to a customer. Accepted proposals cannot be revised; later changes go through change requests (M8).
+
+## ADR-032 — Printable version now, generated PDF file later (ACCEPTED, M4)
+
+FR-Q06 asks for a PDF export. M4 ships a print-optimised version (app chrome hidden; reference, amounts and dated acceptance shown) that browsers save as PDF. A server-generated, archived PDF needs a rendering dependency and file storage, so it moves to M5. FR-Q06 stays IMPLEMENTING.

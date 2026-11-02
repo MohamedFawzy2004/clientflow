@@ -33,6 +33,7 @@ function toSessionUser(auth: AuthContext): SessionUser {
     email: auth.user.emailNorm,
     role: auth.user.role,
     agency: auth.agency,
+    clientOrg: auth.clientOrg,
   };
 }
 

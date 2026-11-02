@@ -15,6 +15,7 @@ import {
   testDb,
   type SeededAgency,
 } from './helpers.js';
+import { FIXTURE_HASH, makeClientOrg, makeDeal, makeProposal } from './proposal-fixtures.js';
 
 const db = testDb();
 afterAll(() => db.$disconnect());
@@ -38,11 +39,26 @@ interface Fixtures {
   dealReassign: string;
   stageId: string;
   salesB: string;
+  servicePatch: string;
+  serviceArchive: string;
+  proposalDeal: string;
+  proposalRead: string;
+  proposalDraft: string;
+  proposalSubmit: string;
+  proposalReview: string;
+  proposalSend: string;
+  proposalRevise: string;
+  orgContact: string;
+  orgId: string;
+  orgInvitation: string;
+  orgUserToDeactivate: string;
+  portalProposal: string;
+  clientEmail: string;
 }
 
 interface Endpoint {
   name: string;
-  method: 'get' | 'post' | 'patch';
+  method: 'get' | 'post' | 'patch' | 'put';
   path: (f: Fixtures) => string;
   body?: (role: Role, f: Fixtures) => object;
   allowed: Role[];
@@ -52,9 +68,11 @@ const STAFF: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES', 'PM', 'MEMBER
 const SALES_SIDE: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES'];
 const SALES_MANAGERS: Role[] = ['OWNER', 'ADMIN', 'SALES_MANAGER'];
 const TEAM_ADMINS: Role[] = ['OWNER', 'ADMIN'];
+const CLIENT_ONLY: Role[] = ['CLIENT'];
+const EVERYONE: Role[] = [...STAFF, 'CLIENT'];
 
 const ENDPOINTS: Endpoint[] = [
-  { name: 'GET /auth/me', method: 'get', path: () => '/api/v1/auth/me', allowed: STAFF },
+  { name: 'GET /auth/me', method: 'get', path: () => '/api/v1/auth/me', allowed: EVERYONE },
   // Contacts
   { name: 'GET /contacts', method: 'get', path: () => '/api/v1/contacts', allowed: SALES_SIDE },
   {
@@ -215,6 +233,151 @@ const ENDPOINTS: Endpoint[] = [
     body: (r) => ({ email: `invitee-${r.toLowerCase()}@agency.test`, role: 'SALES' }),
     allowed: TEAM_ADMINS,
   },
+  // Service catalog (M4)
+  { name: 'GET /services', method: 'get', path: () => '/api/v1/services', allowed: SALES_SIDE },
+  {
+    name: 'POST /services',
+    method: 'post',
+    path: () => '/api/v1/services',
+    body: () => ({ name: 'Matrix service', unit: 'hour', rate: '100', currency: 'EGP' }),
+    allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'PATCH /services/:id',
+    method: 'patch',
+    path: (f) => `/api/v1/services/${f.servicePatch}`,
+    body: () => ({ version: 1, name: 'Changed' }),
+    allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'POST /services/:id/archive',
+    method: 'post',
+    path: (f) => `/api/v1/services/${f.serviceArchive}/archive`,
+    body: () => ({ version: 1 }),
+    allowed: TEAM_ADMINS,
+  },
+  // Proposals (M4)
+  { name: 'GET /proposals', method: 'get', path: () => '/api/v1/proposals', allowed: SALES_SIDE },
+  {
+    name: 'POST /proposals',
+    method: 'post',
+    path: () => '/api/v1/proposals',
+    body: (_r, f) => ({ dealId: f.proposalDeal }),
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'GET /proposals/:id',
+    method: 'get',
+    path: (f) => `/api/v1/proposals/${f.proposalRead}`,
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'GET /proposals/:id/versions/:no',
+    method: 'get',
+    path: (f) => `/api/v1/proposals/${f.proposalRead}/versions/1`,
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'PUT /proposals/:id/draft',
+    method: 'put',
+    path: (f) => `/api/v1/proposals/${f.proposalDraft}/draft`,
+    body: () => ({
+      version: 1,
+      title: 'Matrix proposal',
+      expiresOn: '2099-01-31',
+      discountPercent: '0',
+      taxRatePercent: '14',
+      taxLabel: 'VAT',
+      items: [{ name: 'Day', unit: 'day', quantity: '1', unitPrice: '100' }],
+    }),
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'POST /proposals/:id/submit',
+    method: 'post',
+    path: (f) => `/api/v1/proposals/${f.proposalSubmit}/submit`,
+    body: () => ({ version: 1 }),
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'POST /proposals/:id/review',
+    method: 'post',
+    path: (f) => `/api/v1/proposals/${f.proposalReview}/review`,
+    body: () => ({ version: 1, decision: 'APPROVE' }),
+    allowed: SALES_MANAGERS,
+  },
+  {
+    name: 'POST /proposals/:id/send',
+    method: 'post',
+    path: (f) => `/api/v1/proposals/${f.proposalSend}/send`,
+    body: () => ({ version: 1 }),
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'POST /proposals/:id/revise',
+    method: 'post',
+    path: (f) => `/api/v1/proposals/${f.proposalRevise}/revise`,
+    body: () => ({ version: 1 }),
+    allowed: SALES_SIDE,
+  },
+  // Client organizations and portal access (M4)
+  {
+    name: 'POST /contacts/:id/client-org',
+    method: 'post',
+    path: (f) => `/api/v1/contacts/${f.orgContact}/client-org`,
+    body: () => ({ name: 'Matrix Client Org' }),
+    allowed: SALES_MANAGERS,
+  },
+  {
+    name: 'GET /client-orgs/:id',
+    method: 'get',
+    path: (f) => `/api/v1/client-orgs/${f.orgId}`,
+    allowed: SALES_MANAGERS,
+  },
+  {
+    name: 'POST /client-orgs/:id/invitations',
+    method: 'post',
+    path: (f) => `/api/v1/client-orgs/${f.orgId}/invitations`,
+    body: (r) => ({ email: `portal-${r.toLowerCase()}@client.test` }),
+    allowed: SALES_MANAGERS,
+  },
+  {
+    name: 'POST /client-orgs/:id/invitations/:id/revoke',
+    method: 'post',
+    path: (f) => `/api/v1/client-orgs/${f.orgId}/invitations/${f.orgInvitation}/revoke`,
+    allowed: SALES_MANAGERS,
+  },
+  {
+    name: 'POST /client-orgs/:id/users/:id/deactivate',
+    method: 'post',
+    path: (f) => `/api/v1/client-orgs/${f.orgId}/users/${f.orgUserToDeactivate}/deactivate`,
+    body: () => ({ version: 1 }),
+    allowed: SALES_MANAGERS,
+  },
+  // Client portal (M4)
+  {
+    name: 'GET /portal/proposals',
+    method: 'get',
+    path: () => '/api/v1/portal/proposals',
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'GET /portal/proposals/:id',
+    method: 'get',
+    path: (f) => `/api/v1/portal/proposals/${f.portalProposal}`,
+    allowed: CLIENT_ONLY,
+  },
+  {
+    name: 'POST /portal/proposals/:id/decision',
+    method: 'post',
+    path: (f) => `/api/v1/portal/proposals/${f.portalProposal}/decision`,
+    body: () => ({
+      decision: 'REQUEST_CHANGES',
+      contentHash: FIXTURE_HASH,
+      comment: 'Matrix decision',
+    }),
+    allowed: CLIENT_ONLY,
+  },
 ];
 
 const KEY_FOR_ROLE: Record<string, string> = {
@@ -279,7 +442,75 @@ async function freshFixtures(seeded: SeededAgency): Promise<Fixtures> {
     closedById: ownerId,
     lostReason: 'Fixture',
   });
+  // M4 fixtures. Every proposal lives on salesA's deals, so SALES is in scope.
+  const svc = (n: string) =>
+    db.serviceItem.create({
+      data: { agencyId, name: n, unit: 'hour', rateMinor: 10_000n, currency: 'EGP' },
+    });
+  const [servicePatch, serviceArchive] = await Promise.all([svc('patch'), svc('archive')]);
+  const pdeal = () => makeDeal(db, agencyId, ownerId);
+  const proposal = async (
+    status: 'DRAFT' | 'IN_REVIEW' | 'APPROVED_INTERNAL' | 'SENT',
+    orgId?: string,
+    dealId?: string,
+  ) =>
+    (
+      await makeProposal(db, {
+        agencyId,
+        dealId: dealId ?? (await pdeal()).id,
+        createdById: ownerId,
+        status,
+        clientOrgId: orgId ?? null,
+      })
+    ).proposalId;
+  // The send fixture's contact has a portal; the decision fixture belongs to the CLIENT login.
+  const sendDeal = await pdeal();
+  const sendOrg = await makeClientOrg(db, agencyId, sendDeal.contactId, {
+    email: 'send-org@client.test',
+  });
+  const portalDeal = await pdeal();
+  const portal = await makeClientOrg(db, agencyId, portalDeal.contactId, {
+    email: 'portal-login@client.test',
+  });
+  const extraClient = await db.user.create({
+    data: {
+      agencyId,
+      emailNorm: 'deactivate-me@client.test',
+      name: 'Deactivate me',
+      role: 'CLIENT',
+      clientOrgId: sendOrg.orgId,
+      passwordHash,
+    },
+  });
+  const orgInvitation = await db.invitation.create({
+    data: {
+      agencyId,
+      emailNorm: 'pending@client.test',
+      role: 'CLIENT',
+      clientOrgId: sendOrg.orgId,
+      tokenHash: 'f'.repeat(64),
+      expiresAt: new Date(Date.now() + 86_400_000),
+      invitedById: ownerId,
+    },
+  });
+  const orgContact = await contact('Org contact');
+
   return {
+    servicePatch: servicePatch.id,
+    serviceArchive: serviceArchive.id,
+    proposalDeal: (await pdeal()).id,
+    proposalRead: await proposal('DRAFT'),
+    proposalDraft: await proposal('DRAFT'),
+    proposalSubmit: await proposal('DRAFT'),
+    proposalReview: await proposal('IN_REVIEW'),
+    proposalSend: await proposal('APPROVED_INTERNAL', undefined, sendDeal.id),
+    proposalRevise: await proposal('SENT', sendOrg.orgId),
+    orgContact: orgContact.id,
+    orgId: sendOrg.orgId,
+    orgInvitation: orgInvitation.id,
+    orgUserToDeactivate: extraClient.id,
+    portalProposal: await proposal('SENT', portal.orgId, portalDeal.id),
+    clientEmail: portal.clientEmail,
     userPatch: userPatch.id,
     userDeactivate: userDeactivate.id,
     userRevoke: userRevoke.id,
@@ -301,12 +532,13 @@ async function freshFixtures(seeded: SeededAgency): Promise<Fixtures> {
 }
 
 describe('role × endpoint matrix', () => {
-  it.each(STAFF)('%s gets exactly the access spec §1.1 grants', async (role) => {
+  it.each(EVERYONE)('%s gets exactly the access spec §1.1 grants', async (role) => {
     await resetDb();
     const seeded = await seedAgency();
     const f = await freshFixtures(seeded);
     const { app } = makeApp();
-    const { agent, csrf } = await login(app, seeded.users[KEY_FOR_ROLE[role]!]!.email);
+    const email = role === 'CLIENT' ? f.clientEmail : seeded.users[KEY_FOR_ROLE[role]!]!.email;
+    const { agent, csrf } = await login(app, email);
 
     const before = {
       contacts: await db.contact.findMany({ select: { id: true, version: true, ownerId: true } }),
@@ -360,11 +592,31 @@ describe('role × endpoint matrix', () => {
       );
     }
     if (!TEAM_ADMINS.includes(role)) {
-      expect(await db.invitation.count()).toBe(0);
+      expect(await db.invitation.count({ where: { role: { not: 'CLIENT' } } })).toBe(0);
       const t = await db.user.findMany({
         where: { id: { in: [f.userPatch, f.userDeactivate, f.userRevoke] } },
       });
       expect(t.every((u) => u.role === 'MEMBER' && u.active && u.version === 1)).toBe(true);
+    }
+    if (!SALES_SIDE.includes(role)) {
+      // Denied proposal, catalog and portal-setup calls left everything as it was.
+      expect(await db.proposal.count()).toBe(7);
+      expect(
+        await db.proposalVersion.count({
+          where: { status: { in: ['IN_REVIEW', 'APPROVED_INTERNAL'] } },
+        }),
+      ).toBe(2);
+      expect(await db.serviceItem.count({ where: { version: 1, archivedAt: null } })).toBe(2);
+      expect(await db.clientOrganization.count()).toBe(2);
+      expect(await db.user.count({ where: { role: 'CLIENT', active: true } })).toBe(3);
+    }
+    if (role === 'SALES') {
+      // SALES drafts and sends, but never approves or manages portal access.
+      expect(
+        (await db.proposalVersion.findFirstOrThrow({ where: { proposalId: f.proposalReview } }))
+          .status,
+      ).toBe('IN_REVIEW');
+      expect(await db.invitation.count({ where: { role: 'CLIENT', revokedAt: null } })).toBe(1);
     }
   });
 

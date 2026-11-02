@@ -18,6 +18,7 @@ export const USER: SessionUser = {
     defaultCurrency: 'EGP',
     timezone: 'Africa/Cairo',
   },
+  clientOrg: null,
 };
 
 type Handler = (

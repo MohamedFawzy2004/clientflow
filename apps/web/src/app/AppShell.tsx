@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   Briefcase,
   CalendarClock,
+  FileText,
+  Layers,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -47,6 +49,18 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
         label: 'Deals',
         icon: Briefcase,
         visible: (r) => canAny(r, ['deals.read.all', 'deals.read.own']),
+      },
+      {
+        to: '/app/proposals',
+        label: 'Proposals',
+        icon: FileText,
+        visible: (r) => canAny(r, ['proposals.read.all', 'proposals.read.own']),
+      },
+      {
+        to: '/app/services',
+        label: 'Services',
+        icon: Layers,
+        visible: (r) => can(r, 'services.read'),
       },
     ],
   },
@@ -168,7 +182,7 @@ export function AppShell() {
       </a>
 
       {/* Sidebar: 72px rail on tablets, 232px on laptops, 252px from 1440px (spec §7.3). */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-border bg-surface md:flex md:w-[72px] lg:w-[232px] wide:w-[252px]">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden flex-col print:!hidden border-r border-border bg-surface md:flex md:w-[72px] lg:w-[232px] wide:w-[252px]">
         <div className="flex h-16 items-center px-4 lg:px-5">
           <Wordmark compact className="lg:hidden" />
           <Wordmark className="hidden lg:flex" />
@@ -182,7 +196,7 @@ export function AppShell() {
       </aside>
 
       {/* Mobile top bar, 56px, with a navigation drawer. */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-2 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-2 backdrop-blur print:hidden md:hidden">
         <RadixDialog.Root open={drawerOpen} onOpenChange={setDrawerOpen}>
           <RadixDialog.Trigger
             className="grid size-11 place-items-center rounded-md text-text hover:bg-surface-alt"
@@ -221,8 +235,8 @@ export function AppShell() {
         </span>
       </header>
 
-      <div className="md:pl-[72px] lg:pl-[232px] wide:pl-[252px]">
-        <header className="sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-border bg-bg/90 px-6 backdrop-blur md:flex wide:px-8">
+      <div className="md:pl-[72px] lg:pl-[232px] wide:pl-[252px] print:!pl-0">
+        <header className="sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-border bg-bg/90 px-6 backdrop-blur print:!hidden md:flex wide:px-8">
           <p className="truncate text-sm text-muted">
             <span className="font-medium text-text">{user.agency.name}</span>
             <span aria-hidden className="mx-2 text-border-strong">

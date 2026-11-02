@@ -23,3 +23,15 @@ export function parseDateOnly(value: string): Date {
 export function formatDateOnly(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
+
+/** Today's date (`YYYY-MM-DD`) in the agency timezone. Expiry dates are compared against it. */
+export function agencyToday(now: Date, timeZone: string): string {
+  return utcIsoToZonedLocal(now.toISOString(), timeZone).slice(0, 10);
+}
+
+/** `YYYY-MM-DD` plus a number of calendar days. */
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
