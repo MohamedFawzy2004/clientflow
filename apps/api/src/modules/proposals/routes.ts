@@ -14,6 +14,7 @@ import {
   createProposal,
   getProposal,
   getProposalVersion,
+  getVersionPdf,
   listProposals,
   reviewVersion,
   reviseProposal,
@@ -21,6 +22,13 @@ import {
   submitForReview,
   updateDraft,
 } from './service.js';
+
+/** PDF download: attachment, never cached (the API sets no-store on every response). */
+export function sendPdf(res: Response, file: { body: Buffer; filename: string }) {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+  res.send(file.body);
+}
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap = (fn: Handler) => (req: Request, res: Response, next: (err?: unknown) => void) =>
@@ -67,6 +75,16 @@ export function proposalsRouter(deps: AppDeps) {
       const no = Number(req.params.no);
       if (!Number.isSafeInteger(no) || no < 1 || no > 10_000) throw notFound();
       ok(req, res, await getProposalVersion(db, req.auth!.user, id(req), no));
+    }),
+  );
+
+  router.get(
+    '/:id/versions/:no/pdf',
+    read,
+    wrap(async (req, res) => {
+      const no = Number(req.params.no);
+      if (!Number.isSafeInteger(no) || no < 1 || no > 10_000) throw notFound();
+      sendPdf(res, await getVersionPdf(db, req.auth!.user, id(req), no));
     }),
   );
 

@@ -14,7 +14,7 @@ import { conflict, forbidden, notFound } from '../../lib/errors.js';
 import { recordActivity } from '../../lib/timeline.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
-import { lockProposal } from '../proposals/service.js';
+import { lockProposal, pdfFor } from '../proposals/service.js';
 import { displayStatus, toPortalVersion, versionInclude } from '../proposals/serializer.js';
 
 /** Every portal query is pinned to the user's own organization (spec §1.1 `C` scope). */
@@ -288,4 +288,25 @@ export async function decideOnProposal(
   }
   if (notify) await mailer.send({ kind: 'proposal_decision', ...notify });
   return getPortalProposal(db, actor, id);
+}
+
+/** The PDF of the version the client currently sees (accepted one, else the latest sent). */
+export async function getPortalPdf(db: Db, actor: AuthUser, id: string) {
+  if (!UUID_PATTERN.test(id)) throw notFound();
+  const p = await db.proposal.findFirst({
+    where: { ...orgScope(actor), id, versions: { some: sentOnly } },
+    include: {
+      clientOrg: { select: { name: true } },
+      versions: { where: sentOnly, orderBy: { versionNo: 'desc' }, include: versionInclude },
+    },
+  });
+  if (!p) throw notFound();
+  const v = p.versions.find((x) => x.status === 'ACCEPTED') ?? p.versions[0]!;
+  const org = p.clientOrg?.name ?? '';
+  return pdfFor(
+    db,
+    actor.agencyId,
+    { ...p, deal: { contact: { fullName: org, companyName: org } } },
+    v,
+  );
 }

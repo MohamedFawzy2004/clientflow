@@ -151,3 +151,51 @@ Sending a new version supersedes the old one. Accepting withdraws any version st
 ## ADR-032 — Printable version now, generated PDF file later (ACCEPTED, M4)
 
 FR-Q06 asks for a PDF export. M4 ships a print-optimised version (app chrome hidden; reference, amounts and dated acceptance shown) that browsers save as PDF. A server-generated, archived PDF needs a rendering dependency and file storage, so it moves to M5. FR-Q06 stays IMPLEMENTING.
+
+## ADR-033 — Proposal PDFs rendered on the server with pdfkit and the built-in fonts (ACCEPTED, M5)
+
+`pdfkit` 0.20.2 (MIT, pure JavaScript, no headless browser) renders a frozen version on request. The PDF contains the reference, scope, priced lines, totals with their explanation, terms, the dated acceptance (with the operational-approval notice) and the SHA-256 terms hash on every page. The renderer's input type has no internal-notes field, so notes cannot leak into it.
+
+Only submitted versions have a PDF; drafts return 409. Portal users get only their organization's current version.
+
+PDFs are generated on demand, not stored. The source version is immutable (ADR-030), so the content cannot change.
+
+**Limitation:** the built-in PDF fonts cover Windows-1252 only, so Arabic and other non-Latin text prints as "?". The browser print view shows it correctly. Embedding a Unicode font with right-to-left shaping is a follow-up (risk R21).
+
+## ADR-034 — One container serves the API and the web app on one origin (ACCEPTED, M5)
+
+When `WEB_DIST_DIR` is set, the Express process serves the built SPA:
+
+- `/assets/*` with a one-year immutable cache, and a plain 404 for missing files;
+- `index.html` with `no-cache` for any non-API path;
+- the API and `/health` keep their JSON responses.
+
+Same origin means first-party `__Host-` cookies and no CORS configuration. Web responses get their own CSP: `default-src 'self'`, `script-src 'self'` (no inline scripts), `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'none'`. Inline style attributes are allowed for component libraries.
+
+The multi-stage `Dockerfile`:
+
+- builds everything, then copies only production dependencies and build output into a slim Node 24 image that runs as the `node` user;
+- adds a separate `migrate` target that runs `prisma migrate deploy` as a release step;
+- sets `HOST=0.0.0.0` in the image; local development keeps `127.0.0.1`.
+
+CI builds both images and smoke-runs them against PostgreSQL. Hosting is not chosen yet; `docs/17_DEPLOYMENT.md` is provider-neutral.
+
+## ADR-035 — Dashboard numbers and reminders (ACCEPTED, M5)
+
+- **Scope:** every dashboard number is a database aggregate built from the same scope helpers as the list pages (`dealReadScope`, `contactReadScope`, `proposalReadScope`), so counts never include hidden rows (T-ACL-05).
+- **Owner filter:** salespeople always see their own numbers. Asking for another owner returns **403** rather than being silently ignored. Managers (`dashboard.team`) may see the whole agency, filter to one owner, and get a per-owner table.
+- **Money:** summed per currency only.
+- **Dates:** ranges are inclusive agency-local dates, and the default is this month to date. "Won" and "lost" are counted by close date; "new leads" by creation date. Pipeline and proposal counts describe the current state.
+- **Reminders** are computed from live data on each request; there is no notifications table yet. They are personal: the viewer's own follow-ups and proposals, plus reviews for approvers. Email and push notifications come with automation (M10).
+
+## ADR-036 — CSV export rules (ACCEPTED, M5)
+
+Only `reports.export` holders (Owner, Admin, Sales manager) can export, and only rows they could see on screen; the owner filter works as on the dashboard.
+
+- **Formula injection:** any cell starting with `=`, `+`, `-`, `@`, tab or carriage return gets an apostrophe prefix, so spreadsheets show it as text (OWASP CSV injection). Every cell is quoted, with quotes doubled.
+- **Format:** UTF-8 with BOM (so Arabic names open correctly in Excel) and CRLF line endings. Amounts are exact decimal strings in a separate currency column.
+- **Limits and audit:** at most 5,000 rows. Each export writes an `export.deals` audit event with the row count and filters, never the data.
+
+## ADR-037 — Route-level code splitting with React Router `lazy` (ACCEPTED, M5)
+
+Every screen is its own chunk, loaded on first visit. Sign-in and the two shells stay in the main bundle, so the first paint does not wait for a second request. The main bundle went from 790 kB to 299 kB (228 kB → 93 kB gzip). Shared form and validation code (about 240 kB) loads with the first app screen. Shared UI modules are kept out of page files: the portal page imports shared components, never a staff page.

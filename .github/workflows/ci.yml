@@ -126,6 +126,50 @@ jobs:
             test-results/
           retention-days: 7
 
+  image:
+    name: Production image (build + smoke run)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: clientflow
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: clientflow
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U clientflow" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      SMOKE_DB: postgresql://clientflow:ci-only-password@127.0.0.1:5432/clientflow
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build runtime and migrate images
+        run: |
+          docker build -t clientflow:ci .
+          docker build -t clientflow-migrate:ci --target migrate .
+      - name: Migrate an empty database with the migrate image
+        run: docker run --rm --network host -e DATABASE_URL="$SMOKE_DB" clientflow-migrate:ci
+      - name: Start the runtime image in production mode
+        run: |
+          secret=$(openssl rand -base64 48 | tr -d '\n=+/')
+          echo "::add-mask::$secret"
+          docker run -d --name cf --network host -e DATABASE_URL="$SMOKE_DB" \
+            -e APP_ORIGINS=https://ci.clientflow.test -e CSRF_SECRET="$secret" clientflow:ci
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4000/health/ready && break; sleep 1; done
+      - name: Smoke checks (health, app page with CSP, API 404 envelope, origin check)
+        run: |
+          set -e
+          curl -sf http://127.0.0.1:4000/health/ready | grep -q '"database":"ok"'
+          curl -sf -D headers.txt -o index.html http://127.0.0.1:4000/app/dashboard
+          grep -qi "content-security-policy: default-src 'self';script-src 'self'" headers.txt
+          grep -q '<div id="root">' index.html
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4000/api/v1/nope)" = 404
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://evil.example' -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:4000/api/v1/auth/login)" = 403
+      - name: Container logs
+        if: always()
+        run: docker logs cf || true
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest

@@ -35,3 +35,8 @@ export function addDays(date: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** `YYYY-MM-DD HH:mm` in the agency timezone, for exports. */
+export function utcToLocalDateTime(instant: Date, timeZone: string): string {
+  return utcIsoToZonedLocal(instant.toISOString(), timeZone).slice(0, 16).replace('T', ' ');
+}

@@ -36,6 +36,14 @@ export const PERMISSIONS = {
   'portal.manage': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
   /** Client portal: see what was published to the user's own organization and decide on it. */
   'portal.access': ['CLIENT'],
+  /** Sales dashboard and reminders, scoped like the records they count (T-ACL-05). */
+  'dashboard.sales': ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES'],
+  /** See every owner's numbers and the per-owner breakdown. */
+  'dashboard.team': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
+  /** Download CSV reports (US-22). */
+  'reports.export': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
+  /** Edit the agency profile, currency, timezone and working days (FR-I09). */
+  'agency.manage': ['OWNER', 'ADMIN'],
   /** See team members and invitations. */
   'team.read': ['OWNER', 'ADMIN'],
   'team.invite': ['OWNER', 'ADMIN'],

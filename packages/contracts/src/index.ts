@@ -6,3 +6,4 @@ export * from './time.js';
 export * from './money.js';
 export * from './crm.js';
 export * from './proposals.js';
+export * from './insights.js';

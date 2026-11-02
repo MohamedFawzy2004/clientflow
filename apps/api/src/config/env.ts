@@ -4,6 +4,10 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.string().url().startsWith('postgresql://'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+  /** Interface to listen on. Containers need 0.0.0.0; local development keeps 127.0.0.1. */
+  HOST: z.string().min(1).default('127.0.0.1'),
+  /** Built web app to serve on the same origin (production). Unset in development (Vite serves it). */
+  WEB_DIST_DIR: z.string().min(1).optional(),
   APP_ORIGINS: z
     .string()
     .min(1)

@@ -354,6 +354,46 @@ const ENDPOINTS: Endpoint[] = [
     body: () => ({ version: 1 }),
     allowed: SALES_MANAGERS,
   },
+  // Dashboard, reminders, exports, agency settings, PDFs (M5)
+  {
+    name: 'GET /dashboard/sales',
+    method: 'get',
+    path: () => '/api/v1/dashboard/sales',
+    allowed: SALES_SIDE,
+  },
+  { name: 'GET /reminders', method: 'get', path: () => '/api/v1/reminders', allowed: SALES_SIDE },
+  {
+    name: 'GET /exports/deals.csv',
+    method: 'get',
+    path: () => '/api/v1/exports/deals.csv',
+    allowed: SALES_MANAGERS,
+  },
+  { name: 'GET /agency', method: 'get', path: () => '/api/v1/agency', allowed: TEAM_ADMINS },
+  {
+    name: 'PATCH /agency',
+    method: 'patch',
+    path: () => '/api/v1/agency',
+    body: () => ({
+      version: 1,
+      name: 'Test Agency',
+      defaultCurrency: 'EGP',
+      timeZone: 'Africa/Cairo',
+      workingDays: [0, 1, 2, 3, 4],
+    }),
+    allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'GET /proposals/:id/versions/:no/pdf',
+    method: 'get',
+    path: (f) => `/api/v1/proposals/${f.proposalReview}/versions/1/pdf`,
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'GET /portal/proposals/:id/pdf',
+    method: 'get',
+    path: (f) => `/api/v1/portal/proposals/${f.portalProposal}/pdf`,
+    allowed: CLIENT_ONLY,
+  },
   // Client portal (M4)
   {
     name: 'GET /portal/proposals',

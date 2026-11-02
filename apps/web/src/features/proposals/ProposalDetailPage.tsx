@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { ArrowLeft, ChevronRight, Printer, SearchX, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ChevronRight, FileDown, Printer, SearchX, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   OPERATIONAL_APPROVAL_NOTICE,
@@ -17,6 +17,7 @@ import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { Money, ReasonDialog } from '../../components/sales/sales-ui';
 import {
   Card,
+  PDF_LINK,
   ProposalDocument,
   ProposalStatusBadge,
 } from '../../components/proposals/proposal-ui';
@@ -398,6 +399,16 @@ export function ProposalDetailPage() {
           <Button variant="secondary" onClick={() => window.print()} disabled={!shown || editable}>
             <Printer aria-hidden className="size-4" /> Print
           </Button>
+          {shown && shown.status !== 'DRAFT' ? (
+            <a
+              href={`/api/v1/proposals/${proposal.id}/versions/${shown.versionNo}/pdf`}
+              download
+              className={PDF_LINK}
+            >
+              <FileDown aria-hidden className="size-4" /> PDF
+              <span className="sr-only"> of version {shown.versionNo}</span>
+            </a>
+          ) : null}
         </div>
       </header>
 

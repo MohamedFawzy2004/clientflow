@@ -1,26 +1,11 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type ComponentType, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, useLocation, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
 import { setUnauthenticatedHandler } from '../lib/api';
 import { ErrorState } from '../components/ui/feedback';
 import { SESSION_KEY, useSession } from '../features/auth/session';
-import { LoginPage } from '../features/auth/LoginPage';
-import { ActivateInvitePage } from '../features/auth/ActivateInvitePage';
-import { ForgotPasswordPage, ResetPasswordPage } from '../features/auth/PasswordResetPages';
-import { TeamPage } from '../features/team/TeamPage';
-import { DealsPage } from '../features/deals/DealsPage';
-import { DealDetailPage } from '../features/deals/DealDetailPage';
-import { FollowUpsPage } from '../features/follow-ups/FollowUpsPage';
-import { DashboardPage } from '../features/dashboard/DashboardPage';
-import { LeadsListPage } from '../features/leads/LeadsListPage';
-import { LeadDetailPage } from '../features/leads/LeadDetailPage';
-import { ProposalsListPage } from '../features/proposals/ProposalsListPage';
-import { ProposalDetailPage } from '../features/proposals/ProposalDetailPage';
-import { ServicesPage } from '../features/services/ServicesPage';
-import { PortalProposalsPage } from '../features/portal/PortalProposalsPage';
-import { PortalProposalPage } from '../features/portal/PortalProposalPage';
-import { homeFor } from '../features/auth/LoginPage';
+import { homeFor, LoginPage } from '../features/auth/LoginPage';
 import { NotFoundPage } from './NotFoundPage';
 import { PortalShell } from './PortalShell';
 import { AppShell } from './AppShell';
@@ -34,6 +19,14 @@ function FullPageLoader() {
       </span>
     </div>
   );
+}
+
+/**
+ * Route-level code splitting (M5): each screen is its own chunk, loaded when first visited.
+ * Sign-in and the app shells stay in the main bundle so the first screen paints at once.
+ */
+function screen<M extends Record<string, unknown>>(load: () => Promise<M>, name: keyof M) {
+  return async () => ({ Component: (await load())[name] as ComponentType });
 }
 
 /** Route guard. It only improves UX: the API rejects unauthenticated calls regardless. */
@@ -82,12 +75,30 @@ function RequireSession({ children, area }: { children: ReactNode; area: 'app' |
   return <>{children}</>;
 }
 
+const auth = () => import('../features/auth/PasswordResetPages');
+
 export const router = createBrowserRouter([
-  { path: '/', element: <Navigate to="/app" replace /> },
+  {
+    path: '/',
+    element: <Navigate to="/app" replace />,
+    hydrateFallbackElement: <FullPageLoader />,
+  },
   { path: '/login', element: <LoginPage /> },
-  { path: '/activate-invite', element: <ActivateInvitePage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/reset-password', element: <ResetPasswordPage /> },
+  {
+    path: '/activate-invite',
+    lazy: screen(() => import('../features/auth/ActivateInvitePage'), 'ActivateInvitePage'),
+    hydrateFallbackElement: <FullPageLoader />,
+  },
+  {
+    path: '/forgot-password',
+    lazy: screen(auth, 'ForgotPasswordPage'),
+    hydrateFallbackElement: <FullPageLoader />,
+  },
+  {
+    path: '/reset-password',
+    lazy: screen(auth, 'ResetPasswordPage'),
+    hydrateFallbackElement: <FullPageLoader />,
+  },
   {
     path: '/app',
     element: (
@@ -95,18 +106,54 @@ export const router = createBrowserRouter([
         <AppShell />
       </RequireSession>
     ),
+    hydrateFallbackElement: <FullPageLoader />,
     children: [
       { index: true, element: <Navigate to="/app/dashboard" replace /> },
-      { path: 'dashboard', element: <DashboardPage /> },
-      { path: 'leads', element: <LeadsListPage /> },
-      { path: 'leads/:id', element: <LeadDetailPage /> },
-      { path: 'team', element: <TeamPage /> },
-      { path: 'deals', element: <DealsPage /> },
-      { path: 'deals/:id', element: <DealDetailPage /> },
-      { path: 'follow-ups', element: <FollowUpsPage /> },
-      { path: 'proposals', element: <ProposalsListPage /> },
-      { path: 'proposals/:id', element: <ProposalDetailPage /> },
-      { path: 'services', element: <ServicesPage /> },
+      {
+        path: 'dashboard',
+        lazy: screen(() => import('../features/dashboard/DashboardPage'), 'DashboardPage'),
+      },
+      {
+        path: 'reminders',
+        lazy: screen(() => import('../features/dashboard/RemindersPage'), 'RemindersPage'),
+      },
+      {
+        path: 'leads',
+        lazy: screen(() => import('../features/leads/LeadsListPage'), 'LeadsListPage'),
+      },
+      {
+        path: 'leads/:id',
+        lazy: screen(() => import('../features/leads/LeadDetailPage'), 'LeadDetailPage'),
+      },
+      { path: 'team', lazy: screen(() => import('../features/team/TeamPage'), 'TeamPage') },
+      { path: 'deals', lazy: screen(() => import('../features/deals/DealsPage'), 'DealsPage') },
+      {
+        path: 'deals/:id',
+        lazy: screen(() => import('../features/deals/DealDetailPage'), 'DealDetailPage'),
+      },
+      {
+        path: 'follow-ups',
+        lazy: screen(() => import('../features/follow-ups/FollowUpsPage'), 'FollowUpsPage'),
+      },
+      {
+        path: 'proposals',
+        lazy: screen(() => import('../features/proposals/ProposalsListPage'), 'ProposalsListPage'),
+      },
+      {
+        path: 'proposals/:id',
+        lazy: screen(
+          () => import('../features/proposals/ProposalDetailPage'),
+          'ProposalDetailPage',
+        ),
+      },
+      {
+        path: 'services',
+        lazy: screen(() => import('../features/services/ServicesPage'), 'ServicesPage'),
+      },
+      {
+        path: 'settings',
+        lazy: screen(() => import('../features/settings/SettingsPage'), 'SettingsPage'),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
@@ -117,10 +164,17 @@ export const router = createBrowserRouter([
         <PortalShell />
       </RequireSession>
     ),
+    hydrateFallbackElement: <FullPageLoader />,
     children: [
-      { index: true, element: <PortalProposalsPage /> },
+      {
+        index: true,
+        lazy: screen(() => import('../features/portal/PortalProposalsPage'), 'PortalProposalsPage'),
+      },
       { path: 'proposals', element: <Navigate to="/portal" replace /> },
-      { path: 'proposals/:id', element: <PortalProposalPage /> },
+      {
+        path: 'proposals/:id',
+        lazy: screen(() => import('../features/portal/PortalProposalPage'), 'PortalProposalPage'),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

@@ -36,6 +36,10 @@ const STATUS_ICON: Partial<Record<ProposalDisplayStatus, typeof Clock>> = {
   EXPIRED: FileClock,
 };
 
+/** Download links styled like secondary buttons (a real link, so the browser saves the file). */
+export const PDF_LINK =
+  'inline-flex h-10 items-center gap-2 rounded-md border border-border-strong bg-surface px-4 text-sm font-medium text-text shadow-[0_1px_2px_rgba(16,36,60,0.06)] hover:bg-surface-alt';
+
 export function ProposalStatusBadge({ status }: { status: ProposalDisplayStatus }) {
   const Icon = STATUS_ICON[status];
   return (

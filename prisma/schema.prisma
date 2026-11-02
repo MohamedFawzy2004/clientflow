@@ -53,6 +53,13 @@ model Agency {
   slug            String   @unique @db.VarChar(80)
   defaultCurrency String   @default("EGP") @map("default_currency") @db.Char(3)
   timezone        String   @default("Africa/Cairo") @db.VarChar(64)
+  /// Agency profile (FR-I09). Shown on proposals and in the client portal.
+  contactEmail    String?  @map("contact_email") @db.VarChar(254)
+  phone           String?  @db.VarChar(40)
+  address         String?  @db.VarChar(500)
+  /// Working days, 0 = Sunday … 6 = Saturday. Egypt default: Sunday to Thursday.
+  workingDays     Int[]    @default([0, 1, 2, 3, 4]) @map("working_days")
+  version         Int      @default(1)
   /// Last proposal reference number issued (P-0001, P-0002, ...). Incremented atomically.
   proposalSeq     Int      @default(0) @map("proposal_seq")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)

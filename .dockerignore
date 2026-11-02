@@ -1,0 +1,17 @@
+# Keep secrets, local state and build output out of the image build context.
+.git
+.github
+.claude
+**/node_modules
+**/dist
+apps/api/src/generated
+.env
+.env.*
+!.env.example
+**/*.local.json
+**/.mail-sink
+e2e/.auth
+test-results
+playwright-report
+docs/milestones/*-screenshots
+*.log
