@@ -17,4 +17,6 @@ regexes = [
   '''^another-secret-another-secret-12345$''',
   # Deliberately weak password used to prove the policy rejects it.
   '''^qwertyuiop12$''',
+  # Fake Resend key shape used by the mail configuration tests (M12.1); not a real key.
+  '''^re_abcdefgh1234$''',
 ]
