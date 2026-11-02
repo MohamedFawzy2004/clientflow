@@ -633,15 +633,26 @@ describe('scheduled reminders (FR-A01, FR-S09)', () => {
     expect(rows[0]!.title).toContain('INV-0001');
     expect(await db.outboxJob.count({ where: { kind: 'email.notification' } })).toBe(0);
     // Paid invoices are not reminded about.
-    await db.invoice.update({
-      where: { id: inv.id },
-      data: { paidMinor: 114_000n, status: 'PAID' },
-    });
-    await issuedInvoice('2027-01-31');
-    await db.invoice.updateMany({
-      where: { status: 'ISSUED' },
-      data: { paidMinor: 114_000n, status: 'PAID' },
-    });
+    // Paid in full, with the payment behind it (the database checks they agree).
+    const payInFull = (invoiceId: string) =>
+      db.$transaction([
+        db.payment.create({
+          data: {
+            agencyId: seeded.agencyId,
+            invoiceId,
+            amountMinor: 114_000n,
+            currency: 'EGP',
+            receivedOn: new Date('2027-01-15T00:00:00Z'),
+            recordedById: seeded.users.finance!.id,
+          },
+        }),
+        db.invoice.update({
+          where: { id: invoiceId },
+          data: { paidMinor: 114_000n, status: 'PAID' },
+        }),
+      ]);
+    await payInFull(inv.id);
+    await payInFull((await issuedInvoice('2027-01-31')).id);
     expect((await scan(new Date('2027-02-05T10:00:00Z'))).created).toBe(0);
   });
 
