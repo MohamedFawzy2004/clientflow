@@ -101,7 +101,7 @@ export function useProjectFinance(projectId: string | null, enabled = true) {
 }
 
 export type InvoiceAction =
-  | { kind: 'create'; body: InvoiceCreateInput }
+  | { kind: 'create'; key: string; body: InvoiceCreateInput }
   | { kind: 'draft'; id: string; body: InvoiceDraftInput }
   | { kind: 'issue' | 'publish' | 'delete'; id: string; version: number }
   | { kind: 'void'; id: string; version: number; reason: string }
@@ -117,7 +117,10 @@ export function useInvoiceAction() {
       const base = (id: string) => `/api/v1/invoices/${enc(id)}`;
       switch (a.kind) {
         case 'create':
-          return api.post<ApiSuccess<InvoiceDetail>>('/api/v1/invoices', a.body);
+          // Same form values, same key: a double click returns the first draft (O31).
+          return api.post<ApiSuccess<InvoiceDetail>>('/api/v1/invoices', a.body, {
+            headers: { 'Idempotency-Key': a.key },
+          });
         case 'draft':
           return api.put<ApiSuccess<InvoiceDetail>>(`${base(a.id)}/draft`, a.body);
         case 'issue':

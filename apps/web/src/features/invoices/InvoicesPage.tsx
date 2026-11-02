@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Plus, Receipt, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
@@ -29,14 +29,22 @@ function NewInvoiceDialog({ onClose }: { onClose: () => void }) {
   const [projectId, setProjectId] = useState('');
   const [dueOn, setDueOn] = useState('');
   const [touched, setTouched] = useState(false);
+  /** One Idempotency-Key per set of values: a retry or double click reuses it. */
+  const keys = useRef(new Map<string, string>());
   const orgs = options.data?.data ?? [];
   const projects = orgs.find((o) => o.id === orgId)?.projects ?? [];
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setTouched(true);
     if (!orgId || !dueOn) return;
+    const values = `${orgId}|${projectId}|${dueOn}`;
+    if (!keys.current.has(values)) keys.current.set(values, crypto.randomUUID());
     action.mutate(
-      { kind: 'create', body: { clientOrgId: orgId, projectId: projectId || null, dueOn } },
+      {
+        kind: 'create',
+        key: keys.current.get(values)!,
+        body: { clientOrgId: orgId, projectId: projectId || null, dueOn },
+      },
       {
         onSuccess: (res) => {
           toast.success('Draft invoice created');

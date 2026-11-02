@@ -46,6 +46,7 @@ import { logPortalDenied } from '../portal/scope.js';
 import { DEFAULT_TAX_RATE_BP } from '../proposals/service.js';
 
 const PAYMENT_SCOPE = 'invoice.payment';
+const CREATE_SCOPE = 'invoice.create';
 const OPEN: Array<'ISSUED' | 'PARTIALLY_PAID'> = ['ISSUED', 'PARTIALLY_PAID'];
 
 // ---------------------------------------------------------------------------
@@ -238,13 +239,33 @@ export async function invoiceOptions(db: Db, actor: AuthUser) {
 // Drafts, issue, publish, void (FR-F01, FR-F02)
 // ---------------------------------------------------------------------------
 
+/**
+ * Creates an empty draft. The Idempotency-Key makes a double click or a retried request return
+ * the first draft instead of a second one (O31, SEC-15).
+ */
 export async function createInvoice(
   db: Db,
   actor: AuthUser,
   input: z.output<typeof invoiceCreateSchema>,
+  key: string,
   requestId: string,
-) {
+): Promise<{ invoice: InvoiceDetail; replayed: boolean }> {
   requireManage(actor);
+  const hash = createHash('sha256')
+    .update(JSON.stringify([input.clientOrgId, input.projectId, input.currency, input.dueOn]))
+    .digest('hex');
+  const replay = async (tx: Db | Tx) => {
+    const rec = await tx.idempotencyRecord.findUnique({
+      where: { agencyId_scope_key: { agencyId: actor.agencyId, scope: CREATE_SCOPE, key } },
+    });
+    if (!rec) return null;
+    if (rec.requestHash !== hash || rec.actorId !== actor.id) {
+      throw conflict('This Idempotency-Key was already used for a different invoice.');
+    }
+    return rec.resultId;
+  };
+  const earlier = await replay(db);
+  if (earlier) return { invoice: await getInvoice(db, actor, earlier), replayed: true };
   const org = await db.clientOrganization.findFirst({
     where: { id: input.clientOrgId, agencyId: actor.agencyId, archivedAt: null },
   });
@@ -265,30 +286,49 @@ export async function createInvoice(
     }
   }
   const agency = await db.agency.findUniqueOrThrow({ where: { id: actor.agencyId } });
-  const inv = await db.$transaction(async (tx) => {
-    const created = await tx.invoice.create({
-      data: {
+  let id: string;
+  try {
+    id = await db.$transaction(async (tx) => {
+      const created = await tx.invoice.create({
+        data: {
+          agencyId: actor.agencyId,
+          clientOrgId: org.id,
+          projectId: project?.id ?? null,
+          currency: project?.currency ?? input.currency ?? agency.defaultCurrency,
+          taxRateBp: project?.taxRateBp ?? DEFAULT_TAX_RATE_BP,
+          dueOn: parseDateOnly(input.dueOn),
+          createdById: actor.id,
+        },
+      });
+      await writeAudit(tx, {
         agencyId: actor.agencyId,
-        clientOrgId: org.id,
-        projectId: project?.id ?? null,
-        currency: project?.currency ?? input.currency ?? agency.defaultCurrency,
-        taxRateBp: project?.taxRateBp ?? DEFAULT_TAX_RATE_BP,
-        dueOn: parseDateOnly(input.dueOn),
-        createdById: actor.id,
-      },
+        actorId: actor.id,
+        action: 'invoice.create',
+        outcome: 'SUCCESS',
+        targetType: 'invoice',
+        targetId: created.id,
+        requestId,
+      });
+      // The key's unique index decides a race between two identical requests: one rolls back.
+      await tx.idempotencyRecord.create({
+        data: {
+          agencyId: actor.agencyId,
+          actorId: actor.id,
+          scope: CREATE_SCOPE,
+          key,
+          requestHash: hash,
+          resultId: created.id,
+        },
+      });
+      return created.id;
     });
-    await writeAudit(tx, {
-      agencyId: actor.agencyId,
-      actorId: actor.id,
-      action: 'invoice.create',
-      outcome: 'SUCCESS',
-      targetType: 'invoice',
-      targetId: created.id,
-      requestId,
-    });
-    return created;
-  });
-  return getInvoice(db, actor, inv.id);
+  } catch (err) {
+    if (!isUniqueViolation(err)) throw err;
+    const raced = await replay(db);
+    if (!raced) throw err;
+    return { invoice: await getInvoice(db, actor, raced), replayed: true };
+  }
+  return { invoice: await getInvoice(db, actor, id), replayed: false };
 }
 
 async function findManageableDraft(tx: Tx, actor: AuthUser, id: string, version: number) {

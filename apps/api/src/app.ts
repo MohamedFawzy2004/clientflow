@@ -35,6 +35,8 @@ import { deliverablesRouter } from './modules/deliverables/routes.js';
 import { changesRouter } from './modules/changes/routes.js';
 import { commentsRouter } from './modules/comments/routes.js';
 import { invoicesRouter } from './modules/invoices/routes.js';
+import { notificationsRouter } from './modules/notifications/routes.js';
+import { importsRouter } from './modules/imports/routes.js';
 import type { FileStorage } from './modules/files/storage.js';
 
 export interface AppConfig {
@@ -84,7 +86,12 @@ export function createApp(deps: AppDeps): Express {
   api.use(noStore);
   api.use(limiters.api);
   api.use(originCheck(config.appOrigins));
-  api.use(express.json({ limit: '32kb', strict: true }));
+  // 32 KB for every JSON body except CSV imports, which parse their own larger body after the
+  // session, CSRF and permission checks (modules/imports/routes.ts).
+  const smallJson = express.json({ limit: '32kb', strict: true });
+  api.use((req, res, next) =>
+    req.path.startsWith('/imports') ? next() : smallJson(req, res, next),
+  );
   api.use(cookieParser());
   api.use(loadSession(db, cookies));
   api.use(csrfProtection(config.csrfSecret));
@@ -107,6 +114,8 @@ export function createApp(deps: AppDeps): Express {
   api.use(deliverablesRouter(deps));
   api.use(changesRouter(deps));
   api.use(commentsRouter(deps));
+  api.use(notificationsRouter(deps));
+  api.use(importsRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', apiHeaders, api);

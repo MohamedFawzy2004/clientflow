@@ -27,6 +27,7 @@ type Agent = Awaited<ReturnType<typeof login>>;
 let seeded: SeededAgency;
 let app: ReturnType<typeof makeApp>['app'];
 let mailer: ReturnType<typeof makeApp>['mailer'];
+let drainJobs: ReturnType<typeof makeApp>['drainJobs'];
 let pm: Agent;
 let member: Agent;
 let client: Agent;
@@ -105,7 +106,7 @@ async function deniedCount() {
 beforeEach(async () => {
   await resetDb();
   seeded = await seedAgency();
-  ({ app, mailer } = makeApp());
+  ({ app, mailer, drainJobs } = makeApp());
   const owner = seeded.users.owner!.id;
   const contact = await db.contact.create({
     data: { agencyId: seeded.agencyId, ownerId: owner, fullName: 'Omar Client' },
@@ -372,12 +373,17 @@ describe('deliverables and the client portal (FR-S06 – FR-S10, US-13, US-20)',
     // Approved work is closed: no new versions.
     const f2 = await pdfFile('v2.pdf');
     await send(member, 'post', `/deliverables/${id}/versions`, { fileId: f2.id }).expect(409);
-    // The manager hears about it by email, with a link and no decision text (SEC-24).
+    // The manager and the member who made the version hear about it once each, by email with a
+    // link and no decision text (SEC-24). The repeated decision above sent nothing more.
+    await drainJobs(); // emails go through the outbox (ADR-058)
     const mail = mailer.messages.filter((m) => m.kind === 'deliverable_decision');
-    expect(mail).toHaveLength(1);
-    expect(mail[0]!.to).toBe(seeded.users.pm!.email);
-    expect(mail[0]!.text).toContain(`/app/projects/${projectId}/deliverables`);
-    expect(mail[0]!.text).not.toContain('Homepage');
+    expect(mail.map((m) => m.to).sort()).toEqual(
+      [seeded.users.member!.email, seeded.users.pm!.email].sort(),
+    );
+    for (const m of mail) {
+      expect(m.text).toContain(`/app/projects/${projectId}/deliverables/${id}`);
+      expect(m.text).not.toContain('Homepage');
+    }
     expect(await db.auditEvent.count({ where: { action: 'deliverable.client_approved' } })).toBe(1);
   });
 

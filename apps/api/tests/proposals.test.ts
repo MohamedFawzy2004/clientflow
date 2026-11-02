@@ -421,6 +421,7 @@ describe('client portal: setup, visibility and isolation (T-ACL-02 for proposals
     expect(detail.body.data.clientOrgName).toBe('Nasser Pharmacies');
 
     // The notification email links to the portal and carries no amounts or scope (SEC-24).
+    await t.drainJobs(); // emails go through the outbox (ADR-058)
     const mail = t.mailer.messages.find((m) => m.kind === 'proposal_sent')!;
     expect(mail.to).toBe('nadia@nasser.test');
     expect(mail.text).toContain(`/portal/proposals/${proposal.id}`);
@@ -536,6 +537,7 @@ describe('client decisions (FR-Q07–Q09, US-09, T-PROP-02, T-PROP-03)', () => {
       version: (await sales.get(`/api/v1/proposals/${proposal.id}`)).body.data.version,
     });
     expect(revise.status).toBe(409);
+    await t.drainJobs(); // emails go through the outbox (ADR-058)
     expect(t.mailer.messages.some((m) => m.kind === 'proposal_decision')).toBe(true);
   });
 

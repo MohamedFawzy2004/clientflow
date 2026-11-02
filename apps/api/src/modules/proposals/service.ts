@@ -21,7 +21,9 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { addDays, agencyToday, parseDateOnly, formatDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, staleVersion, validationFailed } from '../../lib/errors.js';
+import { notify, usersWithPermission } from '../../lib/notify.js';
 import { recordActivity } from '../../lib/timeline.js';
+import { enqueue } from '../../jobs/outbox.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
 import { dealReadScope } from '../deals/policy.js';
@@ -516,6 +518,16 @@ export async function submitForReview(
       targetId: v.id,
       requestId,
     });
+    await notify(tx, {
+      agencyId: actor.agencyId,
+      recipientIds: await usersWithPermission(tx, actor.agencyId, 'proposals.approve'),
+      actorId: actor.id,
+      category: 'APPROVALS',
+      type: 'proposal.submitted',
+      title: `${actor.name} asks you to review ${proposalReference(p.number)} v${v.versionNo}`,
+      link: `/app/proposals/${p.id}`,
+      entity: { type: 'proposal', id: p.id },
+    });
   });
   return getProposal(db, actor, id);
 }
@@ -575,6 +587,18 @@ export async function reviewVersion(
       targetId: v.id,
       requestId,
     });
+    await notify(tx, {
+      agencyId: actor.agencyId,
+      recipientIds: [v.createdById],
+      actorId: actor.id,
+      category: 'APPROVALS',
+      type: approve ? 'proposal.approved' : 'proposal.changes_requested',
+      title: approve
+        ? `${actor.name} approved ${proposalReference(p.number)} v${v.versionNo}: you can send it`
+        : `${actor.name} asked for changes to ${proposalReference(p.number)} v${v.versionNo}`,
+      link: `/app/proposals/${p.id}`,
+      entity: { type: 'proposal', id: p.id },
+    });
   });
   return getProposal(db, actor, id);
 }
@@ -591,11 +615,11 @@ export async function sendVersion(
   version: number,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
+  const { db } = deps;
   assertCanWrite(actor);
   const p = await findReadable(db, actor, id);
   const today = await agencyTodayFor(db, actor.agencyId);
-  const recipients = await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     const v = await lockedOpenVersion(tx, p.id, version);
     if (v.status !== 'APPROVED_INTERNAL') {
       throw conflict('Only internally approved versions can be sent to the client.');
@@ -612,7 +636,7 @@ export async function sendVersion(
     const org = orgId
       ? await tx.clientOrganization.findFirst({
           where: { id: orgId, agencyId: actor.agencyId, archivedAt: null },
-          include: { portalUsers: { where: { active: true }, select: { emailNorm: true } } },
+          include: { portalUsers: { where: { active: true }, select: { id: true } } },
         })
       : null;
     if (!org || org.portalUsers.length === 0) {
@@ -660,25 +684,18 @@ export async function sendVersion(
       requestId,
       metadata: { clientOrgId: org.id, recipients: org.portalUsers.length },
     });
-    return org.portalUsers.map((u) => u.emailNorm);
+    // Notification only: a link that requires signing in, no amounts or scope (SEC-24).
+    await enqueue(
+      tx,
+      org.portalUsers.map((u) => ({
+        agencyId: actor.agencyId,
+        kind: 'email.portal' as const,
+        payload: { template: 'proposal_sent' as const, userId: u.id, entityId: p.id },
+        dedupeKey: `email.portal:proposal_sent:${v.id}:${u.id}`,
+      })),
+    );
   });
 
-  // Notification only: a link that requires signing in, no amounts or scope (SEC-24).
-  const agency = await db.agency.findUniqueOrThrow({ where: { id: actor.agencyId } });
-  for (const to of recipients) {
-    await mailer.send({
-      kind: 'proposal_sent',
-      to,
-      subject: `${agency.name} sent you proposal ${proposalReference(p.number)}`,
-      text: [
-        'Hello,',
-        '',
-        `${agency.name} shared a proposal with you on ClientFlow.`,
-        'Sign in to review it:',
-        `${config.publicUrl}/portal/proposals/${p.id}`,
-      ].join('\n'),
-    });
-  }
   return getProposal(db, actor, id);
 }
 

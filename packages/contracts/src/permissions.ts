@@ -75,6 +75,12 @@ export const PERMISSIONS = {
   'finance.view': ['OWNER', 'ADMIN', 'FINANCE'],
   /** Set internal cost rates (owner decision pending; default Owner and Admin, ADR-056). */
   'costs.manage': ['OWNER', 'ADMIN'],
+  /** Own notifications and channel preferences (FR-X09). Portal notifications are not built yet. */
+  'notifications.read': ['OWNER', 'ADMIN', 'SALES_MANAGER', 'SALES', 'PM', 'MEMBER', 'FINANCE'],
+  /** Import contacts and deals from CSV, and undo an import (FR-C10). Needs agency-wide CRM reads. */
+  'imports.run': ['OWNER', 'ADMIN', 'SALES_MANAGER'],
+  /** Background job health: counts, failed jobs and retry (FR-A02). */
+  'jobs.manage': ['OWNER', 'ADMIN'],
   /** See team members and invitations. */
   'team.read': ['OWNER', 'ADMIN'],
   'team.invite': ['OWNER', 'ADMIN'],

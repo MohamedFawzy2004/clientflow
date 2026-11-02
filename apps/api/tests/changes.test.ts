@@ -18,6 +18,7 @@ type Agent = Awaited<ReturnType<typeof login>>;
 let seeded: SeededAgency;
 let app: ReturnType<typeof makeApp>['app'];
 let mailer: ReturnType<typeof makeApp>['mailer'];
+let drainJobs: ReturnType<typeof makeApp>['drainJobs'];
 let pm: Agent;
 let owner: Agent;
 let member: Agent;
@@ -69,7 +70,7 @@ async function sentChange(title?: string) {
 beforeEach(async () => {
   await resetDb();
   seeded = await seedAgency();
-  ({ app, mailer } = makeApp());
+  ({ app, mailer, drainJobs } = makeApp());
   const ownerId = seeded.users.owner!.id;
   const contact = await db.contact.create({
     data: { agencyId: seeded.agencyId, ownerId, fullName: 'Client contact' },
@@ -170,6 +171,7 @@ describe('change requests: estimate, approval, send (FR-S01, FR-S02)', () => {
     expect(sent.body.data.status).toBe('AWAITING_CLIENT');
     expect(sent.body.data.versions[0].contentHash).toMatch(/^[0-9a-f]{64}$/);
     // The shared client gets a link-only email.
+    await drainJobs(); // emails go through the outbox (ADR-058)
     const mail = mailer.messages.filter((m) => m.kind === 'change_sent');
     expect(mail.map((m) => m.to)).toEqual(['a@client.test']);
     expect(mail[0]!.text).not.toContain('12');
@@ -295,6 +297,7 @@ describe('the client decides; only acceptance changes the baseline (FR-S03, FR-S
       reason: 'Too late',
     }).expect(409);
     expect((await project()).budgetMinor).toBe(7_250_000n);
+    await drainJobs(); // emails go through the outbox (ADR-058)
     expect(mailer.messages.filter((m) => m.kind === 'change_decision')).toHaveLength(1);
   });
 
@@ -365,6 +368,7 @@ describe('client requests and isolation (FR-S01, T-ACL-02)', () => {
       requestedByYou: true,
       open: null,
     });
+    await drainJobs(); // emails go through the outbox (ADR-058)
     expect(mailer.messages.filter((m) => m.kind === 'change_requested').map((m) => m.to)).toEqual([
       seeded.users.pm!.email,
     ]);
@@ -484,6 +488,7 @@ describe('comments with edit history (FR-X08)', () => {
       entityId: c.id,
       body: 'Can the RTL review be done in March?',
     }).expect(201);
+    await drainJobs(); // emails go through the outbox (ADR-058)
     expect(mailer.messages.filter((m) => m.kind === 'client_comment')).toHaveLength(1);
     await send(pm, 'post', `/projects/${projectId}/comments`, {
       entityType: 'change',

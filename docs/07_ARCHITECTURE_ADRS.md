@@ -398,10 +398,82 @@ Cost rates are internal hourly costs per person with an "effective from" date. C
 - **Kept apart:** expected (budget, excluding tax), invoiced (issued, not void) and received (cash) are separate figures, never mixed (FR-F05).
 - **Reports:** totals are per currency and are never added across currencies. The CSV export is limited to what the reader may see; cells are neutralized against formula injection, and each export is audited (FR-F09).
 
-## ADR-057 — Defaults chosen for open M9 questions (PROPOSED, M9 — owner to confirm)
+## ADR-057 — Defaults chosen for open M9 questions (ACCEPTED, M9 — owner confirmed on 2026-10-28)
 
 The owner did not answer these, so M9 ships with these defaults. Each can be changed later without a data migration:
 
 1. **Numbering:** one agency-wide sequence, `INV-0001`, `INV-0002`, … A number is taken only when an invoice is issued; drafts have none, and void invoices keep theirs. Per-year or per-client prefixes would be a formatting change.
 2. **Who sees cost rates:** Owner and Admin set them, Finance reads them. Nobody else sees them, including the person whose rate it is.
 3. **What a PM sees:** for projects they manage, the money summary and the estimated margin, but not other people's rates (only the names of people without a rate). PMs read their projects' invoices but cannot change them or record payments.
+
+## ADR-058 — Transactional outbox and a database-backed worker (ACCEPTED, M10)
+
+Background work (emails, reminder scans) goes through an `outbox_jobs` table instead of Redis/BullMQ, because ClientFlow has one database and modest volume (spec §11.1 allows "a DB-backed outbox worker"). The approach has five parts:
+
+- **Same transaction:** a job is written in the transaction of the change that needs it. A rolled-back change sends nothing, and a committed one is never forgotten (spec §8.2 "writes + outbox").
+- **Claiming:** a worker claims due jobs with `FOR UPDATE SKIP LOCKED` and a 2-minute claim. Several workers can run at once without taking the same job. If a worker dies, its job becomes due again when the claim expires, and the attempt still counts.
+- **Retries:** waits grow from 30 s, 1 min, 2 min and so on, up to 1 hour (±20%). After `max_attempts` (6 by default) a job is DEAD. Owners and Admins see dead jobs in Settings and can retry them, which is audited. The stored error is the error class and the first line of the message, with email addresses removed.
+- **No duplicate emails:** each send carries an idempotency key, and the notification row records `emailed_at`. The dev sink and test mailer drop repeats with the same key, and a real provider adapter must pass the key on. Delivery is still at-least-once if a provider ignores keys; this is documented, not hidden.
+- **Payloads:** jobs hold IDs only (checked against a schema, at most 4 KB by DB check), never addresses, names or tokens. Invitation and password-reset emails stay synchronous because their links carry one-time tokens that must not sit in a table.
+
+The worker runs inside the API process by default (`JOBS_ENABLED=true`, polling every `JOBS_POLL_SECONDS`), or as its own process with `npm run jobs:worker`. Reminder scans are scheduled as `reminders.scan` jobs, one per agency and time slot (dedupe key). Each scan takes a per-agency advisory lock. Finished jobs are deleted after 30 days; dead jobs are kept.
+
+## ADR-059 — In-app notifications with per-category channels (ACCEPTED, M10)
+
+**Where notifications come from.** `notify()` runs inside the event's transaction. It drops the actor, clients, deactivated users and other agencies. It then applies each recipient's channel choice and queues an email job for those who want one. Events:
+
+| Event                                                                                       | Who is notified                                         | Category        |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------- |
+| A client requests or decides on a change, decides on a deliverable or proposal, or comments | The PM; also whoever wrote the version or owns the deal | CLIENT_ACTIVITY |
+| A change or proposal is submitted for approval                                              | The approvers                                           | APPROVALS       |
+| A change or proposal is approved or sent back                                               | The author                                              | APPROVALS       |
+| A task is assigned                                                                          | The assignee                                            | TASKS           |
+
+**Reminders** come from the scheduled scan:
+
+| Reminder                                                         | Who                   | Category        |
+| ---------------------------------------------------------------- | --------------------- | --------------- |
+| Follow-ups and next steps that became overdue in the last 7 days | The owner             | FOLLOW_UPS      |
+| Proposals that expire within 3 days                              | The deal owner        | FOLLOW_UPS      |
+| Tasks due today or overdue (last 7 days)                         | The assignee          | TASKS           |
+| Issued invoices past due with a balance                          | Owner, Admin, Finance | INVOICES        |
+| Deliverables or changes waiting on the client for 3+ days        | The PM                | CLIENT_ACTIVITY |
+
+Each reminder has a dedupe key, so it is created once per item and due date. "Today" is the agency's timezone.
+
+**Channels.** Without a saved choice, every category is in-app. Email is on only for CLIENT_ACTIVITY, which keeps the M7/M8 emails PMs already got. Turning in-app off while keeping email stores the row as not shown in the list.
+
+**Emails** are link-only, with a generic sentence and no names, amounts or message text (SEC-24). The subject is fixed per event type. Every email links to the settings page.
+
+**Access.** Only the recipient can list, count or mark a notification; anyone else gets a 404. Links are app paths built by the server, and a DB check keeps them under `/app/`. A title is a snapshot from when the event happened: if someone later loses access to the record, the title stays but the link answers 404 (R34). Portal users have no notification center yet; they keep their link-only emails.
+
+## ADR-060 — CSV import: preview, commit and undo (ACCEPTED, M10)
+
+**Who.** Contacts and deals can be imported by Owners, Admins and Sales managers, the roles that read every contact. The permission check runs before the larger body (2 MB) is read. Every other route keeps the 32 KB JSON limit.
+
+**Limits.** 1 MB of UTF-8 text, 2,000 rows, 40 columns, 5,000 characters per cell. A BOM is removed, semicolon-separated files are detected, and line endings are normalised. Text with replacement characters is refused with "save as CSV UTF-8". Parsing uses `csv-parse` 7.0.3 (MIT, no dependencies) with relaxed quotes, so hand-made cells like `=HYPERLINK("…")` are read as text.
+
+**Preview.** The server suggests a column mapping from the headers (English and Arabic). It checks each row with the same rules as the forms. It flags duplicates of existing records (contacts by email or phone, deals by contact and name) and of earlier lines. Line numbers are where each row starts.
+
+**Commit.**
+
+- It needs an `Idempotency-Key` and the preview's file hash. A different file is a 409.
+- It re-runs every check inside one transaction, under a per-agency advisory lock, so two imports at once cannot both create the same contact.
+- It creates only ready rows; duplicates are skipped unless chosen.
+- Nothing is merged into an existing record.
+
+**What is stored.**
+
+- Each created record keeps `import_run_id`.
+- The run keeps the file hash and counts, but not the file (FR-A07: no extra copy of personal data).
+- The audit event has counts only.
+
+**Formula cells** are stored as text, rendered as text, and neutralized by the existing CSV exports.
+
+**Undo** archives the records the import created that nobody has changed since: contacts with no deals, deals that are open and have no proposals. Nothing is deleted. Changed records are kept, and both counts are reported.
+
+## ADR-061 — Outbound webhooks deferred (ACCEPTED, M10)
+
+The M10 epic lists outbound webhooks (FR-A04, FR-A05, SEC-19, T-SEC-06), but the approved M10 proposal did not include them, and no integration needs them yet. They are deferred until the owner names an integration.
+
+When they are built, they will use the outbox (ADR-058) with signed payloads, per-endpoint secrets and rotation. SSRF defenses will block loopback, private and link-local ranges, and the address will be checked again at connect time.

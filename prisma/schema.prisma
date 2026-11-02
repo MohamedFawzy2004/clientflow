@@ -82,6 +82,8 @@ model Agency {
   proposalReviews     ProposalReview[]
   projects            Project[]
   idempotencyRecords  IdempotencyRecord[]
+  notifications       Notification[]
+  importRuns          ImportRun[]
 
   @@map("agencies")
 }
@@ -102,47 +104,50 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  agency              Agency                 @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  agency              Agency                   @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   sessions            Session[]
-  ownedContacts       Contact[]              @relation("ContactOwner")
+  ownedContacts       Contact[]                @relation("ContactOwner")
   activities          Activity[]
   auditEvents         AuditEvent[]
-  invitationsSent     Invitation[]           @relation("InvitedBy")
-  invitationsAccepted Invitation[]           @relation("AcceptedUser")
+  invitationsSent     Invitation[]             @relation("InvitedBy")
+  invitationsAccepted Invitation[]             @relation("AcceptedUser")
   passwordResetTokens PasswordResetToken[]
-  ownedDeals          Deal[]                 @relation("DealOwner")
-  closedDeals         Deal[]                 @relation("DealClosedBy")
-  clientOrg           ClientOrganization?    @relation("PortalUsers", fields: [clientOrgId], references: [id], onDelete: Restrict)
-  proposalsCreated    Proposal[]             @relation("ProposalCreatedBy")
-  versionsCreated     ProposalVersion[]      @relation("VersionCreatedBy")
+  ownedDeals          Deal[]                   @relation("DealOwner")
+  closedDeals         Deal[]                   @relation("DealClosedBy")
+  clientOrg           ClientOrganization?      @relation("PortalUsers", fields: [clientOrgId], references: [id], onDelete: Restrict)
+  proposalsCreated    Proposal[]               @relation("ProposalCreatedBy")
+  versionsCreated     ProposalVersion[]        @relation("VersionCreatedBy")
   proposalReviews     ProposalReview[]
-  managedProjects     Project[]              @relation("ProjectManager")
-  createdProjects     Project[]              @relation("ProjectCreatedBy")
+  managedProjects     Project[]                @relation("ProjectManager")
+  createdProjects     Project[]                @relation("ProjectCreatedBy")
   projectMemberships  ProjectMember[]
-  checklistDone       HandoffChecklistItem[] @relation("ChecklistDoneBy")
-  tasksAssigned       Task[]                 @relation("TaskAssignee")
-  tasksCreated        Task[]                 @relation("TaskCreatedBy")
-  timeEntries         TimeEntry[]            @relation("TimeEntries")
-  filesUploaded       StoredFile[]           @relation("FilesUploaded")
-  deliverablesCreated Deliverable[]          @relation("DeliverablesCreated")
-  versionsSubmitted   DeliverableVersion[]   @relation("DeliverableVersionsCreated")
-  versionsPublished   DeliverableVersion[]   @relation("DeliverableVersionsPublished")
-  deliverableReviews  DeliverableReview[]    @relation("DeliverableReviews")
-  projectShares       ProjectShare[]         @relation("ProjectSharesReceived")
-  sharesGranted       ProjectShare[]         @relation("ProjectSharesGranted")
-  sharesRevoked       ProjectShare[]         @relation("ProjectSharesRevoked")
-  changesRequested    ChangeRequest[]        @relation("ChangesRequested")
-  changeVersionsMade  ChangeVersion[]        @relation("ChangeVersionsCreated")
-  changeVersionsOk    ChangeVersion[]        @relation("ChangeVersionsApproved")
-  changeVersionsSent  ChangeVersion[]        @relation("ChangeVersionsSent")
-  changeDecisions     ChangeDecision[]       @relation("ChangeDecisions")
-  comments            ProjectComment[]       @relation("CommentsWritten")
-  invoicesCreated     Invoice[]              @relation("InvoicesCreated")
-  invoicesIssued      Invoice[]              @relation("InvoicesIssued")
-  invoicesVoided      Invoice[]              @relation("InvoicesVoided")
-  paymentsRecorded    Payment[]              @relation("PaymentsRecorded")
-  costRates           CostRate[]             @relation("CostRates")
-  costRatesSet        CostRate[]             @relation("CostRatesSet")
+  checklistDone       HandoffChecklistItem[]   @relation("ChecklistDoneBy")
+  tasksAssigned       Task[]                   @relation("TaskAssignee")
+  tasksCreated        Task[]                   @relation("TaskCreatedBy")
+  timeEntries         TimeEntry[]              @relation("TimeEntries")
+  filesUploaded       StoredFile[]             @relation("FilesUploaded")
+  deliverablesCreated Deliverable[]            @relation("DeliverablesCreated")
+  versionsSubmitted   DeliverableVersion[]     @relation("DeliverableVersionsCreated")
+  versionsPublished   DeliverableVersion[]     @relation("DeliverableVersionsPublished")
+  deliverableReviews  DeliverableReview[]      @relation("DeliverableReviews")
+  projectShares       ProjectShare[]           @relation("ProjectSharesReceived")
+  sharesGranted       ProjectShare[]           @relation("ProjectSharesGranted")
+  sharesRevoked       ProjectShare[]           @relation("ProjectSharesRevoked")
+  changesRequested    ChangeRequest[]          @relation("ChangesRequested")
+  changeVersionsMade  ChangeVersion[]          @relation("ChangeVersionsCreated")
+  changeVersionsOk    ChangeVersion[]          @relation("ChangeVersionsApproved")
+  changeVersionsSent  ChangeVersion[]          @relation("ChangeVersionsSent")
+  changeDecisions     ChangeDecision[]         @relation("ChangeDecisions")
+  comments            ProjectComment[]         @relation("CommentsWritten")
+  invoicesCreated     Invoice[]                @relation("InvoicesCreated")
+  invoicesIssued      Invoice[]                @relation("InvoicesIssued")
+  invoicesVoided      Invoice[]                @relation("InvoicesVoided")
+  paymentsRecorded    Payment[]                @relation("PaymentsRecorded")
+  costRates           CostRate[]               @relation("CostRates")
+  costRatesSet        CostRate[]               @relation("CostRatesSet")
+  notifications       Notification[]           @relation("NotificationRecipient")
+  notificationPrefs   NotificationPreference[]
+  importRuns          ImportRun[]              @relation("ImportRuns")
 
   @@unique([agencyId, emailNorm])
   // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
@@ -185,6 +190,8 @@ model Contact {
   notes        String?          @db.VarChar(5000)
   /// When the lead became a customer (FR-C07). Same row, same ID.
   convertedAt  DateTime?        @map("converted_at") @db.Timestamptz(3)
+  /// Set when the contact came from a CSV import (FR-C10), so the import can be undone.
+  importRunId  String?          @map("import_run_id") @db.Uuid
   archivedAt   DateTime?        @map("archived_at") @db.Timestamptz(3)
   version      Int              @default(1)
   createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -197,6 +204,7 @@ model Contact {
   /// Plain FK (nullable); the service checks that the organization is in the same agency.
   clientOrg ClientOrganization? @relation(fields: [clientOrgId], references: [id], onDelete: Restrict)
   projects  Project[]
+  importRun ImportRun?          @relation(fields: [importRunId], references: [id], onDelete: Restrict)
 
   // Target of the deals composite FK (deal and contact in the same agency).
   @@unique([agencyId, id])
@@ -205,6 +213,7 @@ model Contact {
   @@index([agencyId, createdAt(sort: Desc)])
   @@index([agencyId, emailNorm])
   @@index([agencyId, phoneNorm])
+  @@index([importRunId])
   @@map("contacts")
 }
 
@@ -354,6 +363,8 @@ model Deal {
   archivedAt                DateTime?  @map("archived_at") @db.Timestamptz(3)
   /// The client-accepted proposal version that won this deal (FR-D05, FR-Q10).
   acceptedProposalVersionId String?    @unique @map("accepted_proposal_version_id") @db.Uuid
+  /// Set when the deal came from a CSV import (FR-C10).
+  importRunId               String?    @map("import_run_id") @db.Uuid
   version                   Int        @default(1)
   createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -369,6 +380,7 @@ model Deal {
   acceptedProposalVersion ProposalVersion? @relation("DealAcceptedVersion", fields: [acceptedProposalVersionId], references: [id], onDelete: Restrict)
   proposals               Proposal[]
   project                 Project?
+  importRun               ImportRun?       @relation(fields: [importRunId], references: [id], onDelete: Restrict)
 
   // Target of the proposals composite FK.
   @@unique([agencyId, id])
@@ -376,6 +388,7 @@ model Deal {
   @@index([agencyId, ownerId, status])
   @@index([agencyId, contactId])
   @@index([agencyId, nextStepAt])
+  @@index([importRunId])
   @@map("deals")
 }
 
@@ -1319,4 +1332,121 @@ model CostRate {
   @@unique([userId, effectiveFrom])
   @@index([agencyId, userId, effectiveFrom(sort: Desc)])
   @@map("cost_rates")
+}
+
+// M10: notifications, the job outbox and CSV imports.
+
+/// What a notification is about. Users choose channels per category (FR-X09).
+enum NotificationCategory {
+  CLIENT_ACTIVITY
+  APPROVALS
+  TASKS
+  FOLLOW_UPS
+  INVOICES
+}
+
+// One message for one staff user (spec §8.1 notifications). Written in the same transaction as
+// the event, so it cannot be lost or sent for a change that rolled back. Only the recipient reads it.
+model Notification {
+  id          String               @id @default(uuid(7)) @db.Uuid
+  agencyId    String               @map("agency_id") @db.Uuid
+  recipientId String               @map("recipient_id") @db.Uuid
+  category    NotificationCategory
+  /// Event name, e.g. "change.client_accepted" or "reminder.invoice_overdue".
+  type        String               @db.VarChar(60)
+  /// Plain text shown in the app only. Emails never include it (SEC-24).
+  title       String               @db.VarChar(300)
+  /// App path to open, always starting with /app/ (DB check). Built by the server, never from input.
+  link        String               @db.VarChar(300)
+  entityType  String?              @map("entity_type") @db.VarChar(40)
+  entityId    String?              @map("entity_id") @db.Uuid
+  actorId     String?              @map("actor_id") @db.Uuid
+  /// Reminders use a key so a repeated scan never creates the same reminder twice.
+  dedupeKey   String?              @map("dedupe_key") @db.VarChar(200)
+  /// False when the user turned in-app off for the category but kept email on.
+  inApp       Boolean              @default(true) @map("in_app")
+  readAt      DateTime?            @map("read_at") @db.Timestamptz(3)
+  emailedAt   DateTime?            @map("emailed_at") @db.Timestamptz(3)
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency    Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  recipient User   @relation("NotificationRecipient", fields: [agencyId, recipientId], references: [agencyId, id], onDelete: Restrict)
+
+  @@unique([recipientId, dedupeKey])
+  @@index([recipientId, inApp, createdAt(sort: Desc)])
+  @@index([recipientId, readAt])
+  @@map("notifications")
+}
+
+// A user's channel choice for one category. No row means the category default (ADR-059).
+model NotificationPreference {
+  userId    String               @map("user_id") @db.Uuid
+  category  NotificationCategory
+  inApp     Boolean              @map("in_app")
+  email     Boolean
+  updatedAt DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([userId, category])
+  @@map("notification_preferences")
+}
+
+enum JobState {
+  PENDING
+  RUNNING
+  DONE
+  DEAD
+}
+
+// Transactional outbox (spec §8.1 job_outbox, FR-A02). A job is written in the same transaction
+// as the change that needs it; the worker claims jobs with SKIP LOCKED, retries with backoff and
+// stops after max_attempts (dead letter). Payloads hold IDs only, never emails or tokens.
+model OutboxJob {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  agencyId    String?   @map("agency_id") @db.Uuid
+  kind        String    @db.VarChar(60)
+  payload     Json
+  state       JobState  @default(PENDING)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(6) @map("max_attempts")
+  availableAt DateTime  @default(now()) @map("available_at") @db.Timestamptz(3)
+  /// While RUNNING: when the claim expires. A worker that crashed loses the job after this.
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz(3)
+  /// Short error class and message, no payload or personal data.
+  lastError   String?   @map("last_error") @db.VarChar(300)
+  dedupeKey   String?   @unique @map("dedupe_key") @db.VarChar(200)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  finishedAt  DateTime? @map("finished_at") @db.Timestamptz(3)
+
+  @@index([state, availableAt])
+  @@map("outbox_jobs")
+}
+
+// The record of a CSV import (FR-C10, FR-A07). The file itself is not kept: only its hash and the
+// counts, so the import is auditable without storing a copy of the personal data.
+model ImportRun {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  agencyId    String    @map("agency_id") @db.Uuid
+  actorId     String    @map("actor_id") @db.Uuid
+  /// "contacts" or "deals" (DB check).
+  kind        String    @db.VarChar(20)
+  filename    String?   @db.VarChar(200)
+  fileSha256  String    @map("file_sha256") @db.Char(64)
+  rowsTotal   Int       @map("rows_total")
+  rowsCreated Int       @map("rows_created")
+  rowsSkipped Int       @map("rows_skipped")
+  rowsFailed  Int       @map("rows_failed")
+  /// Set when the import was undone: its unchanged records were archived.
+  undoneAt    DateTime? @map("undone_at") @db.Timestamptz(3)
+  undoneById  String?   @map("undone_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency   Agency    @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  actor    User      @relation("ImportRuns", fields: [agencyId, actorId], references: [agencyId, id], onDelete: Restrict)
+  contacts Contact[]
+  deals    Deal[]
+
+  @@index([agencyId, createdAt(sort: Desc)])
+  @@map("import_runs")
 }

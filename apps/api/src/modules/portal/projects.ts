@@ -18,6 +18,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { agencyToday, formatDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, notFound } from '../../lib/errors.js';
+import { notify } from '../../lib/notify.js';
 import { recordActivity } from '../../lib/timeline.js';
 import type { AuthUser } from '../../types/express.js';
 import { UUID_PATTERN } from '../contacts/service.js';
@@ -222,20 +223,19 @@ export async function decideOnDeliverable(
   input: z.output<typeof deliverableDecisionSchema>,
   requestId: string,
 ) {
-  const { db, mailer, config } = deps;
+  const { db } = deps;
   const visible = await findPortalDeliverable(db, actor, id);
   if (!visible) {
     await logPortalDenied(db, actor, 'deliverable', id, requestId);
     throw notFound();
   }
   const wanted = DECISION[input.decision];
-  let notify: { to: string; subject: string; text: string } | null = null;
   try {
-    notify = await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM deliverables WHERE id = CAST(${visible.id} AS uuid) FOR UPDATE`;
       const d = await tx.deliverable.findUniqueOrThrow({
         where: { id: visible.id },
-        include: { project: { include: { manager: { select: { emailNorm: true } } } } },
+        include: { project: { select: { managerId: true } } },
       });
       const v = await tx.deliverableVersion.findFirst({
         where: { id: input.versionId, deliverableId: d.id, publishedAt: { not: null } },
@@ -246,7 +246,7 @@ export async function decideOnDeliverable(
           'This deliverable changed since you opened it. Reload to see the latest version.',
         );
       if (v.review) {
-        if (v.review.decision === wanted) return null; // same decision again: idempotent
+        if (v.review.decision === wanted) return; // same decision again: idempotent
         throw conflict('A decision was already recorded for this version.');
       }
       if (d.status !== 'PUBLISHED' || v.versionNo !== d.currentVersionNo) {
@@ -289,12 +289,16 @@ export async function decideOnDeliverable(
         requestId,
         metadata: { versionNo: v.versionNo },
       });
-      return {
-        to: d.project.manager.emailNorm,
-        subject: `Client decision: ${words}`,
-        // Link only: the decision text stays in the app (SEC-24).
-        text: `A client recorded a decision on a deliverable.\n\n${config.publicUrl}/app/projects/${d.projectId}/deliverables`,
-      };
+      await notify(tx, {
+        agencyId: actor.agencyId,
+        recipientIds: [d.project.managerId, v.createdById],
+        actorId: actor.id,
+        category: 'CLIENT_ACTIVITY',
+        type: `deliverable.client_${wanted.toLowerCase()}`,
+        title: `${actor.name} (client): ${words} on “${d.title}” v${v.versionNo}`,
+        link: `/app/projects/${d.projectId}/deliverables/${d.id}`,
+        entity: { type: 'deliverable', id: d.id },
+      });
     });
   } catch (err) {
     if (!isUniqueViolation(err)) throw err;
@@ -302,6 +306,5 @@ export async function decideOnDeliverable(
     if (stored?.decision !== wanted)
       throw conflict('A decision was already recorded for this version.');
   }
-  if (notify) await mailer.send({ kind: 'deliverable_decision', ...notify });
   return getPortalDeliverable(db, actor, id, requestId);
 }
