@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadEnv } from '../src/config/env.js';
+import { PERMISSIONS_POLICY } from '../src/middleware/security.js';
 import {
   getPreCsrf,
   login,
@@ -41,6 +42,8 @@ describe('API responses', () => {
     );
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['referrer-policy']).toBe('no-referrer');
+    expect(res.headers['permissions-policy']).toBe(PERMISSIONS_POLICY);
+    expect(res.headers['permissions-policy']).toMatch(/camera=\(\).*microphone=\(\)/);
     expect(res.headers['cache-control']).toMatch(/no-store/);
     expect(res.headers['x-powered-by']).toBeUndefined();
     expect(res.headers['strict-transport-security']).toBeUndefined(); // only in production
@@ -151,6 +154,7 @@ describe('production web serving (one origin, ADR-034)', () => {
     expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");
+    expect(res.headers['permissions-policy']).toBe(PERMISSIONS_POLICY);
   });
 
   it('caches hashed assets for a year and 404s missing ones', async () => {
