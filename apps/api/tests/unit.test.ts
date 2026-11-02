@@ -216,6 +216,7 @@ describe('environment validation', () => {
     DATABASE_URL: 'postgresql://u:p@127.0.0.1:5433/db',
     APP_ORIGINS: 'http://localhost:5173',
     CSRF_SECRET: 'x'.repeat(40),
+    FILE_ENCRYPTION_KEY: 'ab'.repeat(32),
   };
 
   it('accepts a valid configuration', () => {
@@ -227,6 +228,19 @@ describe('environment validation', () => {
     expect(() =>
       loadEnv({ ...base, CSRF_SECRET: 'replace-with-at-least-32-random-characters' }),
     ).toThrow(/placeholder/);
+  });
+
+  it('requires a 32-byte hex file encryption key', () => {
+    expect(() => loadEnv({ ...base, FILE_ENCRYPTION_KEY: undefined })).toThrow(
+      /FILE_ENCRYPTION_KEY/,
+    );
+    // Empty (as in .env.example) and non-hex values are refused with a clear message.
+    expect(() => loadEnv({ ...base, FILE_ENCRYPTION_KEY: '' })).toThrow(/64 hex/);
+    expect(() => loadEnv({ ...base, FILE_ENCRYPTION_KEY: 'zz' })).toThrow(/64 hex/);
+    expect(loadEnv(base).FILE_MAX_BYTES).toBe(25 * 1024 * 1024);
+    expect(() => loadEnv({ ...base, FILE_MAX_BYTES: String(200 * 1024 * 1024) })).toThrow(
+      /FILE_MAX_BYTES/,
+    );
   });
 
   it('requires https origins in production', () => {

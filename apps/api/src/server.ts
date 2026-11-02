@@ -3,6 +3,7 @@ import { loadEnv } from './config/env.js';
 import { createDb } from './db/client.js';
 import { DevSinkMailer, DisabledMailer } from './lib/mailer.js';
 import { createLogger } from './middleware/logger.js';
+import { LocalEncryptedStorage } from './modules/files/storage.js';
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
@@ -13,10 +14,16 @@ const mailer =
     ? new DevSinkMailer(env.MAIL_SINK_DIR, logger)
     : new DisabledMailer(logger);
 
+const storage = new LocalEncryptedStorage(
+  env.FILE_STORAGE_DIR,
+  Buffer.from(env.FILE_ENCRYPTION_KEY, 'hex'),
+);
+
 const app = createApp({
   db,
   logger,
   mailer,
+  storage,
   config: {
     isProduction: env.NODE_ENV === 'production',
     appOrigins: env.APP_ORIGINS,
@@ -29,6 +36,7 @@ const app = createApp({
     },
     publicUrl: (env.APP_PUBLIC_URL ?? env.APP_ORIGINS[0]!).replace(/\/+$/, ''),
     ...(env.WEB_DIST_DIR ? { webDistDir: env.WEB_DIST_DIR } : {}),
+    files: { maxBytes: env.FILE_MAX_BYTES, projectQuotaBytes: env.FILE_PROJECT_QUOTA_BYTES },
   },
 });
 

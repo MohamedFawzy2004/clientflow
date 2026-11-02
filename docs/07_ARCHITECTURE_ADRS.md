@@ -244,3 +244,79 @@ A deal won by manager override (ADR-024) has no agreed scope, so conversion retu
 ## ADR-042 — Test-only rate-limit overrides (ACCEPTED, M6)
 
 The E2E suite grew past the per-IP limits (about 50 sign-ins and more than 1,000 API calls in 15 minutes from 127.0.0.1). `LOGIN_RATE_LIMIT_PER_IP`, `TOKEN_RATE_LIMIT_PER_IP` and `API_RATE_LIMIT_PER_IP` raise them for the E2E server. `loadEnv` refuses them when `NODE_ENV=production` (tested). Per-email limits are not configurable.
+
+## ADR-043 — File storage: a port with an encrypted local-disk adapter (ACCEPTED, M7)
+
+The owner has not chosen hosting yet (O-hosting), so uploads go through a `FileStorage` port (`put`, `get`, `remove`). The only adapter today is `LocalEncryptedStorage`:
+
+- Each file is encrypted with AES-256-GCM, a random 96-bit nonce per file and the tag stored on the `files` row. The key is `FILE_ENCRYPTION_KEY` (64 hex characters, required; the app refuses to start without it).
+- Objects are named by a random UUID (`storage_key`), so no user input ever reaches a path. The original name is display-only and sanitized.
+- The directory (`FILE_STORAGE_DIR`, `/data/files` volume in the image) is never served statically. Writes go to a `.part` file and are renamed only after the whole upload passed.
+
+An S3-compatible adapter (R2, S3, Backblaze) can implement the same port once hosting is chosen; then presigned URLs and the provider's server-side encryption replace the local key. **Backups must include both the files and the key**: without the key the files are unreadable.
+
+## ADR-044 — Upload checks: allowlist, signatures, active content, built-in scan (ACCEPTED, M7)
+
+- **Allowlist by extension:** pdf, png, jpg/jpeg, webp, gif, docx, xlsx, pptx, zip, txt, csv, md. The server sets the content type from this table and ignores the browser's.
+- **Signature check:** the first bytes must match the claimed type (for example `%PDF-`, the PNG header, `PK\x03\x04` for Office files and zip).
+- **Text files** must be UTF-8 without NUL bytes and must not contain HTML or script markers.
+- **HTML, SVG, scripts and executables** are refused outright (FR-X07).
+- **Size:** `FILE_MAX_BYTES` per file (default 25 MB; at most 100 MB, also a DB check) and `FILE_PROJECT_QUOTA_BYTES` per project (default 2 GB).
+- **EICAR:** the EICAR test signature is detected, which proves the quarantine path end to end.
+
+The checks run while the bytes stream to storage. A file that fails any of them is removed and refused (422 or 413), and a FAILURE audit event is written. `scan_status` exists for a later asynchronous scanner: only `CLEAN` files can be downloaded, versioned or published, and publishing checks again.
+
+**This is not an antivirus.** A real scanner (ClamAV sidecar or a provider service) is deferred to the hosting decision and tracked as risk R25.
+
+## ADR-045 — Downloads through short-lived, user-bound links (ACCEPTED, M7)
+
+`POST /files/:id/download-url` (staff) and `POST /portal/files/:id/download-url` (clients) return `/api/v1/files/download/<token>`. The token is an HMAC (key derived from the app secret, separate from CSRF) over the file ID, the user ID and an expiry 5 minutes ahead.
+
+Using a link also needs the same user's session, and access is checked again at download time, so revoking a share or removing a member stops links that were already handed out.
+
+Responses are always attachments, with `nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, `Cache-Control: private, no-store` and CORP same-origin. Request logs redact the token from the path.
+
+## ADR-046 — Portal sharing per client user, and what clients see (ACCEPTED, M7)
+
+A project is shared with named CLIENT users of the project's client organization (`project_portal_shares`, spec §8.1 `client_project_shares`). A DB trigger refuses anyone else.
+
+- Handed-off projects take the organization from the accepted proposal. A manual project can be linked to one, and changing that link revokes every active share.
+- Archived projects leave the portal.
+- **Portal payloads contain:** project title, state and dates, milestones, and published deliverable versions with their notes and files.
+- **Portal payloads never contain:** tasks, time, budget, internal notes, team names (apart from the agency name) or unpublished versions.
+- Out-of-scope portal requests (another organization's project, deliverable or file, or an unshared project) return the same 404 as unknown IDs and write a `portal.access_denied` DENIED audit event (T-ACL-02).
+
+## ADR-047 — Task permissions and dependency cycles (ACCEPTED, M7)
+
+**Permissions.** Delivery data (tasks, time, files, deliverables) needs the new `delivery.work` permission (Owner, Admin, PM, Member) plus project scope. Sales get the linked project overview only (403 on delivery endpoints).
+
+| Who                              | What they may do with tasks                                                                                            |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Project manager (or Owner/Admin) | Create tasks, edit every field, change dependencies, cancel and reopen                                                 |
+| Assignee                         | Move their own task between To do, In progress, Blocked, In review and Done (US-11), and nothing else                  |
+| Any project participant          | Log their own time. Only the author edits or deletes an entry. Members see their own time; the manager sees everyone's |
+
+Removing a member returns their open tasks to "unassigned".
+
+**Dependencies.** Both tasks of a dependency belong to one project (composite FKs) and a task cannot wait for itself (DB check). Cycles are refused by a recursive CTE run under the project row lock, so two opposite links sent at once cannot both land (tested). A task waiting for open tasks cannot become Done (spec §9). The documented override is deferred.
+
+**Cost rates** are not stored until finance (M9, FR-F06).
+
+## ADR-048 — Deliverable lifecycle and client decisions (ACCEPTED, M7)
+
+The statuses follow spec §9: DRAFT → READY (a version with a clean file) → PUBLISHED (explicit, project manager only) → APPROVED or REVISION_REQUESTED → (new version) READY → … ARCHIVED at any time.
+
+- The client decides on the latest published version only, naming it by ID: approve, request a revision or reject (a reason is required for the last two, DB check).
+- One decision per version is enforced by a unique index under a row lock; the same decision repeated is idempotent.
+- The spec has no REJECTED deliverable status, so a rejection is stored as the decision REJECTED and sends the deliverable back to REVISION_REQUESTED.
+- While a version is with the client, no new version can be added. After approval the deliverable is closed.
+- Published versions and decisions are immutable: DB triggers block updates and deletes.
+- The review date is advisory: when it passes, the deliverable shows as overdue and is never approved by silence (FR-S10).
+- The project manager receives a link-only email about each decision (SEC-24).
+- A project cannot move to Completed while a deliverable is waiting for the client (spec §9). Archiving the deliverable is the authorized waiver.
+
+## ADR-049 — One streamed upload request instead of upload-intent / complete (ACCEPTED, M7)
+
+Spec §10 lists `upload-intent`, `complete` and `download`, a shape designed for presigned object-storage uploads. With local storage the API receives the bytes itself, so M7 uses one request: `POST /projects/:id/files` with the raw body and the name in `X-File-Name`. The bytes are checked and encrypted as they stream in, so nothing unchecked is ever kept.
+
+A refused upload's remaining body is drained up to 2× the limit, so the client receives the error instead of a reset connection; past that the connection is closed. When an S3 adapter arrives, the intent/complete pair can be added in front of the same checks.

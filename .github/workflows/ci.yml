@@ -69,11 +69,14 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Generate a throwaway CSRF secret
+      - name: Generate throwaway secrets
         run: |
           secret=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
           echo "::add-mask::$secret"
           echo "CSRF_SECRET=$secret" >> "$GITHUB_ENV"
+          filekey=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+          echo "::add-mask::$filekey"
+          echo "FILE_ENCRYPTION_KEY=$filekey" >> "$GITHUB_ENV"
       - name: Create test database
         run: PGPASSWORD=ci-only-password psql -h 127.0.0.1 -U clientflow -d clientflow -c "CREATE DATABASE clientflow_test;"
       - run: npm ci
@@ -106,11 +109,14 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Generate a throwaway CSRF secret
+      - name: Generate throwaway secrets
         run: |
           secret=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
           echo "::add-mask::$secret"
           echo "CSRF_SECRET=$secret" >> "$GITHUB_ENV"
+          filekey=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+          echo "::add-mask::$filekey"
+          echo "FILE_ENCRYPTION_KEY=$filekey" >> "$GITHUB_ENV"
       - name: Create e2e database
         run: PGPASSWORD=ci-only-password psql -h 127.0.0.1 -U clientflow -d clientflow -c "CREATE DATABASE clientflow_e2e;"
       - run: npm ci
@@ -154,8 +160,11 @@ jobs:
         run: |
           secret=$(openssl rand -base64 48 | tr -d '\n=+/')
           echo "::add-mask::$secret"
+          filekey=$(openssl rand -hex 32)
+          echo "::add-mask::$filekey"
           docker run -d --name cf --network host -e DATABASE_URL="$SMOKE_DB" \
-            -e APP_ORIGINS=https://ci.clientflow.test -e CSRF_SECRET="$secret" clientflow:ci
+            -e APP_ORIGINS=https://ci.clientflow.test -e CSRF_SECRET="$secret" \
+            -e FILE_ENCRYPTION_KEY="$filekey" clientflow:ci
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4000/health/ready && break; sleep 1; done
       - name: Smoke checks (health, app page with CSP, API 404 envelope, origin check)
         run: |

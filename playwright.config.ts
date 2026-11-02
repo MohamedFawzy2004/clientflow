@@ -8,6 +8,7 @@ const API_PORT = 4100;
 const WEB_PORT = 5174;
 const WEB_ORIGIN = `http://localhost:${WEB_PORT}`;
 export const E2E_MAIL_SINK = fileURLToPath(new URL('./e2e/.mail-sink', import.meta.url));
+export const E2E_STORAGE = fileURLToPath(new URL('./e2e/.storage', import.meta.url));
 
 export default defineConfig({
   testDir: 'e2e',
@@ -47,6 +48,8 @@ export default defineConfig({
         API_RATE_LIMIT_PER_IP: '20000',
         // Separate sink so E2E never reads or deletes development emails.
         MAIL_SINK_DIR: E2E_MAIL_SINK,
+        // Separate encrypted file store for E2E uploads.
+        FILE_STORAGE_DIR: E2E_STORAGE,
       },
     },
     {

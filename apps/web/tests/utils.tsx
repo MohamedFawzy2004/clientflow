@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { render } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router';
 import type { SessionUser } from '@clientflow/contracts';
 import { vi } from 'vitest';
 import { createQueryClient, Providers } from '../src/app/providers';
@@ -44,7 +44,12 @@ export function mockFetch(handler: Handler) {
 
 export function renderRoute(
   element: ReactElement,
-  { path = '/', url = '/', user = USER as SessionUser | null } = {},
+  {
+    path = '/',
+    url = '/',
+    user = USER as SessionUser | null,
+    children,
+  }: { path?: string; url?: string; user?: SessionUser | null; children?: RouteObject[] } = {},
 ) {
   const client = createQueryClient();
   client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
@@ -52,7 +57,7 @@ export function renderRoute(
   setCsrfToken('test-csrf');
   const router = createMemoryRouter(
     [
-      { path, element },
+      children ? { path, element, children } : { path, element },
       { path: '*', element: <div>Navigated elsewhere</div> },
     ],
     { initialEntries: [url] },

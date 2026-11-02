@@ -144,6 +144,7 @@ export async function makeProject(
     dealId?: string;
     baselineVersionId?: string;
     memberIds?: string[];
+    clientOrgId?: string;
   },
 ) {
   const p = await db.project.create({
@@ -154,6 +155,7 @@ export async function makeProject(
       createdById: opts.createdById,
       dealId: opts.dealId ?? null,
       baselineVersionId: opts.baselineVersionId ?? null,
+      clientOrgId: opts.clientOrgId ?? null,
       currency: 'EGP',
       milestones: { create: [{ title: 'Kick-off', sequence: 0 }] },
       checklist: { create: [{ label: 'Kick-off scheduled', sequence: 0 }] },

@@ -49,8 +49,12 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     API_PORT=4000 \
     WEB_DIST_DIR=/app/apps/web/dist \
-    MAIL_TRANSPORT=disabled
+    MAIL_TRANSPORT=disabled \
+    FILE_STORAGE_DIR=/data/files
 WORKDIR /app
+# Encrypted uploads live on a volume owned by the unprivileged user, outside the app directory.
+RUN mkdir -p /data/files && chown node:node /data/files
+VOLUME ["/data/files"]
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY packages/contracts/package.json packages/contracts/

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectDetail, SessionUser } from '@clientflow/contracts';
 import { ConvertDealDialog } from '../src/features/projects/ConvertDealDialog';
 import { ProjectDetailPage } from '../src/features/projects/ProjectDetailPage';
+import { ProjectOverview } from '../src/features/projects/ProjectOverview';
 import { mockFetch, renderRoute, USER } from './utils';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -42,7 +43,8 @@ const project = (over: Partial<ProjectDetail> = {}): ProjectDetail => ({
     },
   ],
   activities: [],
-  access: { manage: true },
+  clientOrg: null,
+  access: { manage: true, work: true },
   ...over,
 });
 
@@ -84,12 +86,15 @@ describe('convert dialog (spec §11.6 idempotency)', () => {
   });
 });
 
+const OVERVIEW = [{ index: true, element: <ProjectOverview /> }];
+
 describe('project overview', () => {
   it('managers get state, milestone and checklist controls', async () => {
     mockFetch((url) => (url.includes('/projects/staff') ? ok([]) : ok(project())));
     renderRoute(<ProjectDetailPage />, {
       path: '/app/projects/:id',
       url: '/app/projects/p1',
+      children: OVERVIEW,
       user: PM,
     });
     expect(await screen.findByRole('heading', { level: 1, name: 'Fleet app' })).toBeInTheDocument();
@@ -105,10 +110,11 @@ describe('project overview', () => {
   });
 
   it('readers without manage rights see the project but no controls', async () => {
-    mockFetch(() => ok(project({ access: { manage: false } })));
+    mockFetch(() => ok(project({ access: { manage: false, work: false } })));
     renderRoute(<ProjectDetailPage />, {
       path: '/app/projects/:id',
       url: '/app/projects/p1',
+      children: OVERVIEW,
       user: { ...USER, role: 'SALES' },
     });
     expect(
@@ -125,10 +131,11 @@ describe('project overview', () => {
   });
 
   it('archived projects say so and stay read-only', async () => {
-    mockFetch(() => ok(project({ state: 'ARCHIVED', access: { manage: false } })));
+    mockFetch(() => ok(project({ state: 'ARCHIVED', access: { manage: false, work: false } })));
     renderRoute(<ProjectDetailPage />, {
       path: '/app/projects/:id',
       url: '/app/projects/p1',
+      children: OVERVIEW,
       user: PM,
     });
     expect(

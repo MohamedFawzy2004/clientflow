@@ -39,7 +39,8 @@ export function httpLogger(logger: Logger) {
       }) => ({
         id: req.id,
         method: req.method,
-        path: req.url.split('?')[0],
+        // Download links carry a signed token in the path: log the route, not the token.
+        path: req.url.split('?')[0]!.replace(/(\/files\/download\/)[^/]+/, '$1[REDACTED]'),
         headers: req.headers,
       }),
     },

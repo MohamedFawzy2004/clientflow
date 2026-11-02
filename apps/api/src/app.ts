@@ -29,6 +29,10 @@ import { proposalsRouter } from './modules/proposals/routes.js';
 import { servicesRouter } from './modules/services/routes.js';
 import { insightsRouter } from './modules/insights/routes.js';
 import { projectsRouter } from './modules/projects/routes.js';
+import { tasksRouter } from './modules/tasks/routes.js';
+import { filesRouter } from './modules/files/routes.js';
+import { deliverablesRouter } from './modules/deliverables/routes.js';
+import type { FileStorage } from './modules/files/storage.js';
 
 export interface AppConfig {
   isProduction: boolean;
@@ -40,6 +44,8 @@ export interface AppConfig {
   rateLimits?: Partial<RateLimitConfig>;
   /** Built web app (apps/web/dist). When set, this process serves it on the same origin. */
   webDistDir?: string;
+  /** Upload limits (SEC-12): per file, and in total per project. */
+  files: { maxBytes: number; projectQuotaBytes?: number };
 }
 
 export interface AppDeps {
@@ -47,6 +53,8 @@ export interface AppDeps {
   logger: Logger;
   config: AppConfig;
   mailer: Mailer;
+  /** Private file storage (encrypted local disk today, ADR-043). */
+  storage: FileStorage;
   /** Test-only fault injection (T-HAND-02). Never set by server.ts. */
   hooks?: { beforeHandoffCommit?: () => void | Promise<void> };
   /** Receives work that continues after a response is sent (tests await it). */
@@ -90,6 +98,9 @@ export function createApp(deps: AppDeps): Express {
   api.use(clientOrgsRouter(deps));
   api.use(insightsRouter(deps));
   api.use(projectsRouter(deps));
+  api.use(tasksRouter(deps));
+  api.use(filesRouter(deps));
+  api.use(deliverablesRouter(deps));
   api.use(notFoundHandler);
 
   app.use('/api/v1', apiHeaders, api);

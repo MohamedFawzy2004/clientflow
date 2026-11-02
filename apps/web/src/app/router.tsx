@@ -153,6 +153,32 @@ export const router = createBrowserRouter([
       {
         path: 'projects/:id',
         lazy: screen(() => import('../features/projects/ProjectDetailPage'), 'ProjectDetailPage'),
+        children: [
+          {
+            index: true,
+            lazy: screen(() => import('../features/projects/ProjectOverview'), 'ProjectOverview'),
+          },
+          {
+            path: 'board',
+            lazy: screen(() => import('../features/delivery/TaskBoardPage'), 'TaskBoardPage'),
+          },
+          {
+            path: 'deliverables',
+            lazy: screen(() => import('../features/delivery/DeliverablesPage'), 'DeliverablesPage'),
+          },
+          {
+            path: 'deliverables/:deliverableId',
+            lazy: screen(() => import('../features/delivery/DeliverablePage'), 'DeliverablePage'),
+          },
+          {
+            path: 'files',
+            lazy: screen(() => import('../features/delivery/FilesPage'), 'FilesPage'),
+          },
+          {
+            path: 'time',
+            lazy: screen(() => import('../features/delivery/TimePage'), 'TimePage'),
+          },
+        ],
       },
       {
         path: 'services',
@@ -182,6 +208,21 @@ export const router = createBrowserRouter([
       {
         path: 'proposals/:id',
         lazy: screen(() => import('../features/portal/PortalProposalPage'), 'PortalProposalPage'),
+      },
+      {
+        path: 'projects',
+        lazy: screen(() => import('../features/portal/PortalProjectsPage'), 'PortalProjectsPage'),
+      },
+      {
+        path: 'projects/:id',
+        lazy: screen(() => import('../features/portal/PortalProjectPage'), 'PortalProjectPage'),
+      },
+      {
+        path: 'deliverables/:id',
+        lazy: screen(
+          () => import('../features/portal/PortalDeliverablePage'),
+          'PortalDeliverablePage',
+        ),
       },
       { path: '*', element: <NotFoundPage /> },
     ],
