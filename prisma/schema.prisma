@@ -61,6 +61,8 @@ model Agency {
   contacts    Contact[]
   activities  Activity[]
   auditEvents AuditEvent[]
+  pipelines   Pipeline[]
+  deals       Deal[]
 
   @@map("agencies")
 }
@@ -87,6 +89,8 @@ model User {
   invitationsSent     Invitation[]         @relation("InvitedBy")
   invitationsAccepted Invitation[]         @relation("AcceptedUser")
   passwordResetTokens PasswordResetToken[]
+  ownedDeals          Deal[]               @relation("DealOwner")
+  closedDeals         Deal[]               @relation("DealClosedBy")
 
   @@unique([agencyId, emailNorm])
   // Target of composite foreign keys that keep nested rows inside the same agency (spec §8.2).
@@ -124,6 +128,8 @@ model Contact {
   source       ContactSource?
   nextActionAt DateTime?        @map("next_action_at") @db.Timestamptz(3)
   notes        String?          @db.VarChar(5000)
+  /// When the lead became a customer (FR-C07). Same row, same ID.
+  convertedAt  DateTime?        @map("converted_at") @db.Timestamptz(3)
   archivedAt   DateTime?        @map("archived_at") @db.Timestamptz(3)
   version      Int              @default(1)
   createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -132,8 +138,12 @@ model Contact {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   // Composite FK: the owner must belong to the same agency as the contact.
   owner  User   @relation("ContactOwner", fields: [agencyId, ownerId], references: [agencyId, id], onDelete: Restrict)
+  deals  Deal[]
 
+  // Target of the deals composite FK (deal and contact in the same agency).
+  @@unique([agencyId, id])
   @@index([agencyId, ownerId, createdAt(sort: Desc)])
+  @@index([agencyId, nextActionAt])
   @@index([agencyId, createdAt(sort: Desc)])
   @@index([agencyId, emailNorm])
   @@index([agencyId, phoneNorm])
@@ -148,12 +158,16 @@ model Activity {
   entityId   String   @map("entity_id") @db.Uuid
   eventType  String   @map("event_type") @db.VarChar(60)
   summary    String   @db.VarChar(500)
+  /// Free text for notes and logged calls/emails/meetings (FR-C08). Rendered as text only.
+  body       String?  @db.VarChar(5000)
+  /// When the interaction happened (may be earlier than when it was logged).
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   actor  User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
-  @@index([agencyId, entityType, entityId, createdAt(sort: Desc)])
+  @@index([agencyId, entityType, entityId, occurredAt(sort: Desc)])
   @@map("activities")
 }
 
@@ -213,4 +227,86 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+// One pipeline per agency in v1, with stable stage IDs (FR-D02). Stage names and order can change
+// without touching deals, because deals point at stage IDs.
+model Pipeline {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  agencyId  String   @map("agency_id") @db.Uuid
+  name      String   @db.VarChar(120)
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agency Agency          @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  stages PipelineStage[]
+  deals  Deal[]
+
+  @@unique([agencyId, id])
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  pipelineId String   @map("pipeline_id") @db.Uuid
+  name       String   @db.VarChar(80)
+  position   Int
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
+  deals    Deal[]
+
+  @@unique([pipelineId, position])
+  // Target of the deals composite FK: a deal's stage must belong to the deal's pipeline.
+  @@unique([pipelineId, id])
+  @@map("pipeline_stages")
+}
+
+// Status (OPEN/WON/LOST) is separate from stage (spec §8.2, §9). Amounts are integer minor
+// units with an ISO currency: never floats, never summed across currencies (FR-F10).
+model Deal {
+  id                String     @id @default(uuid(7)) @db.Uuid
+  agencyId          String     @map("agency_id") @db.Uuid
+  contactId         String     @map("contact_id") @db.Uuid
+  ownerId           String     @map("owner_id") @db.Uuid
+  pipelineId        String     @map("pipeline_id") @db.Uuid
+  stageId           String     @map("stage_id") @db.Uuid
+  title             String     @db.VarChar(200)
+  amountMinor       BigInt     @default(0) @map("amount_minor")
+  currency          String     @db.Char(3)
+  status            DealStatus @default(OPEN)
+  expectedCloseOn   DateTime?  @map("expected_close_on") @db.Date
+  nextStep          String?    @map("next_step") @db.VarChar(300)
+  nextStepAt        DateTime?  @map("next_step_at") @db.Timestamptz(3)
+  closedAt          DateTime?  @map("closed_at") @db.Timestamptz(3)
+  closedById        String?    @map("closed_by_id") @db.Uuid
+  lostReason        String?    @map("lost_reason") @db.VarChar(500)
+  /// WON without an accepted proposal needs a documented, authorized override (FR-D05).
+  wonOverrideReason String?    @map("won_override_reason") @db.VarChar(500)
+  archivedAt        DateTime?  @map("archived_at") @db.Timestamptz(3)
+  version           Int        @default(1)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  agency   Agency        @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  contact  Contact       @relation(fields: [agencyId, contactId], references: [agencyId, id], onDelete: Restrict)
+  owner    User          @relation("DealOwner", fields: [agencyId, ownerId], references: [agencyId, id], onDelete: Restrict)
+  pipeline Pipeline      @relation(fields: [agencyId, pipelineId], references: [agencyId, id], onDelete: Restrict)
+  stage    PipelineStage @relation(fields: [pipelineId, stageId], references: [pipelineId, id], onDelete: Restrict)
+  /// Plain FK: an optional composite relation cannot include the required agency_id. The closer
+  /// is always the acting user, whose agency the service checks.
+  closedBy User?         @relation("DealClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+
+  @@index([agencyId, status, stageId])
+  @@index([agencyId, ownerId, status])
+  @@index([agencyId, contactId])
+  @@index([agencyId, nextStepAt])
+  @@map("deals")
 }

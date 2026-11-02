@@ -12,9 +12,13 @@ import {
   X,
 } from 'lucide-react';
 import {
+  can,
   CONTACT_SOURCE_LABELS,
+  CONTACT_SOURCES,
   type ContactLifecycle,
+  type ContactSource,
   type ContactSummary,
+  type FollowUpFilter,
 } from '@clientflow/contracts';
 import { ApiError } from '../../lib/api';
 import { cn, formatDate, isPast, relativeDay } from '../../lib/format';
@@ -23,6 +27,7 @@ import { Button } from '../../components/ui/button';
 import { Badge, EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
 import { useSession } from '../auth/session';
 import { AddLeadDialog } from './AddLeadDialog';
+import { useAssignableOwners } from '../deals/api';
 import { useLeads } from './api';
 
 const PAGE_SIZE = 25;
@@ -176,6 +181,50 @@ function LeadCards({ rows, timeZone }: { rows: ContactSummary[]; timeZone: strin
   );
 }
 
+const FOLLOW_UP_OPTIONS: Array<{ value: FollowUpFilter | ''; label: string }> = [
+  { value: '', label: 'Any follow-up' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'today', label: 'Due today' },
+  { value: 'upcoming', label: 'Next 7 days' },
+  { value: 'none', label: 'No next step' },
+];
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ value: string; label: string }>;
+}) {
+  const id = useId();
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          'h-9 max-w-[11rem] rounded-md border bg-surface px-2.5 text-[13px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15',
+          value ? 'border-primary text-text' : 'border-border-strong text-muted',
+        )}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
 export function LeadsListPage() {
   const { data: user } = useSession();
   const timeZone = user?.agency.timezone ?? 'Africa/Cairo';
@@ -185,6 +234,12 @@ export function LeadsListPage() {
 
   const page = Math.max(1, Number(params.get('page')) || 1);
   const lifecycle = (params.get('lifecycle') as ContactLifecycle | null) ?? undefined;
+  const followUp = (params.get('followUp') as FollowUpFilter | null) ?? undefined;
+  const source = (params.get('source') as ContactSource | null) ?? undefined;
+  const ownerId = params.get('ownerId') ?? undefined;
+  const archived = params.get('archived') === 'true';
+  const canManage = user ? can(user.role, 'sales.reassign') : false;
+  const owners = useAssignableOwners();
   const [searchInput, setSearchInput] = useState(params.get('q') ?? '');
   const q = useDebounced(searchInput.trim(), 300);
 
@@ -202,7 +257,10 @@ export function LeadsListPage() {
     );
   }, [q, setParams]);
 
-  const setFilter = (key: 'lifecycle' | 'page', value: string | null) =>
+  const setFilter = (
+    key: 'lifecycle' | 'page' | 'followUp' | 'source' | 'ownerId' | 'archived',
+    value: string | null,
+  ) =>
     setParams((prev) => {
       const next = new URLSearchParams(prev);
       if (value) next.set(key, value);
@@ -211,11 +269,20 @@ export function LeadsListPage() {
       return next;
     });
 
-  const query = useLeads({ page, limit: PAGE_SIZE, q: q || undefined, lifecycle });
+  const query = useLeads({
+    page,
+    limit: PAGE_SIZE,
+    q: q || undefined,
+    lifecycle,
+    followUp,
+    source,
+    ownerId,
+    archived,
+  });
   const rows = query.data?.data ?? [];
   const meta = query.data?.meta;
   const total = meta?.total ?? 0;
-  const hasFilters = Boolean(q || lifecycle);
+  const hasFilters = Boolean(q || lifecycle || followUp || source || ownerId || archived);
   const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const lastShown = Math.min(page * PAGE_SIZE, total);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -377,6 +444,48 @@ export function LeadsListPage() {
               );
             })}
           </div>
+        </div>
+
+        <div
+          role="group"
+          aria-label="More filters"
+          className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-alt/40 px-3 py-2.5 md:px-4"
+        >
+          <FilterSelect
+            label="Follow-up"
+            value={followUp ?? ''}
+            onChange={(v) => setFilter('followUp', v || null)}
+            options={FOLLOW_UP_OPTIONS}
+          />
+          <FilterSelect
+            label="Source"
+            value={source ?? ''}
+            onChange={(v) => setFilter('source', v || null)}
+            options={[
+              { value: '', label: 'Any source' },
+              ...CONTACT_SOURCES.map((s) => ({ value: s, label: CONTACT_SOURCE_LABELS[s] })),
+            ]}
+          />
+          {canManage ? (
+            <FilterSelect
+              label="Owner"
+              value={ownerId ?? ''}
+              onChange={(v) => setFilter('ownerId', v || null)}
+              options={[
+                { value: '', label: 'Anyone' },
+                ...(owners.data?.data ?? []).map((o) => ({ value: o.id, label: o.name })),
+              ]}
+            />
+          ) : null}
+          <label className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-[13px] text-text">
+            <input
+              type="checkbox"
+              checked={archived}
+              onChange={(e) => setFilter('archived', e.target.checked ? 'true' : null)}
+              className="size-4 accent-[var(--color-primary)]"
+            />
+            Show archived only
+          </label>
         </div>
 
         {body}

@@ -18,6 +18,8 @@ const lead = (over: Partial<ContactSummary> = {}): ContactSummary => ({
   source: 'REFERRAL',
   owner: { id: USER.id, name: USER.name },
   nextActionAt: null,
+  convertedAt: null,
+  archivedAt: null,
   createdAt: '2026-10-20T10:00:00.000Z',
   updatedAt: '2026-10-20T10:00:00.000Z',
   version: 1,
@@ -210,12 +212,15 @@ describe('LeadDetailPage', () => {
         data: {
           ...lead(),
           notes: '<b>bold?</b>\nSecond line',
+          deals: [],
           activities: [
             {
               id: 'a1',
               eventType: 'contact.created',
               summary: 'Lead added by Nour Salem',
+              body: null,
               actor: { id: USER.id, name: USER.name },
+              occurredAt: '2026-10-20T10:00:00.000Z',
               createdAt: '2026-10-20T10:00:00.000Z',
             },
           ],

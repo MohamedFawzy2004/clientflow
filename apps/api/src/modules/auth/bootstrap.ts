@@ -1,5 +1,6 @@
 import type { Db } from '../../db/client.js';
 import { writeAudit } from '../../lib/audit.js';
+import { createDefaultPipeline } from '../pipelines/service.js';
 import { normalizeEmail, slugify } from '../../lib/normalize.js';
 import {
   checkPasswordPolicy,
@@ -66,6 +67,7 @@ export async function bootstrapOwner(db: Db, input: BootstrapInput) {
     const owner = await tx.user.create({
       data: { agencyId: agency.id, emailNorm, name: ownerName, passwordHash, role: 'OWNER' },
     });
+    await createDefaultPipeline(tx, agency.id);
     await writeAudit(tx, {
       agencyId: agency.id,
       actorId: owner.id,

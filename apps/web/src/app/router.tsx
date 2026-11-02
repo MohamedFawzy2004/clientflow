@@ -9,6 +9,9 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { ActivateInvitePage } from '../features/auth/ActivateInvitePage';
 import { ForgotPasswordPage, ResetPasswordPage } from '../features/auth/PasswordResetPages';
 import { TeamPage } from '../features/team/TeamPage';
+import { DealsPage } from '../features/deals/DealsPage';
+import { DealDetailPage } from '../features/deals/DealDetailPage';
+import { FollowUpsPage } from '../features/follow-ups/FollowUpsPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { LeadsListPage } from '../features/leads/LeadsListPage';
 import { LeadDetailPage } from '../features/leads/LeadDetailPage';
@@ -88,6 +91,9 @@ export const router = createBrowserRouter([
       { path: 'leads', element: <LeadsListPage /> },
       { path: 'leads/:id', element: <LeadDetailPage /> },
       { path: 'team', element: <TeamPage /> },
+      { path: 'deals', element: <DealsPage /> },
+      { path: 'deals/:id', element: <DealDetailPage /> },
+      { path: 'follow-ups', element: <FollowUpsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
