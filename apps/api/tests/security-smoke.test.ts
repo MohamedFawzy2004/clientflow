@@ -123,6 +123,7 @@ describe('API responses', () => {
       CSRF_SECRET: 'a-long-random-value-that-is-not-a-placeholder-123',
       FILE_ENCRYPTION_KEY: 'cd'.repeat(32),
       MAIL_TRANSPORT: 'disabled',
+      UPLOAD_SCAN: 'builtin-only',
     };
     expect(() => loadEnv({ ...base, APP_ORIGINS: 'http://app.example.test' })).toThrow(/https/);
     expect(() =>

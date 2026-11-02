@@ -178,7 +178,7 @@ jobs:
           echo "::add-mask::$filekey"
           docker run -d --name cf --network host -e DATABASE_URL="$SMOKE_DB" \
             -e APP_ORIGINS=https://ci.clientflow.test -e CSRF_SECRET="$secret" \
-            -e FILE_ENCRYPTION_KEY="$filekey" clientflow:ci
+            -e FILE_ENCRYPTION_KEY="$filekey" -e UPLOAD_SCAN=builtin-only clientflow:ci
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4000/health/ready && break; sleep 1; done
       - name: Smoke checks (health, app page with CSP, API 404 envelope, origin check)
         run: |

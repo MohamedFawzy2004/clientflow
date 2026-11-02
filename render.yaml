@@ -43,7 +43,9 @@ services:
         sync: false
       - key: MAIL_FROM # e.g. ClientFlow <noreply@crm.youragency.com>, on a domain verified in Resend
         sync: false
-      - key: CLAMAV_HOST # remove these two lines to run without the antivirus service
+      # To run without the antivirus service, replace the two CLAMAV_* entries with
+      # UPLOAD_SCAN=builtin-only: production refuses to start with neither (security audit F6).
+      - key: CLAMAV_HOST
         fromService:
           type: pserv
           name: clientflow-clamav

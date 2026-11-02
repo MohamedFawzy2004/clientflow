@@ -67,14 +67,34 @@ describe('required roles', () => {
     FILE_ENCRYPTION_KEY: 'ab'.repeat(32),
     MAIL_TRANSPORT: 'disabled' as const,
   };
-  it('defaults to Owner and Admin in production, none in a demo or in development', () => {
-    expect(mfaRequiredRoles(loadEnv({ ...base, NODE_ENV: 'production' }))).toEqual([
-      'OWNER',
-      'ADMIN',
-    ]);
+  const prod = { ...base, NODE_ENV: 'production', UPLOAD_SCAN: 'builtin-only' } as const;
+
+  it('production refuses a role list without Owner and Admin (security audit F6)', () => {
+    for (const MFA_REQUIRED_ROLES of ['none', '', 'OWNER', 'ADMIN', 'FINANCE']) {
+      expect(() => loadEnv({ ...prod, MFA_REQUIRED_ROLES })).toThrow(/OWNER and ADMIN/);
+    }
     expect(
-      mfaRequiredRoles(loadEnv({ ...base, NODE_ENV: 'production', DEMO_MODE: 'true' })),
-    ).toEqual([]);
+      mfaRequiredRoles(loadEnv({ ...prod, MFA_REQUIRED_ROLES: 'admin,owner,finance' })),
+    ).toEqual(['ADMIN', 'OWNER', 'FINANCE']);
+    // A demo and development keep their own choice.
+    expect(() => loadEnv({ ...prod, DEMO_MODE: 'true', MFA_REQUIRED_ROLES: 'none' })).not.toThrow();
+    expect(() => loadEnv({ ...base, MFA_REQUIRED_ROLES: 'none' })).not.toThrow();
+  });
+
+  it('production needs ClamAV or an explicit choice to run without it (security audit F6)', () => {
+    const { UPLOAD_SCAN: _omit, ...prodNoScan } = prod;
+    expect(() => loadEnv(prodNoScan)).toThrow(/CLAMAV_HOST.*UPLOAD_SCAN=builtin-only/);
+    expect(loadEnv({ ...prodNoScan, CLAMAV_HOST: 'clamav' }).CLAMAV_HOST).toBe('clamav');
+    expect(loadEnv(prod).UPLOAD_SCAN).toBe('builtin-only');
+    expect(() => loadEnv({ ...prodNoScan, UPLOAD_SCAN: 'clamav' })).toThrow(/needs CLAMAV_HOST/);
+    expect(() => loadEnv({ ...prod, CLAMAV_HOST: 'clamav' })).toThrow(/conflicts/);
+    expect(() => loadEnv({ ...prodNoScan, DEMO_MODE: 'true' })).not.toThrow();
+    expect(() => loadEnv(base)).not.toThrow();
+  });
+
+  it('defaults to Owner and Admin in production, none in a demo or in development', () => {
+    expect(mfaRequiredRoles(loadEnv(prod))).toEqual(['OWNER', 'ADMIN']);
+    expect(mfaRequiredRoles(loadEnv({ ...prod, DEMO_MODE: 'true' }))).toEqual([]);
     expect(mfaRequiredRoles(loadEnv({ ...base }))).toEqual([]);
     expect(mfaRequiredRoles(loadEnv({ ...base, MFA_REQUIRED_ROLES: 'none' }))).toEqual([]);
     expect(mfaRequiredRoles(loadEnv({ ...base, MFA_REQUIRED_ROLES: 'owner, finance' }))).toEqual([
