@@ -65,3 +65,19 @@ export async function findWorkable(db: Db | Tx, actor: AuthUser, id: string) {
 export async function lockProject(tx: Tx, id: string) {
   await tx.$queryRaw`SELECT id FROM projects WHERE id = CAST(${id} AS uuid) FOR UPDATE`;
 }
+
+/**
+ * For work put in front of the client (a deliverable to review, a change to decide). Holds the
+ * project's state until commit: completing the project takes `lockProject`, so it waits for this
+ * transaction and then sees the new work, and this one sees a project completed just before.
+ * Taken after the row being changed (deliverable, change), then the project, as everywhere else.
+ */
+export async function lockOpenForClient(tx: Tx, id: string) {
+  const [row] = await tx.$queryRaw<Array<{ state: string }>>`
+    SELECT state::text AS state FROM projects WHERE id = CAST(${id} AS uuid) FOR SHARE`;
+  if (!row) throw notFound();
+  assertNotArchived(row);
+  if (row.state === 'COMPLETED') {
+    throw conflict('This project is completed. Make it active again to send the client new work.');
+  }
+}

@@ -242,6 +242,26 @@ describe('change requests: estimate, approval, send (FR-S01, FR-S02)', () => {
       price: '1',
     }).expect(409);
   });
+
+  it('a completed project cannot send the client a change until it is active again', async () => {
+    const d = await estimated();
+    const s = await send(pm, 'post', `/changes/${d.id}/submit`, { version: d.version }).expect(200);
+    const a = await send(owner, 'post', `/changes/${d.id}/review`, {
+      version: s.body.data.version,
+      decision: 'APPROVE',
+    }).expect(200);
+    await db.project.update({ where: { id: projectId }, data: { state: 'COMPLETED' } });
+    const refused = await send(pm, 'post', `/changes/${d.id}/send`, {
+      version: a.body.data.version,
+    }).expect(409);
+    expect(refused.body.error.message).toMatch(/completed/);
+    expect(
+      (await get(client, `/portal/projects/${projectId}/changes`).expect(200)).body.data,
+    ).toEqual([]);
+
+    await db.project.update({ where: { id: projectId }, data: { state: 'ACTIVE' } });
+    await send(pm, 'post', `/changes/${d.id}/send`, { version: a.body.data.version }).expect(200);
+  });
 });
 
 describe('the client decides; only acceptance changes the baseline (FR-S03, FR-S04)', () => {

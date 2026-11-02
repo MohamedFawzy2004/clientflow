@@ -117,7 +117,9 @@ function isUniqueViolation(err: unknown) {
  * - Expired and superseded versions cannot be decided on.
  * - The proposal row lock plus a unique index allow exactly one decision per version; a repeat of
  *   the same decision (double click) returns the same result.
- * - Accepting wins the deal through the normal path (no override) and converts the lead.
+ * - Accepting wins the deal through the normal path (no override) and converts the lead. It also
+ *   locks the deal, so two proposals of one deal are never both accepted (backed by the
+ *   proposals_one_accepted_per_deal index), and a deal closed as lost stays lost.
  */
 export async function decideOnProposal(
   deps: AppDeps,
@@ -140,10 +142,14 @@ export async function decideOnProposal(
   try {
     await db.$transaction(async (tx) => {
       await lockProposal(tx, id);
-      const p = await tx.proposal.findUniqueOrThrow({
-        where: { id },
-        include: { deal: true },
-      });
+      const p = await tx.proposal.findUniqueOrThrow({ where: { id } });
+      // Accepting closes the deal, so the deal is locked before its state is read: a second
+      // proposal of the same deal, or staff closing it, is then decided after this one.
+      // Proposal first, then deal, as everywhere else.
+      if (input.decision === 'ACCEPT') {
+        await tx.$queryRaw`SELECT id FROM deals WHERE id = CAST(${p.dealId} AS uuid) FOR UPDATE`;
+      }
+      const deal = await tx.deal.findUniqueOrThrow({ where: { id: p.dealId } });
       const v = await tx.proposalVersion.findFirst({
         where: { proposalId: id, contentHash: input.contentHash, ...sentOnly },
         include: { reviews: { where: { kind: 'CLIENT' } } },
@@ -170,10 +176,10 @@ export async function decideOnProposal(
 
       const now = new Date();
       if (input.decision === 'ACCEPT') {
-        if (p.deal.status === 'LOST') {
+        if (deal.status === 'LOST') {
           throw conflict('This proposal is no longer open. Please contact the agency.');
         }
-        if (p.deal.acceptedProposalVersionId) {
+        if (deal.acceptedProposalVersionId) {
           throw conflict('Another proposal was already accepted for this project.');
         }
       }
@@ -206,8 +212,6 @@ export async function decideOnProposal(
           where: { id },
           data: { status: 'ACCEPTED', version: { increment: 1 } },
         });
-        await tx.$queryRaw`SELECT id FROM deals WHERE id = CAST(${p.dealId} AS uuid) FOR UPDATE`;
-        const deal = await tx.deal.findUniqueOrThrow({ where: { id: p.dealId } });
         await tx.deal.update({
           where: { id: deal.id },
           data:
@@ -268,7 +272,7 @@ export async function decideOnProposal(
       });
       await notify(tx, {
         agencyId: actor.agencyId,
-        recipientIds: [p.deal.ownerId, v.createdById],
+        recipientIds: [deal.ownerId, v.createdById],
         actorId: actor.id,
         category: 'CLIENT_ACTIVITY',
         type: `proposal.client_${input.decision.toLowerCase()}`,

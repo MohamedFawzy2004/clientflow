@@ -39,6 +39,7 @@ import {
   canManage,
   findManageable,
   findReadable,
+  lockOpenForClient,
   lockProject,
   projectReadScope,
   type Tx,
@@ -538,6 +539,8 @@ export async function sendChange(
     if (!project.clientOrgId) {
       throw conflict('Link the project to a client organization before sending a change.');
     }
+    // Completion waits for changes the client has to decide, so it must not slip in meanwhile.
+    await lockOpenForClient(tx, project.id);
     const now = new Date();
     await tx.changeVersion.update({
       where: { id: latest.id },
