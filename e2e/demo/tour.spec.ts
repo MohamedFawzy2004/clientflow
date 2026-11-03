@@ -162,14 +162,19 @@ test.describe('demo tour', () => {
   });
 
   test('keyboard: skip link reaches the content', async ({ page, browserName }) => {
-    // WebKit (like Safari) skips links on Tab unless the user turns on full keyboard access.
-    test.skip(browserName === 'webkit', 'Tab skips links by default in WebKit.');
     await signIn(page, who('owner'));
     // A fresh page load, so the first Tab starts at the top of the document.
     await page.goto('/app/leads');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await page.keyboard.press('Tab');
     const skip = page.getByRole('link', { name: 'Skip to content' });
+    if (browserName === 'webkit') {
+      // WebKit (like Safari) skips links on Tab (and Alt+Tab) unless the user turns on full
+      // keyboard access, so focus the link directly and check it shows and works.
+      await skip.focus();
+      await expect(skip).toBeInViewport();
+    } else {
+      await page.keyboard.press('Tab');
+    }
     await expect(skip).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('#main')).toBeFocused();
