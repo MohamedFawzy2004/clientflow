@@ -295,3 +295,118 @@ describe('revoke and resend', () => {
     ).toBe(404);
   });
 });
+
+describe('security audit F4: the inviter gets the link only when the email did not go out', () => {
+  /** Makes the test mailer report a real delivery, as Resend does in production. */
+  function deliverForReal() {
+    Object.defineProperty(t.mailer, 'delivery', { value: 'sent' });
+  }
+
+  const reveals = () => db.auditEvent.findMany({ where: { action: 'invitation.link_revealed' } });
+
+  it('omits the staff link once the email was sent, and writes no reveal row', async () => {
+    deliverForReal();
+    const { res } = await invite('sent.hire@agency.test', 'MEMBER');
+    expect(res.status).toBe(201);
+    expect(res.body.data.emailDelivery).toBe('sent');
+    expect(res.body.data.acceptUrl).toBeNull();
+    expect(JSON.stringify(res.body)).not.toContain('#token=');
+    expect(t.mailer.lastToken('invitation')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await reveals()).toHaveLength(0);
+  });
+
+  it('returns the staff link when the email failed, and audits the reveal', async () => {
+    deliverForReal();
+    t.mailer.failures.push({ afterSend: false });
+    const { res } = await invite('failed.hire@agency.test', 'MEMBER');
+    expect(res.status).toBe(201);
+    expect(res.body.data.emailDelivery).toBe('failed');
+    expect(res.body.data.acceptUrl).toMatch(/#token=/);
+    const rows = await reveals();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      actorId: seeded.users.owner!.id,
+      targetType: 'invitation',
+      targetId: res.body.data.invitation.id,
+      metadataRedacted: { delivery: 'failed' },
+    });
+  });
+
+  it('applies the same rule to client portal invitations', async () => {
+    deliverForReal();
+    const owner = await asUser('owner');
+    const contact = (await owner.post('/api/v1/contacts', { fullName: 'Karim Nasser' })).body.data;
+    const org = await owner.post(`/api/v1/contacts/${contact.id}/client-org`, {
+      name: 'Nasser Pharmacies',
+    });
+    expect(org.status).toBe(201);
+    const path = `/api/v1/client-orgs/${org.body.data.id}/invitations`;
+
+    const sent = await owner.post(path, { email: 'nadia@nasser.test' });
+    expect(sent.status).toBe(201);
+    expect(sent.body.data.emailDelivery).toBe('sent');
+    expect(sent.body.data.acceptUrl).toBeNull();
+
+    t.mailer.failures.push({ afterSend: false });
+    const failed = await owner.post(path, { email: 'omar@nasser.test' });
+    expect(failed.status).toBe(201);
+    expect(failed.body.data.acceptUrl).toMatch(/#token=/);
+    expect(await reveals()).toHaveLength(1);
+  });
+});
+
+describe('security audit F16: accepting re-checks the inviter', () => {
+  const denied = () =>
+    db.auditEvent.findMany({ where: { action: 'invitation.accept', outcome: 'DENIED' } });
+
+  it('refuses the link once the inviter lost the right to grant the role', async () => {
+    const { token } = await invite('demoted.inviter@agency.test', 'SALES', 'admin');
+    await db.user.update({ where: { id: seeded.users.admin!.id }, data: { role: 'MEMBER' } });
+    const { res } = await accept(token);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('TOKEN_INVALID');
+    expect(await db.user.count({ where: { emailNorm: 'demoted.inviter@agency.test' } })).toBe(0);
+    const inv = await db.invitation.findFirstOrThrow({
+      where: { emailNorm: 'demoted.inviter@agency.test' },
+    });
+    expect(inv.revokedAt).not.toBeNull();
+    const rows = await denied();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      targetId: inv.id,
+      metadataRedacted: { role: 'SALES', reason: 'inviter_lost_access' },
+    });
+  });
+
+  it('refuses the link once the inviter was deactivated', async () => {
+    const { token } = await invite('gone.inviter@agency.test', 'PM', 'admin');
+    await db.user.update({ where: { id: seeded.users.admin!.id }, data: { active: false } });
+    expect((await accept(token)).res.status).toBe(400);
+    expect(await denied()).toHaveLength(1);
+  });
+
+  it('still works while the inviter keeps the right, even after another role change', async () => {
+    const { token } = await invite('still.fine@agency.test', 'SALES', 'admin');
+    await db.user.update({ where: { id: seeded.users.admin!.id }, data: { role: 'OWNER' } });
+    expect((await accept(token)).res.status).toBe(201);
+    expect(await denied()).toHaveLength(0);
+  });
+
+  it('applies to client portal invitations too', async () => {
+    const manager = await asUser('manager');
+    const contact = (await manager.post('/api/v1/contacts', { fullName: 'Karim Nasser' })).body
+      .data;
+    const org = await manager.post(`/api/v1/contacts/${contact.id}/client-org`, {
+      name: 'Nasser Pharmacies',
+    });
+    expect(org.status).toBe(201);
+    const sent = await manager.post(`/api/v1/client-orgs/${org.body.data.id}/invitations`, {
+      email: 'nadia@nasser.test',
+    });
+    expect(sent.status).toBe(201);
+    const token = t.mailer.lastToken('portal_invitation')!;
+    await db.user.update({ where: { id: seeded.users.manager!.id }, data: { role: 'SALES' } });
+    expect((await accept(token, 'Nadia Nasser')).res.status).toBe(400);
+    expect(await db.user.count({ where: { emailNorm: 'nadia@nasser.test' } })).toBe(0);
+  });
+});

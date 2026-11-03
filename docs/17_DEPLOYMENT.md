@@ -43,8 +43,9 @@ Set these as secrets in the platform. Never put them in the image or the reposit
 | `MAIL_TRANSPORT`                              | set         | `disabled` in the image. `resend` sends through Resend (ADR-068); `dev-sink` is refused in production                                                               |
 | `RESEND_API_KEY`                              | with resend | A Resend key with sending access only (`re_…`)                                                                                                                      |
 | `MAIL_FROM`                                   | with resend | `ClientFlow <noreply@mail.youragency.com>`, on a domain verified in Resend                                                                                          |
-| `CLAMAV_HOST` / `CLAMAV_PORT`                 | no          | The ClamAV service (port 3310). When set, every upload is scanned and refused while the scanner is unreachable                                                      |
-| `MFA_REQUIRED_ROLES`                          | no          | Roles that must use two-step sign-in (ADR-069). Default `OWNER,ADMIN` in production; `none` to turn the requirement off (not recommended)                           |
+| `CLAMAV_HOST` / `CLAMAV_PORT`                 | one of      | The ClamAV service (port 3310). When set, every upload is scanned and refused while the scanner is unreachable                                                      |
+| `UPLOAD_SCAN`                                 | one of      | `builtin-only` to run without ClamAV (built-in checks only). Production refuses to start with neither this nor `CLAMAV_HOST`                                        |
+| `MFA_REQUIRED_ROLES`                          | no          | Roles that must use two-step sign-in (ADR-069). Default `OWNER,ADMIN` in production. Production refuses a list without both `OWNER` and `ADMIN` (a demo may differ) |
 | `LOG_LEVEL`                                   | no          | `info`                                                                                                                                                              |
 | `JOBS_ENABLED`                                | no          | `true` (default): the background worker runs inside the app. Set `false` only if a separate `node apps/api/dist/cli/jobs.js worker` process runs it                 |
 | `JOBS_POLL_SECONDS` / `REMINDER_SCAN_MINUTES` | no          | Defaults 10 s and 15 min                                                                                                                                            |
@@ -133,8 +134,9 @@ Resend dashboards; nothing in the repository contains a secret.
 | `clientflow-clamav` private svc  | `2c-4g`                | Antivirus for uploads; ClamAV needs 3–4 GB of memory                       |
 
 Check the current prices on Render's pricing page before applying: the antivirus service is the
-largest part. To start without it, delete the `clientflow-clamav` service and the two `CLAMAV_*`
-lines from `render.yaml`. Uploads then keep the built-in checks only, as today (R25).
+largest part. To start without it, delete the `clientflow-clamav` service, replace the two
+`CLAMAV_*` entries in `render.yaml` with `UPLOAD_SCAN=builtin-only`, and record the decision in
+R25. Uploads then keep the built-in checks only.
 
 ### 1. Email: Resend
 

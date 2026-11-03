@@ -27,14 +27,19 @@ portfolio release.
 
 ## Security and privacy
 
-| Item                                                                    | Status  | Evidence / what is missing                                                                   |
-| ----------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------- |
-| Permission matrix negative tests all green                              | Done    | `permission-matrix.test.ts`: every role against 155 endpoints                                |
-| Client portal isolation on every route and file                         | Done    | Portal suites (M4, M7–M9) and `demo.test.ts` across three client organizations               |
-| Password reset, invitation and session lifecycle tested                 | Done    | `auth`, `invitations`, `password-reset`, `team` suites; E2E M1–M2                            |
-| Secret scanning, dependency checks, threat model, ASVS map              | Done    | gitleaks, npm audit, Trivy, CodeQL; `11_THREAT_MODEL.md`; `12_ASVS_CHECKLIST.md` (limited)   |
-| Personal data retention, export and deletion: owner assigned and tested | Partial | `18_PRIVACY_RETENTION.md`, pruning tested; periods and an accountable person await the owner |
-| AI provider access disabled by default                                  | Done    | No AI integration exists                                                                     |
+| Item                                                                    | Status   | Evidence / what is missing                                                                    |
+| ----------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
+| Permission matrix negative tests all green                              | Done     | `permission-matrix.test.ts`: every role against 169 endpoints (7 added by the security audit) |
+| Security audit findings F1–F6, F9, F11–F13, F15–F17 fixed with tests    | Done     | Branch `fix/security-hardening`; audit report and test output in the security review notes    |
+| Database roles split: runtime user cannot change the schema (R48)       | Not done | Steps in `19_RUNBOOK.md`; do it when the production database is created                       |
+| Backups encrypted at rest (R49)                                         | Not done | Today: plain `pg_dump` and file copies; keep them on an encrypted disk until then             |
+| ClamAV limit alerts on, and a large-archive test on staging (R50)       | Not done | `AlertExceedsMax yes` in the scanner's clamd.conf                                             |
+| `TRUST_PROXY` confirmed on the host (R51)                               | Not done | Run `scripts/staging-check.mjs` after the first deploy and after any proxy change             |
+| Client portal isolation on every route and file                         | Done     | Portal suites (M4, M7–M9) and `demo.test.ts` across three client organizations                |
+| Password reset, invitation and session lifecycle tested                 | Done     | `auth`, `invitations`, `password-reset`, `team` suites; E2E M1–M2                             |
+| Secret scanning, dependency checks, threat model, ASVS map              | Done     | gitleaks, npm audit, Trivy, CodeQL; `11_THREAT_MODEL.md`; `12_ASVS_CHECKLIST.md` (limited)    |
+| Personal data retention, export and deletion: owner assigned and tested | Partial  | `18_PRIVACY_RETENTION.md`, pruning tested; periods and an accountable person await the owner  |
+| AI provider access disabled by default                                  | Done     | No AI integration exists                                                                      |
 
 ## UI and UX
 
@@ -64,3 +69,4 @@ portfolio release.
 4. Legal review of the privacy document and the approval wording.
 5. Run at least three pilot sessions and fix every severity-3 finding.
 6. ~~Antivirus and two-step sign-in for Owners/Admins~~ (built in M12.1). Keep the ClamAV service running wherever real files are uploaded.
+7. Close the open security-audit items: database role split (R48), encrypted backups (R49), ClamAV limits (R50), `TRUST_PROXY` on the host (R51) and a file-key rotation plan (R54).

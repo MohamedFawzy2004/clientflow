@@ -82,10 +82,6 @@ const envSchema = z.object({
   /** How often reminders are scanned (FR-A01). */
   REMINDER_SCAN_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
   /**
-   * A demo deployment (ADR-066): allows `npm run demo:reset` and never sends real email. A reset
-   * still refuses any database whose agency is not marked as a demo.
-   */
-  /**
    * Roles that must use two-step sign-in (ADR-069), comma-separated, or `none`. Default: OWNER
    * and ADMIN in production (not in a demo), none elsewhere.
    */
@@ -93,6 +89,15 @@ const envSchema = z.object({
   /** ClamAV (clamd) for uploads (ADR-070). Unset: built-in checks only. */
   CLAMAV_HOST: z.string().trim().min(1).optional(),
   CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+  /**
+   * `builtin-only` states that uploads run without an antivirus engine. Production refuses to
+   * start with neither CLAMAV_HOST nor this, so a lost variable cannot turn scanning off quietly.
+   */
+  UPLOAD_SCAN: z.enum(['clamav', 'builtin-only']).optional(),
+  /**
+   * A demo deployment (ADR-066): allows `npm run demo:reset` and never sends real email. A reset
+   * still refuses any database whose agency is not marked as a demo.
+   */
   DEMO_MODE: z
     .enum(['true', 'false'])
     .default('false')
@@ -145,7 +150,24 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (env.DEMO_MODE && !NON_SENDING_TRANSPORTS.includes(env.MAIL_TRANSPORT)) {
     throw new Error('DEMO_MODE needs a transport that sends nothing (dev-sink or disabled).');
   }
-  mfaRequiredRoles(env); // fails here on an unknown role name
+  const roles = mfaRequiredRoles(env); // fails here on an unknown role name
+  // Security audit F6: in a real deployment these two must not be lost by a typo or a missing
+  // variable. A demo holds no client data and keeps its own defaults.
+  const realDeployment = env.NODE_ENV === 'production' && !env.DEMO_MODE;
+  if (realDeployment && !(['OWNER', 'ADMIN'] as const).every((r) => roles.includes(r))) {
+    throw new Error('MFA_REQUIRED_ROLES must include OWNER and ADMIN in production.');
+  }
+  if (env.UPLOAD_SCAN === 'clamav' && !env.CLAMAV_HOST) {
+    throw new Error('UPLOAD_SCAN=clamav needs CLAMAV_HOST.');
+  }
+  if (env.UPLOAD_SCAN === 'builtin-only' && env.CLAMAV_HOST) {
+    throw new Error('UPLOAD_SCAN=builtin-only conflicts with CLAMAV_HOST: remove one of them.');
+  }
+  if (realDeployment && !env.CLAMAV_HOST && env.UPLOAD_SCAN !== 'builtin-only') {
+    throw new Error(
+      'Set CLAMAV_HOST for antivirus scanning, or UPLOAD_SCAN=builtin-only to run without it.',
+    );
+  }
   return env;
 }
 

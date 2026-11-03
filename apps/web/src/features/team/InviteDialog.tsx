@@ -55,7 +55,7 @@ export function InvitationLinkNotice({ created }: { created: InvitationCreated }
       <Banner tone="success" title={`Invitation ready for ${created.invitation.email}`}>
         {
           {
-            sent: 'We emailed them the invitation. You can also share the link below.',
+            sent: 'We emailed them the invitation link. Only they can use it to join.',
             failed:
               'The invitation email could not be sent. Share the link below with the person directly.',
             sent_to_dev_sink:
@@ -65,9 +65,10 @@ export function InvitationLinkNotice({ created }: { created: InvitationCreated }
           }[created.emailDelivery]
         }
       </Banner>
-      <CopyLink url={created.acceptUrl} />
+      {created.acceptUrl ? <CopyLink url={created.acceptUrl} /> : null}
       <p className="text-xs leading-[18px] text-muted">
-        The link works once and expires in 7 days. It is shown only now: if it is lost, use
+        The link works once and expires in 7 days.
+        {created.acceptUrl ? ' It is shown only now.' : ''} If it is lost, use
         <span className="font-medium text-text"> Resend </span>
         to create a new one.
       </p>
