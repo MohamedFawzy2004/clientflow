@@ -1,0 +1,48 @@
+# Render Blueprint for the PUBLIC PORTFOLIO DEMO (ADR-071). Free plan, no payment method.
+# Fictional data only: the database is a separate Neon Free project, never staging or real data.
+# Guide, limits and owner steps: docs/17_DEPLOYMENT.md → "Public demo on Render Free + Neon Free".
+#
+# Secrets are never in this file. `sync: false` values are asked for once, in the Render dashboard.
+services:
+  - type: web
+    name: clientflow-demo
+    runtime: docker
+    # Free: 512 MB, sleeps after 15 minutes without visitors, about a minute to wake. No disk and no
+    # pre-deploy step, so the container migrates and rebuilds the demo itself on every start
+    # (DEMO_RESET_ON_BOOT): each wake from sleep is a clean demo with its files.
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c "node apps/api/dist/cli/migrate.js && exec node apps/api/dist/server.js"
+    healthCheckPath: /health/ready
+    autoDeploy: false
+    envVars:
+      - key: PORT # the port Render forwards to; the image listens on API_PORT=4000
+        value: '4000'
+      # Neon's DIRECT connection string (not the "-pooler" host: migrations hold an advisory lock),
+      # ending in ?sslmode=require. Its database must be named clientflow_demo.
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_ORIGINS # https://clientflow-demo.onrender.com (Render shows the exact address)
+        sync: false
+      - key: CSRF_SECRET
+        generateValue: true
+      - key: FILE_ENCRYPTION_KEY # 64 hex characters; for the demo only, never reused elsewhere
+        sync: false
+      - key: TRUST_PROXY
+        value: '1'
+      - key: DEMO_MODE
+        value: 'true'
+      # The database name, typed back: the reset refuses anything that is not a demo database.
+      - key: DEMO_RESET_ON_BOOT
+        value: clientflow_demo
+      - key: MAIL_TRANSPORT # the app refuses a sending transport in demo mode
+        value: disabled
+      # Fewer database wake-ups, so Neon Free can scale to zero between visits (ADR-071).
+      - key: JOBS_POLL_SECONDS
+        value: '60'
+      - key: REMINDER_SCAN_MINUTES
+        value: '60'
+      - key: LOG_LEVEL
+        value: info
