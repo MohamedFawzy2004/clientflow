@@ -18,6 +18,7 @@ import {
 } from './middleware/rate-limit.js';
 import { PostgresRateLimitStore } from './middleware/rate-limit-store.js';
 import { requestId } from './middleware/request-id.js';
+import { demoGuard, demoWriteLimiter } from './middleware/demo.js';
 import { noStore, originCheck, securityHeaders } from './middleware/security.js';
 import { authRouter } from './modules/auth/routes.js';
 import { cookieSettings } from './modules/auth/session.js';
@@ -42,6 +43,7 @@ import { invoicesRouter } from './modules/invoices/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
 import { importsRouter } from './modules/imports/routes.js';
 import { opsRouter } from './modules/ops/routes.js';
+import { demoRouter } from './modules/demo/routes.js';
 import type { FileStorage } from './modules/files/storage.js';
 
 export interface AppConfig {
@@ -58,6 +60,11 @@ export interface AppConfig {
   files: { maxBytes: number; projectQuotaBytes?: number };
   /** Two-step sign-in (ADR-069): the key for TOTP secrets, and the roles that must use it. */
   mfa: { key: Buffer; requiredRoles: readonly Role[] };
+  /**
+   * A public demo deployment (DEMO_MODE=true, ADR-071): restricted actions answer 403, changes are
+   * capped per address, and "Explore as …" sign-in is available. Unset everywhere else.
+   */
+  demo?: { writesPerWindow: number };
 }
 
 export interface AppDeps {
@@ -113,6 +120,12 @@ export function createApp(deps: AppDeps): Express {
   api.use(loadSession(db, cookies));
   api.use(csrfProtection(config.csrfSecret));
   api.use(requireMfaSetup(config.mfa.requiredRoles));
+  if (config.demo) {
+    const { windowMs } = { ...DEFAULT_RATE_LIMITS, ...config.rateLimits };
+    api.use(demoWriteLimiter({ windowMs, limit: config.demo.writesPerWindow }));
+    api.use(demoGuard);
+    api.use('/demo', demoRouter(deps, limiters));
+  }
 
   api.use('/auth', authRouter(deps, limiters));
   api.use('/contacts', contactsRouter(deps));

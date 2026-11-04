@@ -102,6 +102,14 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /**
+   * Public demo hosting (ADR-071): rebuild the demo each time the process starts, before it
+   * listens. The value is the database name, typed back as with `demo:reset --confirm`, and every
+   * demo-reset safety check still applies. Needs DEMO_MODE=true.
+   */
+  DEMO_RESET_ON_BOOT: z.string().trim().min(1).optional(),
+  /** Demo only: changes allowed per address in 15 minutes (ADR-071). */
+  DEMO_WRITE_LIMIT_PER_IP: z.coerce.number().int().min(10).max(100_000).default(120),
 });
 
 /** Transports that never deliver mail to a real inbox. */
@@ -149,6 +157,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   // Demo visitors can type any address into an invitation: a demo must never deliver email.
   if (env.DEMO_MODE && !NON_SENDING_TRANSPORTS.includes(env.MAIL_TRANSPORT)) {
     throw new Error('DEMO_MODE needs a transport that sends nothing (dev-sink or disabled).');
+  }
+  if (env.DEMO_RESET_ON_BOOT && !env.DEMO_MODE) {
+    throw new Error('DEMO_RESET_ON_BOOT needs DEMO_MODE=true.');
   }
   const roles = mfaRequiredRoles(env); // fails here on an unknown role name
   // Security audit F6: in a real deployment these two must not be lost by a typo or a missing
