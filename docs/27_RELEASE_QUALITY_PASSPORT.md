@@ -122,7 +122,7 @@ All checks ran one after another on a quiet machine unless noted.
 | Performance         | Lighthouse and API latency (earlier evidence table)                                                                      | API well within targets locally. **Dashboard mobile 86, below the 90 target (R38)**                                                                                                                                                               |
 | Deployment          | Local staging (rows 13–15), blueprints, deploy and health workflows (actionlint)                                         | Reproducible locally. Hosted behaviour unverified (R58)                                                                                                                                                                                           |
 | Documentation       | 71 ADRs, threat model, runbook, guides per role, milestone reports, this passport                                        | Thorough; fact-checked against code (row 18)                                                                                                                                                                                                      |
-| GitHub presentation | README rewritten, architecture/security overviews, real screenshots, portfolio texts                                     | Ready once merged. **No LICENSE**; no repository topics                                                                                                                                                                                           |
+| GitHub presentation | README rewritten, architecture/security overviews, real screenshots, portfolio texts                                     | Merged. MIT licence, repository topics and branch protection on `main` added on 2026-11-04                                                                                                                                                        |
 
 ## 5. Security assessment scope
 
@@ -179,7 +179,6 @@ No dimension below gets a perfect score. Each verdict rests only on the evidence
   - real screenshots of clearly fictional data;
   - documentation that has been fact-checked.
 - **Holding it back:**
-  - no LICENSE, so others cannot legally reuse the code;
   - no live demo link yet;
   - the README results are from one laptop.
 
@@ -214,11 +213,11 @@ No dimension below gets a perfect score. Each verdict rests only on the evidence
 **Owner:**
 
 1. ~~Review and merge PR #140, then the portfolio PR.~~ Done: both merged, and `main` re-verified at `448ecba` (§0).
-2. Choose a LICENSE.
-3. Tag `v0.13.0` on `448ecba` (the commit §0 verified), if you agree with this passport.
+2. ~~Choose a LICENSE.~~ Done: MIT.
+3. ~~Tag `v0.13.0`.~~ Done: tagged on `4876a8e` (the verified code of `448ecba` plus the §0 documentation), with a GitHub release.
 4. Create Render and Neon accounts without a card, set `RENDER_DEMO_DEPLOY_HOOK` and `DEMO_URL`, and approve the first demo deploy.
-5. Turn on branch protection for `main`.
-6. Add repository topics and the demo URL as the homepage.
+5. ~~Turn on branch protection for `main`.~~ Done: a ruleset blocks deletion and force pushes, and requires a pull request and the six CI jobs.
+6. ~~Add repository topics~~ (done); add the demo URL as the homepage once it is live.
 7. Record the video from `docs/portfolio/DEMO_VIDEO_STORYBOARD.md`, and post on LinkedIn yourself.
 8. Decide on `perf/startup-paint` after Q6 is fixed.
 9. Review the 8 open Dependabot PRs (#132–#139). Several are major upgrades (TypeScript, ESLint, `@types/node`, `@hookform/resolvers`); take each on its own branch with the full gates.

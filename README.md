@@ -210,4 +210,4 @@ The [milestone reports](docs/milestones/) and the commit history show each step,
 
 Please report vulnerabilities privately to the maintainer, not in public issues. No real client data belongs in this repository: all seed, test and demo data is fictional.
 
-**No licence has been chosen yet**, so all rights are reserved by default. Choosing one is an owner decision.
+Released under the [MIT License](LICENSE).
