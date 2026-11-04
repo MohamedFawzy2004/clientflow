@@ -98,16 +98,16 @@ This is a self-assessment. There has been **no external penetration test and no 
 
 ## Verified results
 
-Measured on 2026-11-04 at commit `dbb04eb` (end-to-end suites at `268c997`; the only later code change is the demo guard, covered by the API suite and the demo tour) on one Windows laptop. The full list, including what failed and what was not run, is in the [Release Quality Passport](docs/27_RELEASE_QUALITY_PASSPORT.md).
+Measured on 2026-11-04 at commit `448ecba` (current `main`, including the backend hardening PRs #127–#131) on one Windows laptop. The full list, including what failed and what was not run, is in the [Release Quality Passport](docs/27_RELEASE_QUALITY_PASSPORT.md).
 
 | Check                                                    | Result                                                                            |
 | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| API integration tests on real PostgreSQL                 | 418 passed, 1 skipped (real-ClamAV test; run separately in staging)               |
+| API integration tests on real PostgreSQL                 | 454 passed, 1 skipped (real-ClamAV test; run separately in staging)               |
 | Web component tests                                      | 95 passed                                                                         |
-| End-to-end, Edge · Firefox · WebKit                      | 77 · 77 · 77 passed (WebKit after fixing a test-helper race; see the Passport §3) |
+| End-to-end, Edge · Firefox · WebKit                      | 77 · 77 · 77 passed                                                               |
 | Demo tour, every role, 3 engines                         | 27 passed                                                                         |
 | Local production-like staging (HTTPS, ClamAV, Postgres)  | 28 checks passed, 1 skipped (proxy check needs a real host)                       |
-| Backup → restore into an empty database                  | RECONCILED (46 tables, every file decrypted and verified)                         |
+| Backup → restore into an empty database                  | RECONCILED (46 tables, 18 migrations, every file decrypted and verified)          |
 | Lint · types · format · build · `npm audit` (high)       | pass · pass · pass · pass · 0 vulnerabilities                                     |
 | Lighthouse, lab data (earlier run, 2026-11-04 on `main`) | dashboard mobile 86 (target 90, not met) · login mobile 91 · dashboard desktop 99 |
 
