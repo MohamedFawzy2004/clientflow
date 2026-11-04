@@ -82,20 +82,20 @@ the product:
 
 ## Results
 
-Measured on 2026-11-04 at commit `268c997` on one Windows laptop. The full record, including what
+Measured on 2026-11-04 at commit `dbb04eb` on one Windows laptop. The full record, including what
 failed and what was not run, is the [Release Quality Passport](27_RELEASE_QUALITY_PASSPORT.md).
 
-| Measure                       | Result                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Automated tests               | API 416 passed (1 skipped) on real PostgreSQL · web 95 · end-to-end 77 in each of Edge, Firefox, WebKit |
-| Demo tour                     | Every role in three engines: 27 passed                                                                  |
-| Role × route checks           | Every role against every protected route; a route inventory keeps the matrix complete                   |
-| Screen widths                 | 360 to 1920 px plus 200% and 400% zoom, without page-level sideways scrolling                           |
-| Local production-like staging | HTTPS via Caddy, real ClamAV, non-superuser database role: 28 checks passed, 1 skipped (proxy)          |
-| Restore drill                 | 46 tables and every stored file reconciled into an empty database                                       |
-| API speed (local, 10 users)   | p95 33–147 ms for reads, 64 ms for writes                                                               |
-| Lighthouse (lab, mobile)      | Sign-in 91; dashboard 86, below the 90 target (desktop 99)                                              |
-| What the audit caught         | A WebKit-only race in a test helper and a route missing from the route inventory, both fixed            |
+| Measure                       | Result                                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Automated tests               | API 418 passed (1 skipped) on real PostgreSQL · web 95 · end-to-end 77 in each of Edge, Firefox, WebKit                                                                                                  |
+| Demo tour                     | Every role in three engines: 27 passed                                                                                                                                                                   |
+| Role × route checks           | Every role against every protected route; a route inventory keeps the matrix complete                                                                                                                    |
+| Screen widths                 | 360 to 1920 px plus 200% and 400% zoom, without page-level sideways scrolling                                                                                                                            |
+| Local production-like staging | HTTPS via Caddy, real ClamAV, non-superuser database role: 28 checks passed, 1 skipped (proxy)                                                                                                           |
+| Restore drill                 | 46 tables and every stored file reconciled into an empty database                                                                                                                                        |
+| API speed (local, 10 users)   | p95 33–147 ms for reads, 64 ms for writes                                                                                                                                                                |
+| Lighthouse (lab, mobile)      | Sign-in 91; dashboard 86, below the 90 target (desktop 99)                                                                                                                                               |
+| What the audit caught         | A demo-guard bypass by letter case or trailing slash (found by an automated PR security review), a WebKit-only race in a test helper, and a route missing from the route inventory: all fixed with tests |
 
 ## Limits, stated plainly
 

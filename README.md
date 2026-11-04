@@ -98,11 +98,11 @@ This is a self-assessment. There has been **no external penetration test and no 
 
 ## Verified results
 
-Measured on 2026-11-04 at commit `268c997` on one Windows laptop. The full list, including what failed and what was not run, is in the [Release Quality Passport](docs/27_RELEASE_QUALITY_PASSPORT.md).
+Measured on 2026-11-04 at commit `dbb04eb` (end-to-end suites at `268c997`; the only later code change is the demo guard, covered by the API suite and the demo tour) on one Windows laptop. The full list, including what failed and what was not run, is in the [Release Quality Passport](docs/27_RELEASE_QUALITY_PASSPORT.md).
 
 | Check                                                    | Result                                                                            |
 | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| API integration tests on real PostgreSQL                 | 416 passed, 1 skipped (real-ClamAV test; run separately in staging)               |
+| API integration tests on real PostgreSQL                 | 418 passed, 1 skipped (real-ClamAV test; run separately in staging)               |
 | Web component tests                                      | 95 passed                                                                         |
 | End-to-end, Edge · Firefox · WebKit                      | 77 · 77 · 77 passed (WebKit after fixing a test-helper race; see the Passport §3) |
 | Demo tour, every role, 3 engines                         | 27 passed                                                                         |
