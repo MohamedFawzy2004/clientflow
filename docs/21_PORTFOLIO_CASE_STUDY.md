@@ -3,7 +3,7 @@
 **An operations platform for a small software and digital agency: from the first lead to the last
 invoice, with a client portal that keeps every client's data apart.**
 
-![Dashboard of the demo workspace, 1440 px](milestones/m12-screenshots/dashboard-1440.png)
+![Dashboard of the demo workspace, 1440 px](portfolio/screenshots/dashboard-1440.png)
 
 ## The problem
 
@@ -32,15 +32,15 @@ Lead → Deal → Proposal (internal approval → client decision in the portal)
 | Team members      | Their tasks and time, encrypted file uploads, deliverables with client feedback                             |
 | Finance           | Invoices numbered on issue, partial payments with reversals, finance report per currency                    |
 | Clients           | A portal with only their own proposals, shared projects, deliverables and invoices                          |
-| Owners and admins | Team, roles, settings, system status, backups and an audit trail                                            |
+| Owners and admins | Team, roles, settings, system status and an audit trail; backup and restore commands                        |
 
-| Sales pipeline                                                     | Project task board                                                     |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| ![Deals board, 1440 px](milestones/m12-screenshots/deals-1440.png) | ![Task board, 1440 px](milestones/m12-screenshots/task-board-1440.png) |
+| Sales pipeline                                                | Project task board                                                |
+| ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| ![Deals board, 1440 px](portfolio/screenshots/deals-1440.png) | ![Task board, 1440 px](portfolio/screenshots/task-board-1440.png) |
 
-| Client portal: a shared project                                                | The same screen on a phone (360 px)                                          |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| ![Portal project, 1440 px](milestones/m12-screenshots/portal-project-1440.png) | ![Portal project, 360 px](milestones/m12-screenshots/portal-project-360.png) |
+| Client portal: a shared project                                           | The same screen on a phone (360 px)                                     |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| ![Portal project, 1440 px](portfolio/screenshots/portal-project-1440.png) | ![Portal project, 360 px](portfolio/screenshots/portal-project-360.png) |
 
 All screenshots show the **fictional demo workspace** (`npm run demo:reset`). No real client data
 was ever used.
@@ -50,11 +50,11 @@ was ever used.
 - **Stack:** TypeScript end to end. Express 5 API, PostgreSQL 17 through Prisma 7, React 19 with
   TanStack Query and Tailwind 4, Zod schemas shared by the API and the web app. One container serves
   both.
-- **Milestones with gates.** Twelve milestones, each a vertical slice from database to screen. Each
+- **Milestones with gates.** Twelve milestones (M1–M12, plus M12.1), each a vertical slice from database to screen. Each
   ended with an honest report (implemented / tested / not run / failed), a traceability update, a
   pull request with CI, and an explicit go-ahead from the owner before the next started.
-- **Tests that attack the API, not just the screens.** Every role is tried against every endpoint
-  (155 of them) to prove that hidden buttons are never the only protection. Integration tests run on
+- **Tests that attack the API, not just the screens.** Every role is tried against every protected endpoint
+  (the route inventory test fails the build if a route is missing from the matrix) to prove that hidden buttons are never the only protection. Integration tests run on
   real PostgreSQL; end-to-end tests drive real browsers with accessibility checks and a 360 px
   overflow check on every main screen.
 - **The demo is built by the product itself.** `demo:reset` creates its data through the real API:
@@ -63,7 +63,7 @@ was ever used.
 
 ## Engineering decisions worth a closer look
 
-66 decisions are recorded in [`07_ARCHITECTURE_ADRS.md`](07_ARCHITECTURE_ADRS.md). A few that shaped
+71 decisions are recorded in [`07_ARCHITECTURE_ADRS.md`](07_ARCHITECTURE_ADRS.md). A few that shaped
 the product:
 
 | Decision                                                                                             | Why                                                                           |
@@ -78,28 +78,36 @@ the product:
 | Extra work must point to an accepted change request, or carry a written reason                       | Scope creep becomes visible instead of silent                                 |
 | Files encrypted per file (AES-256-GCM), downloaded via 5-minute links bound to the user              | A leaked folder or link is not enough to read client work                     |
 | Compress static files only, never API JSON                                                           | Avoids the BREACH side channel                                                |
+| Public demo: password-less "Explore as" per role, server-side demo guard, rebuilt on every start     | A free, safe public demo with no published passwords and no lasting changes   |
 
 ## Results
 
-| Measure                     | Result                                                                                                      |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Automated tests             | See the M12 report for the final counts (API on PostgreSQL, web, end-to-end)                                |
-| Role × endpoint checks      | 155 endpoints, every role                                                                                   |
-| Browsers                    | Full end-to-end suite passes in Edge, Firefox and WebKit (WebKit found a real drag-and-drop bug, now fixed) |
-| Screen widths               | 360, 390, 768, 1024, 1280, 1440 and 1920 px, plus 200% and 400% zoom, without page-level sideways scrolling |
-| API speed (local, 10 users) | p95 36–136 ms for reads, 60 ms for writes, with about 2,000 contacts                                        |
-| Restore drill               | 43 tables and every stored file reconciled after restoring into an empty database                           |
-| Production image            | 518 MB, scanned in CI (Trivy, CodeQL, gitleaks, npm audit)                                                  |
-| Lighthouse (mobile profile) | Sign-in 87–89; dashboard 84–86 on the demo data (desktop 91–99)                                             |
+Measured on 2026-11-04 at commit `dbb04eb` on one Windows laptop. The full record, including what
+failed and what was not run, is the [Release Quality Passport](27_RELEASE_QUALITY_PASSPORT.md).
+
+| Measure                       | Result                                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Automated tests               | API 418 passed (1 skipped) on real PostgreSQL · web 95 · end-to-end 77 in each of Edge, Firefox, WebKit                                                                                                  |
+| Demo tour                     | Every role in three engines: 27 passed                                                                                                                                                                   |
+| Role × route checks           | Every role against every protected route; a route inventory keeps the matrix complete                                                                                                                    |
+| Screen widths                 | 360 to 1920 px plus 200% and 400% zoom, without page-level sideways scrolling                                                                                                                            |
+| Local production-like staging | HTTPS via Caddy, real ClamAV, non-superuser database role: 28 checks passed, 1 skipped (proxy)                                                                                                           |
+| Restore drill                 | 46 tables and every stored file reconciled into an empty database                                                                                                                                        |
+| API speed (local, 10 users)   | p95 33–147 ms for reads, 64 ms for writes                                                                                                                                                                |
+| Lighthouse (lab, mobile)      | Sign-in 91; dashboard 86, below the 90 target (desktop 99)                                                                                                                                               |
+| What the audit caught         | A demo-guard bypass by letter case or trailing slash (found by an automated PR security review), a WebKit-only race in a test helper, and a route missing from the route inventory: all fixed with tests |
 
 ## Limits, stated plainly
 
-- **Not deployed.** Hosting and an email provider are still to be chosen.
+- **Not in customer use and not deployed.** Local production-like staging (HTTPS, Postgres, ClamAV) is
+  verified; the free public demo and the paid pilot staging are configured, not applied.
 - **No real users have tested it yet.** The pilot plan is ready ([`22_PILOT_PLAN.md`](22_PILOT_PLAN.md)).
-- **No multi-factor sign-in and no antivirus engine for uploads** yet
-  ([threat model](11_THREAT_MODEL.md)).
+- **Security is self-assessed:** threat model, a limited ASVS map and automated scanners. No external
+  penetration test or certification. Two-step sign-in is TOTP, which is not phishing-resistant.
 - **Accessibility:** automated axe checks, keyboard tests and zoom/reflow checks pass; a
   screen-reader session has not been done.
+- **Capped lists:** projects, proposals and portal invoices show at most 200 rows, invoices and tasks 500, with no
+  paging yet (QA finding Q1).
 - **Not accounting software and not e-signature:** invoices are tracked operationally, and a client
   acceptance is an operational approval, not a legal signature.
 - Measurements come from one Windows laptop, not a hosted environment.
@@ -118,7 +126,7 @@ failed and how it was fixed.
 npm ci
 npm run db:up
 DEMO_MODE=true npm run demo:reset -- --confirm clientflow_demo   # with DATABASE_URL set to the demo database
-npm run demo:tour                                               # walks every role in three browser engines
+npm run demo:tour   # uses DEMO_DATABASE_URL; walks every role in three browser engines
 ```
 
 See the [Windows setup](16_WINDOWS_SETUP.md), the [user guides](guides/README.md) and the

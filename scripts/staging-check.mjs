@@ -5,6 +5,10 @@
 //     [--password-file <file>]   otherwise it asks for the password (hidden)
 //     [--code 123456]            the authenticator code, if the account uses two-step sign-in
 //     [--allow-http]             local runs only: skips the HTTPS checks instead of failing them
+//     [--http-base http://…]     where plain HTTP is served, when not on the HTTPS port (local staging)
+//
+//   Public demo (ADR-071): --demo-role OWNER instead of --email. It signs in with "Explore as …"
+//   (no password exists) and also checks that a restricted action is refused.
 //
 // Prints PASS / FAIL / WARN / SKIP per check and exits 1 if anything failed. It never prints the
 // password, cookies or tokens.
@@ -16,15 +20,19 @@ const arg = (n) => {
   return i >= 0 ? process.argv[i + 1] : undefined;
 };
 const BASE = (arg('--base') ?? '').replace(/\/+$/, '');
-const EMAIL = arg('--email');
+const DEMO_ROLE = arg('--demo-role');
+const EMAIL = arg('--email') ?? (DEMO_ROLE ? 'nobody@example.invalid' : undefined);
 const allowHttp = process.argv.includes('--allow-http');
 if (!/^https?:\/\//.test(BASE) || !EMAIL) {
   console.error(
-    'Usage: node scripts/staging-check.mjs --base https://… --email you@… [--password-file f]',
+    'Usage: node scripts/staging-check.mjs --base https://… (--email you@… [--password-file f] | --demo-role OWNER)',
   );
   process.exit(2);
 }
 const isHttps = BASE.startsWith('https://');
+const HTTP_BASE = (arg('--http-base') ?? BASE.replace(/^https:/, 'http:')).replace(/\/+$/, '');
+/** This machine (local staging): every client address the server sees is a private one. */
+const loopback = /^https?:\/\/(127\.|localhost[:/]|\[::1\])/i.test(`${BASE}/`);
 
 const results = [];
 const report = (status, name, detail = '') => {
@@ -111,7 +119,7 @@ console.log(`ClientFlow staging check: ${BASE}  (${new Date().toISOString()})\n`
 
 // 1. HTTPS
 await httpsOnly('HTTP redirects to HTTPS', async () => {
-  const res = await fetch(BASE.replace(/^https:/, 'http:') + '/health/live', {
+  const res = await fetch(HTTP_BASE + '/health/live', {
     redirect: 'manual',
   });
   const to = res.headers.get('location') ?? '';
@@ -237,12 +245,20 @@ await httpsOnly('HTTP redirects to HTTPS', async () => {
 // 5. Signed in as the owner
 {
   const pre = await call('/api/v1/auth/csrf');
-  let login = await call('/api/v1/auth/login', {
-    method: 'POST',
-    body: { email: EMAIL, password: await password() },
-    headers: { 'X-CSRF-Token': pre.json?.data?.csrfToken ?? '' },
-  });
-  if (login.res.status === 200 && login.json?.data?.mfaRequired) {
+  let login = DEMO_ROLE
+    ? await call('/api/v1/demo/sessions', {
+        method: 'POST',
+        body: { role: DEMO_ROLE },
+        headers: { 'X-CSRF-Token': pre.json?.data?.csrfToken ?? '' },
+      })
+    : await call('/api/v1/auth/login', {
+        method: 'POST',
+        body: { email: EMAIL, password: await password() },
+        headers: { 'X-CSRF-Token': pre.json?.data?.csrfToken ?? '' },
+      });
+  if (DEMO_ROLE) {
+    // Nothing to check about two-step sign-in: a public demo does not require it.
+  } else if (login.res.status === 200 && login.json?.data?.mfaRequired) {
     const raw = login.setCookies.find((c) => /cf_mfa/.test(c)) ?? '';
     const challenge = cookieFlags(raw);
     check(
@@ -266,7 +282,21 @@ await httpsOnly('HTTP redirects to HTTPS', async () => {
   if (login.res.status !== 200) {
     report('FAIL', 'Owner sign-in', `HTTP ${login.res.status} ${login.json?.error?.code ?? ''}`);
   } else {
-    report('PASS', 'Owner sign-in');
+    report('PASS', DEMO_ROLE ? `Demo sign-in as ${DEMO_ROLE}` : 'Owner sign-in');
+    if (DEMO_ROLE) {
+      check(login.json?.data?.user?.agency?.isDemo === true, 'The workspace is marked as a demo');
+      // Refused before anything happens, so the check changes nothing.
+      const refused = await call('/api/v1/invitations', {
+        method: 'POST',
+        body: { email: 'nobody@example.invalid', role: 'MEMBER' },
+        headers: { 'X-CSRF-Token': login.json?.data?.csrfToken ?? '' },
+      });
+      check(
+        refused.res.status === 403 && refused.json?.error?.code === 'DEMO_RESTRICTED',
+        'Restricted demo actions are refused (invitations)',
+        `${refused.res.status} ${refused.json?.error?.code ?? ''}`,
+      );
+    }
     const session = login.setCookies.map(cookieFlags).filter((c) => /session/.test(c.name));
     check(
       session.length === 1 && session[0].httpOnly && session[0].sameSite,
@@ -300,7 +330,8 @@ await httpsOnly('HTTP redirects to HTTPS', async () => {
         /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|::1$|fc|fd|fe80)/i.test(
           ip.replace(/^::ffff:/, ''),
         );
-      if (!isHttps && allowHttp) report('SKIP', 'TRUST_PROXY', `the server sees ${ip} (local run)`);
+      if ((!isHttps && allowHttp) || loopback)
+        report('SKIP', 'TRUST_PROXY', `the server sees ${ip} (local run: check it on the host)`);
       else if (privateIp)
         report(
           'FAIL',

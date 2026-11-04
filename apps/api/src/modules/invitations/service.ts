@@ -1,4 +1,5 @@
 import {
+  can,
   grantableRoles,
   ROLE_LABELS,
   type InvitationCreate,
@@ -10,7 +11,7 @@ import type { AppDeps } from '../../app.js';
 import type { Invitation, Role, User } from '../../generated/prisma/client.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, tokenInvalid, validationFailed } from '../../lib/errors.js';
-import { sendOrReport } from '../../lib/mailer.js';
+import { sendOrReport, type EmailDelivery } from '../../lib/mailer.js';
 import { normalizeEmail } from '../../lib/normalize.js';
 import {
   checkPasswordPolicy,
@@ -137,9 +138,44 @@ export async function createInvitation(
 
   return {
     invitation: toInvitationSummary(invitation, now),
-    acceptUrl,
+    acceptUrl: await linkForInviter(
+      deps,
+      actor,
+      invitation.id,
+      acceptUrl,
+      emailDelivery,
+      requestId,
+    ),
     emailDelivery,
   };
+}
+
+/**
+ * The accept link goes back to the inviter only when the email did not reach a real inbox
+ * (disabled, failed, or the local dev sink), so they can pass it on by hand. Once it was sent,
+ * only the invitee has it: an inviter cannot activate the account and act as that person, for
+ * example as a client approving a proposal (security audit F4). Every reveal is audited.
+ */
+export async function linkForInviter(
+  deps: AppDeps,
+  actor: AuthUser,
+  invitationId: string,
+  acceptUrl: string,
+  delivery: EmailDelivery,
+  requestId: string,
+): Promise<string | null> {
+  if (delivery === 'sent') return null;
+  await writeAudit(deps.db, {
+    agencyId: actor.agencyId,
+    actorId: actor.id,
+    action: 'invitation.link_revealed',
+    outcome: 'SUCCESS',
+    targetType: 'invitation',
+    targetId: invitationId,
+    requestId,
+    metadata: { delivery },
+  });
+  return acceptUrl;
 }
 
 async function findAgencyInvitation(deps: AppDeps, actor: AuthUser, id: string) {
@@ -237,7 +273,7 @@ export async function acceptInvitation(
   const passwordHash = await hashPassword(input.password);
   const tokenHash = sha256Hex(input.token);
 
-  return db.$transaction(async (tx) => {
+  const user = await db.$transaction(async (tx) => {
     const locked = await tx.$queryRaw<
       Array<{
         id: string;
@@ -245,13 +281,35 @@ export async function acceptInvitation(
         email_norm: string;
         role: Role;
         client_org_id: string | null;
+        invited_by_id: string;
       }>
     >`
-      SELECT id, agency_id, email_norm, role, client_org_id FROM invitations
+      SELECT id, agency_id, email_norm, role, client_org_id, invited_by_id FROM invitations
       WHERE token_hash = ${tokenHash} AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
       FOR UPDATE`;
     const inv = locked[0];
     if (!inv) throw tokenInvalid('invitation');
+
+    // Security audit F16: an invitation carries its sender's authority. If the sender was
+    // deactivated or lost the right to grant this role while the link was open, it stops working.
+    const inviter = await tx.user.findUnique({
+      where: { id: inv.invited_by_id },
+      select: { active: true, role: true },
+    });
+    if (!inviter || !inviterMayGrant(inviter, inv.role)) {
+      await tx.invitation.update({ where: { id: inv.id }, data: { revokedAt: new Date() } });
+      await writeAudit(tx, {
+        agencyId: inv.agency_id,
+        actorId: null,
+        action: 'invitation.accept',
+        outcome: 'DENIED',
+        targetType: 'invitation',
+        targetId: inv.id,
+        requestId,
+        metadata: { role: inv.role, reason: 'inviter_lost_access' },
+      });
+      return null;
+    }
 
     const existing = await tx.user.findUnique({
       where: { agencyId_emailNorm: { agencyId: inv.agency_id, emailNorm: inv.email_norm } },
@@ -286,4 +344,12 @@ export async function acceptInvitation(
     });
     return user;
   });
+  if (!user) throw tokenInvalid('invitation');
+  return user;
+}
+
+function inviterMayGrant(inviter: { active: boolean; role: Role }, role: Role): boolean {
+  if (!inviter.active) return false;
+  if (role === 'CLIENT') return can(inviter.role, 'portal.manage');
+  return grantableRoles(inviter.role).includes(role as StaffRole);
 }

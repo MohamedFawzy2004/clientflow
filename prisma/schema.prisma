@@ -108,6 +108,10 @@ model User {
   mfaEnabledAt        DateTime? @map("mfa_enabled_at") @db.Timestamptz(3)
   /// Last accepted 30-second step: a code can never be used twice.
   mfaLastStep         BigInt?   @map("mfa_last_step")
+  /// Per-account budget for wrong codes and step-up passwords, across every challenge (F1).
+  mfaFailedAttempts   Int       @default(0) @map("mfa_failed_attempts")
+  mfaFailureWindowAt  DateTime? @map("mfa_failure_window_at") @db.Timestamptz(3)
+  mfaLockedUntil      DateTime? @map("mfa_locked_until") @db.Timestamptz(3)
   // Optimistic locking for team edits: stale PATCH requests get 409 (FR-D04 pattern).
   version             Int       @default(1)
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)

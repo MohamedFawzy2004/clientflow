@@ -67,14 +67,34 @@ describe('required roles', () => {
     FILE_ENCRYPTION_KEY: 'ab'.repeat(32),
     MAIL_TRANSPORT: 'disabled' as const,
   };
-  it('defaults to Owner and Admin in production, none in a demo or in development', () => {
-    expect(mfaRequiredRoles(loadEnv({ ...base, NODE_ENV: 'production' }))).toEqual([
-      'OWNER',
-      'ADMIN',
-    ]);
+  const prod = { ...base, NODE_ENV: 'production', UPLOAD_SCAN: 'builtin-only' } as const;
+
+  it('production refuses a role list without Owner and Admin (security audit F6)', () => {
+    for (const MFA_REQUIRED_ROLES of ['none', '', 'OWNER', 'ADMIN', 'FINANCE']) {
+      expect(() => loadEnv({ ...prod, MFA_REQUIRED_ROLES })).toThrow(/OWNER and ADMIN/);
+    }
     expect(
-      mfaRequiredRoles(loadEnv({ ...base, NODE_ENV: 'production', DEMO_MODE: 'true' })),
-    ).toEqual([]);
+      mfaRequiredRoles(loadEnv({ ...prod, MFA_REQUIRED_ROLES: 'admin,owner,finance' })),
+    ).toEqual(['ADMIN', 'OWNER', 'FINANCE']);
+    // A demo and development keep their own choice.
+    expect(() => loadEnv({ ...prod, DEMO_MODE: 'true', MFA_REQUIRED_ROLES: 'none' })).not.toThrow();
+    expect(() => loadEnv({ ...base, MFA_REQUIRED_ROLES: 'none' })).not.toThrow();
+  });
+
+  it('production needs ClamAV or an explicit choice to run without it (security audit F6)', () => {
+    const { UPLOAD_SCAN: _omit, ...prodNoScan } = prod;
+    expect(() => loadEnv(prodNoScan)).toThrow(/CLAMAV_HOST.*UPLOAD_SCAN=builtin-only/);
+    expect(loadEnv({ ...prodNoScan, CLAMAV_HOST: 'clamav' }).CLAMAV_HOST).toBe('clamav');
+    expect(loadEnv(prod).UPLOAD_SCAN).toBe('builtin-only');
+    expect(() => loadEnv({ ...prodNoScan, UPLOAD_SCAN: 'clamav' })).toThrow(/needs CLAMAV_HOST/);
+    expect(() => loadEnv({ ...prod, CLAMAV_HOST: 'clamav' })).toThrow(/conflicts/);
+    expect(() => loadEnv({ ...prodNoScan, DEMO_MODE: 'true' })).not.toThrow();
+    expect(() => loadEnv(base)).not.toThrow();
+  });
+
+  it('defaults to Owner and Admin in production, none in a demo or in development', () => {
+    expect(mfaRequiredRoles(loadEnv(prod))).toEqual(['OWNER', 'ADMIN']);
+    expect(mfaRequiredRoles(loadEnv({ ...prod, DEMO_MODE: 'true' }))).toEqual([]);
     expect(mfaRequiredRoles(loadEnv({ ...base }))).toEqual([]);
     expect(mfaRequiredRoles(loadEnv({ ...base, MFA_REQUIRED_ROLES: 'none' }))).toEqual([]);
     expect(mfaRequiredRoles(loadEnv({ ...base, MFA_REQUIRED_ROLES: 'owner, finance' }))).toEqual([
@@ -223,6 +243,93 @@ describe('two-step sign-in', () => {
     expect(failures).toBe(5);
   });
 
+  // Security audit F1: a password holder used to get five new guesses with every challenge.
+  it('wrong codes are limited per account across challenges, and the person is emailed', async () => {
+    const t = makeApp();
+    const email = seeded.users.salesA!.email;
+    const { secret } = await enroll(t.app, email);
+    for (let round = 0; round < 2; round++) {
+      const s = await passwordStep(t.app, email);
+      for (let i = 0; i < 5; i++) {
+        expect([401, 422]).toContain((await verify(s, { code: '000000' })).status);
+      }
+    }
+    // A third challenge still opens (the password was right), but no code is checked now.
+    const s = await passwordStep(t.app, email);
+    const locked = await verify(s, { code: nextCode(secret) });
+    expect(locked.status).toBe(429);
+    expect(locked.body.error.code).toBe('RATE_LIMITED');
+    expect(t.mailer.messages.filter((m) => m.kind === 'mfa_locked')).toHaveLength(1);
+    expect(await db.auditEvent.count({ where: { action: 'mfa.account_locked' } })).toBe(1);
+    expect(await db.auditEvent.count({ where: { action: 'mfa.check_refused' } })).toBe(1);
+
+    // After the pause the right code works and the budget starts again.
+    const past = new Date(Date.now() - 16 * 60_000);
+    await db.user.update({
+      where: { id: seeded.users.salesA!.id },
+      data: { mfaLockedUntil: past, mfaFailureWindowAt: past },
+    });
+    const later = await passwordStep(t.app, email);
+    await verify(later, { code: nextCode(secret) }).expect(200);
+    const user = await db.user.findUniqueOrThrow({ where: { id: seeded.users.salesA!.id } });
+    expect(user.mfaFailedAttempts).toBe(0);
+    expect(user.mfaLockedUntil).toBeNull();
+  });
+
+  // F2: the try is reserved before the code is compared, so parallel guesses cannot add up.
+  it('parallel guesses on one challenge stop at five, without errors, all audited', async () => {
+    const email = seeded.users.salesA!.email;
+    await enroll(app, email);
+    const s = await passwordStep(app, email);
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => verify(s, { code: '000000' })),
+    );
+    const statuses = results.map((r) => r.status);
+    expect(statuses).not.toContain(500);
+    expect(statuses.filter((x) => x === 422).length).toBeLessThanOrEqual(4);
+    const failures = await db.auditEvent.count({
+      where: { action: 'auth.mfa_verify', outcome: 'FAILURE' },
+    });
+    expect(failures).toBe(5);
+    const challenge = await db.mfaChallenge.findFirstOrThrow({
+      where: { userId: seeded.users.salesA!.id },
+    });
+    expect(challenge.attempts).toBe(5);
+  });
+
+  // F3: a stolen session could test passwords and codes without limit, then mint new
+  // recovery codes. Wrong passwords and wrong codes now spend the same budget as sign-in.
+  it('signed-in password and code checks share the account budget', async () => {
+    const email = seeded.users.salesA!.email;
+    const { secret, session } = await enroll(app, email);
+    const post = (path: string, body: object) =>
+      session.agent
+        .post(`/api/v1/auth/mfa/${path}`)
+        .set('Origin', ORIGIN)
+        .set('X-CSRF-Token', session.csrf)
+        .send(body);
+    for (let i = 0; i < 5; i++) {
+      expect((await post('setup', { password: `wrong password number ${i}` })).status).toBe(422);
+    }
+    for (let i = 0; i < 5; i++) {
+      const res = await post('recovery-codes', { password: PASSWORD, code: '000000' });
+      expect(res.status).toBe(422);
+    }
+    const blocked = await post('recovery-codes', { password: PASSWORD, code: nextCode(secret) });
+    expect(blocked.status).toBe(429);
+    expect(await db.mfaRecoveryCode.count({ where: { usedAt: null } })).toBe(10); // unchanged
+  });
+
+  it('a right answer clears earlier wrong ones', async () => {
+    const email = seeded.users.salesA!.email;
+    const { secret } = await enroll(app, email);
+    const s = await passwordStep(app, email);
+    for (let i = 0; i < 4; i++) expect((await verify(s, { code: '000000' })).status).toBe(422);
+    await verify(s, { code: nextCode(secret) }).expect(200);
+    const user = await db.user.findUniqueOrThrow({ where: { id: seeded.users.salesA!.id } });
+    expect(user.mfaFailedAttempts).toBe(0);
+  });
+
   it('an expired challenge is refused', async () => {
     const email = seeded.users.salesA!.email;
     const { secret } = await enroll(app, email);
@@ -312,5 +419,54 @@ describe('two-step sign-in', () => {
     expect(after.res.body.data.user.mfa.enabled).toBe(false);
     const audit = await db.auditEvent.findFirst({ where: { action: 'mfa.reset' } });
     expect(audit?.targetId).toBe(seeded.users.admin!.id);
+  });
+});
+
+// QA release suite: the two-step management routes are outside the permission matrix (they act
+// on the caller's own account and need fresh proof), so their gates are pinned here.
+describe('two-step management routes (QA)', () => {
+  let seeded: SeededAgency;
+  let app: Express;
+
+  beforeEach(async () => {
+    await resetDb();
+    seeded = await seedAgency();
+    app = makeApp().app;
+  });
+
+  it('signed-out calls to setup, enable, recovery codes and disable get 401', async () => {
+    const agent = request.agent(app);
+    const pre = await getPreCsrf(agent);
+    for (const path of ['setup', 'enable', 'recovery-codes', 'disable']) {
+      const res = await agent
+        .post(`/api/v1/auth/mfa/${path}`)
+        .set('Origin', ORIGIN)
+        .set('X-CSRF-Token', pre)
+        .send({ password: PASSWORD, code: '123456' });
+      expect({ path, status: res.status }).toEqual({ path, status: 401 });
+    }
+  });
+
+  it('new recovery codes need the password and a code; the old ones stop working', async () => {
+    const email = seeded.users.salesA!.email;
+    const { secret, recoveryCodes, session } = await enroll(app, email);
+    const post = (body: object) =>
+      session.agent
+        .post('/api/v1/auth/mfa/recovery-codes')
+        .set('Origin', ORIGIN)
+        .set('X-CSRF-Token', session.csrf)
+        .send(body);
+    expect((await post({ password: 'not the password', code: nextCode(secret) })).status).toBe(422);
+    expect((await post({ password: PASSWORD })).status).toBe(422);
+    const fresh = await post({ password: PASSWORD, code: nextCode(secret) }).expect(200);
+    const codes = fresh.body.data.recoveryCodes as string[];
+    expect(codes).toHaveLength(10);
+    expect(codes).not.toContain(recoveryCodes[0]);
+    expect(await db.auditEvent.count({ where: { action: 'mfa.recovery_codes_replaced' } })).toBe(1);
+
+    const old = await passwordStep(app, email);
+    expect((await verify(old, { recoveryCode: recoveryCodes[0] })).status).toBe(422);
+    const next = await passwordStep(app, email);
+    await verify(next, { recoveryCode: codes[0] }).expect(200);
   });
 });

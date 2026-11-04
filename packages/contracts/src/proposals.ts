@@ -401,7 +401,8 @@ export interface ClientOrgDetail {
 
 export interface PortalInvitationCreated {
   invitation: PortalInvitationSummary;
-  acceptUrl: string;
+  /** Null once the email was sent (see InvitationCreated). */
+  acceptUrl: string | null;
   emailDelivery: EmailDelivery;
 }
 
