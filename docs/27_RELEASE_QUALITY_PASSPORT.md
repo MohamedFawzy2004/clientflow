@@ -2,20 +2,53 @@
 
 A record of what was checked for this release candidate, how, and with what result. A check that did not run is listed as **NOT RUN**, never as passed. Earlier evidence is cited with its own date and commit.
 
-| Field                | Value                                                                                                                                                                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Release identifier   | `v0.13.0-rc.1` (**proposed, not tagged**: tagging is the owner's decision)                                                                                                                                                                             |
-| Code commit verified | `dbb04eb` (`dbb04ebaf691e57277f3f077bb50b5faefe45c3a`). Full E2E ran on `268c997`; the only later code change is the demo guard (mounted in demo mode only), rerun through the API suite and the demo tour on branch `docs/portfolio`                  |
-| Contents             | `main` e404894, plus `feat/demo-hosting` (PR #140: demo mode, local staging), plus `qa/release-quality` (QA report and regression tests), plus the fixes in §3. Later commits on this branch change documentation only                                 |
-| Date                 | 2026-11-04                                                                                                                                                                                                                                             |
-| Environment          | Windows 11 Home, i7-13650HX (20 logical CPUs), 16 GB · Node 24.19.0 · PostgreSQL 17.6 (Docker 29.9.2, port 5433) · Playwright 1.64.1 (Edge, Firefox, WebKit builds) · ClamAV 1.5.4 · Caddy 2.10.2                                                      |
-| Verified by          | Claude Code (AI coding agent) on the owner's machine, at the owner's request. Not an independent third party                                                                                                                                           |
-| Deployment status    | **Not deployed anywhere public.** Local production-like staging verified (§2). Public demo (Render Free + Neon Free) configured, not created. Paid pilot staging (`render.yaml`) configured, not applied. **No production customer deployment exists** |
+| Field                | Value                                                                                                                                                                                                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Release identifier   | `v0.13.0-rc.1` (**proposed, not tagged**: tagging is the owner's decision)                                                                                                                                                                                                                                             |
+| Code commit verified | `448ecba` (`main` after PRs #140, #141 and the backend hardening PRs #127–#131), re-verified on 2026-11-04: see §0. The original audit ran on `dbb04eb` (full E2E on `268c997`); §1–§3 keep that record                                                                                                                |
+| Contents             | `main` at `448ecba`: M1–M12.1, security PR #126, demo hosting (#140), portfolio and this passport (#141), and backend batches 1–5 (#127–#131: state races, job reliability, database error mapping and timeouts, list and search indexes, payment invariants, file quota under concurrency, optional idempotency keys) |
+| Date                 | 2026-11-04                                                                                                                                                                                                                                                                                                             |
+| Environment          | Windows 11 Home, i7-13650HX (20 logical CPUs), 16 GB · Node 24.19.0 · PostgreSQL 17.6 (Docker 29.9.2, port 5433) · Playwright 1.64.1 (Edge, Firefox, WebKit builds) · ClamAV 1.5.4 · Caddy 2.10.2                                                                                                                      |
+| Verified by          | Claude Code (AI coding agent) on the owner's machine, at the owner's request. Not an independent third party                                                                                                                                                                                                           |
+| Deployment status    | **Not deployed anywhere public.** Local production-like staging verified (§2). Public demo (Render Free + Neon Free) configured, not created. Paid pilot staging (`render.yaml`) configured, not applied. **No production customer deployment exists**                                                                 |
+
+## 0. Re-verification on `main` at `448ecba`
+
+After this passport was first written on `dbb04eb`, PRs #140 and #141 merged, and then five backend hardening PRs (#127–#131) merged on top. Those five were not part of the original audit, so every automated gate was run again on the merged `main`, one after another on a quiet machine. **These numbers supersede the ones in §2 for `main`.**
+
+| #   | Check                           | Result on `448ecba`                                                                                                                                          | Time     |
+| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| 1   | Clean install                   | `npm ci`: **pass**                                                                                                                                           |          |
+| 2   | Lint · types · format · build   | **pass · pass · pass · pass**                                                                                                                                |          |
+| 3   | Dependencies                    | `npm audit --omit=dev`: **0 vulnerabilities**                                                                                                                |          |
+| 4   | API integration (real Postgres) | **454 passed, 1 skipped** (37 files, includes the route inventory and permission matrix). The skip is the real-ClamAV test without `CLAMAV_TEST_HOST`        | 6.8 min  |
+| 5   | Web components                  | **95 passed** (14 files)                                                                                                                                     | 39 s     |
+| 6   | E2E, Edge                       | **77 passed**                                                                                                                                                | 8.8 min  |
+| 7   | E2E, Firefox                    | **77 passed**                                                                                                                                                | 17.0 min |
+| 8   | E2E, WebKit                     | **77 passed**                                                                                                                                                | 10.5 min |
+| 9   | Demo tour, 3 engines            | **27 passed** (and 9 of 9 in a Chromium-only run before it)                                                                                                  | 3.6 min  |
+| 10  | Image + local staging           | `npm run staging:up`: image built, 4 containers healthy. The 3 new migrations applied on the existing staging data (3 applied, 15 already applied)           |          |
+| 11  | Staging check over HTTPS        | **28 PASS, 1 SKIP** (TRUST_PROXY on loopback, as before)                                                                                                     |          |
+| 12  | Backup → isolated restore       | **RECONCILED**: 46 tables, 75 rows, 18 migrations, 1 encrypted file verified, 0 unreferenced, into a new empty database (`clientflow_staging_drill_448ecba`) |          |
+| 13  | Secret scan                     | gitleaks v8.24.3, full history (155 commits): **no leaks**                                                                                                   | 2.5 min  |
+| 14  | CI on `main`                    | GitHub Actions on `448ecba`: **success**                                                                                                                     |          |
+
+**Interaction review.** The backend PRs touch three places the demo hosting also touches. I read each diff:
+
+- `server.ts` now passes pool options to `createDb`, and the demo reset on boot is unchanged.
+- `env.ts` gained optional `DB_*` limits only.
+- `files/service.ts` re-checks the quota under a per-project lock, which sits behind the demo's upload block.
+
+The route inventory test passed, so no new route is missing from the permission matrix. **No interaction problem was found, and no code change was needed.**
+
+**Not rerun on `448ecba`:** portfolio screenshots (the UI did not change), Lighthouse and the API latency run (earlier evidence, §2), the Mermaid and docs fact-checks (documentation only), and the new `files:orphans` report against staging. The NOT RUN list in §2 still applies.
+
+**What this does not cover:** #127–#131 were reviewed by their own PRs and tests, not by an independent audit in this passport. This section shows that they pass every existing gate together with the demo and portfolio work. It does not show they are free of defects.
 
 ## 1. Scope reviewed
 
 - **Product:** all of M1–M12.1 (lead to invoice, client portal, automation, operations), the security hardening (PR #126), the demo hosting changes and the QA regression suites.
-- **Layers:** the API (Express 5, 30 test files), the database (46 Prisma models, 15 migrations, `CHECK` constraints and freeze triggers), the web app (React 19), the container image, local staging, CI workflows, and the documentation and GitHub presentation.
+- **Layers:** the API (Express 5, 30 test files; 37 on `448ecba`), the database (46 Prisma models, 15 migrations, 18 on `448ecba`, `CHECK` constraints and freeze triggers), the web app (React 19), the container image, local staging, CI workflows, and the documentation and GitHub presentation.
 - **Out of scope:** a real cloud network or proxy, real email delivery, real users, load beyond one laptop, and an external security assessment.
 
 ## 2. Checks actually executed
@@ -138,7 +171,7 @@ All checks ran one after another on a quiet machine unless noted.
 
 No dimension below gets a perfect score. Each verdict rests only on the evidence above.
 
-### A. GitHub portfolio: **Ready once the two PRs merge** (strong, about 8.5 / 10)
+### A. GitHub portfolio: **Ready** (strong, about 8.5 / 10)
 
 - **Why ready:**
   - real, reproducible engineering: 71 recorded decisions, tests on a real database and in three engines;
@@ -180,14 +213,15 @@ No dimension below gets a perfect score. Each verdict rests only on the evidence
 
 **Owner:**
 
-1. Review and merge PR #140, then the portfolio PR.
+1. ~~Review and merge PR #140, then the portfolio PR.~~ Done: both merged, and `main` re-verified at `448ecba` (§0).
 2. Choose a LICENSE.
-3. Tag `v0.13.0` after the merge, if you agree with this passport.
+3. Tag `v0.13.0` on `448ecba` (the commit §0 verified), if you agree with this passport.
 4. Create Render and Neon accounts without a card, set `RENDER_DEMO_DEPLOY_HOOK` and `DEMO_URL`, and approve the first demo deploy.
 5. Turn on branch protection for `main`.
 6. Add repository topics and the demo URL as the homepage.
 7. Record the video from `docs/portfolio/DEMO_VIDEO_STORYBOARD.md`, and post on LinkedIn yourself.
 8. Decide on `perf/startup-paint` after Q6 is fixed.
+9. Review the 8 open Dependabot PRs (#132–#139). Several are major upgrades (TypeScript, ESLint, `@types/node`, `@hookform/resolvers`); take each on its own branch with the full gates.
 
 **Engineering, before any real client data:**
 
