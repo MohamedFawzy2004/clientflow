@@ -578,7 +578,11 @@ export async function changeProjectState(
   requestId: string,
 ) {
   await db.$transaction(async (tx) => {
-    const p = await findManageable(tx, actor, id);
+    const found = await findManageable(tx, actor, id);
+    // Publishing a deliverable and sending a change hold this row FOR SHARE, so the counts below
+    // include work added at the same moment (lockOpenForClient).
+    await lockProject(tx, found.id);
+    const p = await tx.project.findUniqueOrThrow({ where: { id: found.id } });
     if (p.version !== version) throw staleVersion();
     if (p.state === next) return;
     if (!PROJECT_TRANSITIONS[p.state].includes(next)) {

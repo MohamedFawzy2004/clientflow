@@ -21,6 +21,7 @@ import {
   canManage,
   canWork,
   findWorkable,
+  lockOpenForClient,
   projectReadScope,
   type Tx,
 } from '../projects/access.js';
@@ -350,6 +351,8 @@ export async function publishDeliverable(
     const d = await tx.deliverable.findUniqueOrThrow({ where: { id: base.id } });
     if (d.status === 'PUBLISHED') return; // a repeated publish (double click): same outcome
     if (d.version !== version) throw staleVersion();
+    // Completion waits for open client reviews, so it must not slip in while this one is added.
+    await lockOpenForClient(tx, d.projectId);
     if (d.status !== 'READY') {
       throw conflict('Add a version with a file before publishing.');
     }

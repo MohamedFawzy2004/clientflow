@@ -51,7 +51,7 @@ async function salesData() {
     status,
     closedAt: now(),
     closedById: id(by),
-    ...(status === 'LOST' ? { lostReason: 'Budget' } : {}),
+    ...(status === 'LOST' ? { lostReason: 'Budget' } : { wonOverrideReason: 'Signed by email' }),
   });
   await mk('salesA', 'A open EGP', 100_000n);
   await mk('salesA', 'A open USD', 5_000n, 'USD');
@@ -118,7 +118,12 @@ describe('sales dashboard (FR-F08, US-15, T-ACL-05)', () => {
     const open = await db.deal.findFirstOrThrow({ where: { title: 'B open' } });
     await db.deal.update({
       where: { id: open.id },
-      data: { status: 'WON', closedAt: now(), closedById: id('manager') },
+      data: {
+        status: 'WON',
+        closedAt: now(),
+        closedById: id('manager'),
+        wonOverrideReason: 'Signed by email',
+      },
     });
     const after = (await m.get('/api/v1/dashboard/sales')).body.data;
     expect(after.won.count).toBe(before + 1);
