@@ -131,6 +131,7 @@ describe('mail configuration', () => {
     const env = loadEnv({
       ...base,
       NODE_ENV: 'production',
+      UPLOAD_SCAN: 'builtin-only',
       MAIL_TRANSPORT: 'resend',
       RESEND_API_KEY: 're_abcdefgh1234',
       MAIL_FROM: 'ClientFlow <noreply@crm.example.test>',

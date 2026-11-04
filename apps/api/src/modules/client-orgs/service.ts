@@ -16,7 +16,7 @@ import { generateToken, sha256Hex } from '../../lib/tokens.js';
 import type { AuthUser } from '../../types/express.js';
 import { contactReadScope } from '../contacts/policy.js';
 import { UUID_PATTERN } from '../contacts/service.js';
-import { INVITATION_TTL_MS, invitationStatus } from '../invitations/service.js';
+import { INVITATION_TTL_MS, invitationStatus, linkForInviter } from '../invitations/service.js';
 
 function assertCanManage(actor: AuthUser) {
   if (!can(actor.role, 'portal.manage')) {
@@ -181,7 +181,18 @@ export async function invitePortalUser(
       'If you were not expecting this, you can ignore this email.',
     ].join('\n'),
   });
-  return { invitation: toInvitation(invitation), acceptUrl, emailDelivery };
+  return {
+    invitation: toInvitation(invitation),
+    acceptUrl: await linkForInviter(
+      deps,
+      actor,
+      invitation.id,
+      acceptUrl,
+      emailDelivery,
+      requestId,
+    ),
+    emailDelivery,
+  };
 }
 
 export async function revokePortalInvitation(

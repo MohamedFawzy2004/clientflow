@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  DemoAccount,
+  DemoSessionRequest,
   LoginRequest,
   LoginResponse,
   LoginResult,
@@ -45,6 +47,44 @@ export function useLogin() {
     onSuccess: (data) => {
       if ('user' in data) startSession(qc, data);
     },
+  });
+}
+
+/**
+ * The public demo's "Explore as …" accounts (ADR-071). The endpoint only exists on a demo
+ * deployment, so anywhere else this is an empty list and the login page shows nothing extra.
+ */
+export function useDemoAccounts() {
+  return useQuery({
+    queryKey: ['demo-accounts'],
+    queryFn: async (): Promise<DemoAccount[]> => {
+      try {
+        const res = await api.get<{ data: DemoAccount[] }>('/api/v1/demo/accounts', {
+          skipAuthRedirect: true,
+        });
+        return res.data;
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) return [];
+        throw err;
+      }
+    },
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+/** Signs in as the demo person for a role, without a password. */
+export function useDemoSignIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: DemoSessionRequest) => {
+      setCsrfToken(null);
+      const res = await api.post<{ data: LoginResponse }>('/api/v1/demo/sessions', input, {
+        skipAuthRedirect: true,
+      });
+      return res.data;
+    },
+    onSuccess: (data) => startSession(qc, data),
   });
 }
 
