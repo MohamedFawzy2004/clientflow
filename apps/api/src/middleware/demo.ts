@@ -28,6 +28,8 @@ export const DEMO_RESTRICTED_ROUTES: readonly Rule[] = [
   { method: 'POST', path: /^\/invitations\/(preview|accept)$/ },
   { method: 'POST', path: new RegExp(`^/invitations/${ID}/(revoke|resend)$`) },
   { method: 'POST', path: new RegExp(`^/client-orgs/${ID}/invitations(/${ID}/revoke)?$`) },
+  // Client portal people: deactivating one would remove the Client journey for later visitors.
+  { method: 'POST', path: new RegExp(`^/client-orgs/${ID}/users/${ID}/(deactivate|reactivate)$`) },
   // Workspace settings (name, currency, time zone) shape every page of the demo.
   { method: 'PATCH', path: /^\/agency$/ },
   // Files: no unchecked uploads on a public host, and the seeded files stay for the next visitor.
@@ -40,8 +42,20 @@ export const DEMO_RESTRICTED_ROUTES: readonly Rule[] = [
 export const DEMO_RESTRICTED_MESSAGE =
   'This action is turned off in the public demo, so the demo stays the same for every visitor.';
 
+/**
+ * Express routes match without regard to letter case and with an optional trailing slash, so
+ * `/AGENCY` and `/users/1/deactivate/` reach the same handlers as the listed paths. Compare the
+ * same way, or the guard could be stepped around (Strix review of PR #140).
+ */
+function routeKey(path: string): string {
+  const trimmed = path.replace(/\/+$/, '');
+  return (trimmed === '' ? '/' : trimmed).toLowerCase();
+}
+
 export function isDemoRestricted(method: string, path: string): boolean {
-  return DEMO_RESTRICTED_ROUTES.some((r) => r.method === method && r.path.test(path));
+  const key = routeKey(path);
+  const verb = method.toUpperCase();
+  return DEMO_RESTRICTED_ROUTES.some((r) => r.method === verb && r.path.test(key));
 }
 
 /** Refuses the restricted actions with 403 DEMO_RESTRICTED. Mounted only when DEMO_MODE=true. */
