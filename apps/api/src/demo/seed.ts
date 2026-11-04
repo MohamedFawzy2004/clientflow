@@ -46,6 +46,12 @@ const at = (n: number, hour = 10) => {
 };
 const idem = () => ({ 'Idempotency-Key': crypto.randomUUID() });
 
+/** The seeder's mailer never delivers, so the API always hands the link back (F4). */
+function inviteToken(acceptUrl: string | null): string {
+  if (!acceptUrl) throw new Error('Demo seed: the invitation link was not returned.');
+  return new URL(acceptUrl).hash.replace('#token=', '');
+}
+
 const STAFF = [
   { key: 'admin', name: 'Hana Adly', role: 'ADMIN' },
   { key: 'sales.manager', name: 'Karim Fathy', role: 'SALES_MANAGER' },
@@ -251,7 +257,7 @@ export async function seedDemo(
     const email = `${s.key}@${DEMO_DOMAIN}`;
     const inv = await ownerApi.post<InvitationCreated>('/invitations', { email, role: s.role });
     const password = pw();
-    const token = new URL(inv.acceptUrl).hash.replace('#token=', '');
+    const token = inviteToken(inv.acceptUrl);
     await (
       await DemoClient.anonymous(api.base, api.origin)
     ).post('/invitations/accept', { token, name: s.name, password });
@@ -417,7 +423,7 @@ export async function seedDemo(
       { email },
     );
     const password = pw();
-    const token = new URL(inv.acceptUrl).hash.replace('#token=', '');
+    const token = inviteToken(inv.acceptUrl);
     await (
       await DemoClient.anonymous(api.base, api.origin)
     ).post('/invitations/accept', { token, name: lead.name, password });

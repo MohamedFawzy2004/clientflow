@@ -6,7 +6,8 @@
 //
 // Uses the installed Edge or Chrome (CHROME_PATH to choose). Reports go to the scratch folder
 // given by --out (default: .lighthouse, gitignored). From Git Bash, set MSYS_NO_PATHCONV=1 so
-// `--path /app/...` is not rewritten into a Windows path.
+// `--path /app/...` is not rewritten into a Windows path. That also stops `/c/Users/...` file
+// arguments being converted, so give --password-file and --out as `C:/Users/...` paths.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

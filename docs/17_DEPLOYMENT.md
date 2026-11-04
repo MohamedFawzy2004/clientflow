@@ -1,5 +1,7 @@
 # Deploying ClientFlow (staging / demo)
 
+> **Status (demo hosting, ADR-071):** a free public demo (Render Free + Neon Free, `render.demo.yaml`) and a local production-like staging (`docker-compose.staging.yml`) are ready. Nothing is deployed. Architecture, free-tier limits and the owner checklist: `docs/24_STAGING_AND_DEMO.md`.
+>
 > **Status (M12.1):** ready for staging on Render with Resend email (see [Staging on Render](#staging-on-render-m121)). Not deployed until the owner applies the Blueprint.
 >
 > **Status (M12):** a demo workspace can be built and reset safely (see [Demo workspace](#demo-workspace)).
@@ -27,29 +29,32 @@ Any platform that runs a container and a managed PostgreSQL 17 works: Render, Ra
 
 Set these as secrets in the platform. Never put them in the image or the repository.
 
-| Variable                                      | Required    | Example / rule                                                                                                                                                      |
-| --------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                    | set         | `production` (already set in the image)                                                                                                                             |
-| `DATABASE_URL`                                | yes         | `postgresql://clientflow_app:…@db-host:5432/clientflow?sslmode=require`                                                                                             |
-| `APP_ORIGINS`                                 | yes         | `https://crm.youragency.com` (exact origin, https only, comma-separated if several)                                                                                 |
-| `APP_PUBLIC_URL`                              | no          | Base URL for emailed links; defaults to the first origin                                                                                                            |
-| `CSRF_SECRET`                                 | yes         | 32+ random characters, e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`                                                        |
-| `FILE_ENCRYPTION_KEY`                         | yes         | 64 hex characters (32 bytes): `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Back it up with the files: without it they cannot be read |
-| `FILE_STORAGE_DIR`                            | no          | Default `/data/files` in the image. Mount a persistent volume there and include it in backups                                                                       |
-| `FILE_MAX_BYTES` / `FILE_PROJECT_QUOTA_BYTES` | no          | Defaults 25 MB per file and 2 GB per project                                                                                                                        |
-| `TRUST_PROXY`                                 | yes         | Number of proxies in front (usually `1`), so rate limits see the real client IP                                                                                     |
-| `HOST` / `API_PORT`                           | set         | `0.0.0.0` / `4000` (already set in the image)                                                                                                                       |
-| `WEB_DIST_DIR`                                | set         | `/app/apps/web/dist` (already set in the image)                                                                                                                     |
-| `MAIL_TRANSPORT`                              | set         | `disabled` in the image. `resend` sends through Resend (ADR-068); `dev-sink` is refused in production                                                               |
-| `RESEND_API_KEY`                              | with resend | A Resend key with sending access only (`re_…`)                                                                                                                      |
-| `MAIL_FROM`                                   | with resend | `ClientFlow <noreply@mail.youragency.com>`, on a domain verified in Resend                                                                                          |
-| `CLAMAV_HOST` / `CLAMAV_PORT`                 | no          | The ClamAV service (port 3310). When set, every upload is scanned and refused while the scanner is unreachable                                                      |
-| `MFA_REQUIRED_ROLES`                          | no          | Roles that must use two-step sign-in (ADR-069). Default `OWNER,ADMIN` in production; `none` to turn the requirement off (not recommended)                           |
-| `LOG_LEVEL`                                   | no          | `info`                                                                                                                                                              |
-| `JOBS_ENABLED`                                | no          | `true` (default): the background worker runs inside the app. Set `false` only if a separate `node apps/api/dist/cli/jobs.js worker` process runs it                 |
-| `JOBS_POLL_SECONDS` / `REMINDER_SCAN_MINUTES` | no          | Defaults 10 s and 15 min                                                                                                                                            |
-| `DEMO_MODE`                                   | no          | `false` (default). `true` only on a demo deployment: allows `demo-reset` and refuses a sending mail transport (ADR-066)                                             |
-| `APP_RELEASE`                                 | no          | The release name or git SHA, shown to Owner/Admin in Settings → System status                                                                                       |
+| Variable                                      | Required    | Example / rule                                                                                                                                                         |
+| --------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                    | set         | `production` (already set in the image)                                                                                                                                |
+| `DATABASE_URL`                                | yes         | `postgresql://clientflow_app:…@db-host:5432/clientflow?sslmode=require`                                                                                                |
+| `APP_ORIGINS`                                 | yes         | `https://crm.youragency.com` (exact origin, https only, comma-separated if several)                                                                                    |
+| `APP_PUBLIC_URL`                              | no          | Base URL for emailed links; defaults to the first origin                                                                                                               |
+| `CSRF_SECRET`                                 | yes         | 32+ random characters, e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`                                                           |
+| `FILE_ENCRYPTION_KEY`                         | yes         | 64 hex characters (32 bytes): `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Back it up with the files: without it they cannot be read    |
+| `FILE_STORAGE_DIR`                            | no          | Default `/data/files` in the image. Mount a persistent volume there and include it in backups                                                                          |
+| `FILE_MAX_BYTES` / `FILE_PROJECT_QUOTA_BYTES` | no          | Defaults 25 MB per file and 2 GB per project                                                                                                                           |
+| `TRUST_PROXY`                                 | yes         | Number of proxies in front (usually `1`), so rate limits see the real client IP                                                                                        |
+| `HOST` / `API_PORT`                           | set         | `0.0.0.0` / `4000` (already set in the image)                                                                                                                          |
+| `WEB_DIST_DIR`                                | set         | `/app/apps/web/dist` (already set in the image)                                                                                                                        |
+| `MAIL_TRANSPORT`                              | set         | `disabled` in the image. `resend` sends through Resend (ADR-068); `dev-sink` is refused in production                                                                  |
+| `RESEND_API_KEY`                              | with resend | A Resend key with sending access only (`re_…`)                                                                                                                         |
+| `MAIL_FROM`                                   | with resend | `ClientFlow <noreply@mail.youragency.com>`, on a domain verified in Resend                                                                                             |
+| `CLAMAV_HOST` / `CLAMAV_PORT`                 | one of      | The ClamAV service (port 3310). When set, every upload is scanned and refused while the scanner is unreachable                                                         |
+| `UPLOAD_SCAN`                                 | one of      | `builtin-only` to run without ClamAV (built-in checks only). Production refuses to start with neither this nor `CLAMAV_HOST`                                           |
+| `MFA_REQUIRED_ROLES`                          | no          | Roles that must use two-step sign-in (ADR-069). Default `OWNER,ADMIN` in production. Production refuses a list without both `OWNER` and `ADMIN` (a demo may differ)    |
+| `LOG_LEVEL`                                   | no          | `info`                                                                                                                                                                 |
+| `JOBS_ENABLED`                                | no          | `true` (default): the background worker runs inside the app. Set `false` only if a separate `node apps/api/dist/cli/jobs.js worker` process runs it                    |
+| `JOBS_POLL_SECONDS` / `REMINDER_SCAN_MINUTES` | no          | Defaults 10 s and 15 min                                                                                                                                               |
+| `DEMO_MODE`                                   | no          | `false` (default). `true` only on a demo deployment: allows `demo-reset` and refuses a sending mail transport (ADR-066)                                                |
+| `APP_RELEASE`                                 | no          | The release name or git SHA, shown to Owner/Admin in Settings → System status                                                                                          |
+| `DEMO_RESET_ON_BOOT`                          | no          | Demo only (needs `DEMO_MODE=true`): the database name, e.g. `clientflow_demo`. Rebuilds the demo each time the process starts, with every `demo:reset` check (ADR-071) |
+| `DEMO_WRITE_LIMIT_PER_IP`                     | no          | Demo only: changes allowed per address in 15 minutes (default 120)                                                                                                     |
 
 The app **refuses to start** with placeholder secrets, an `http://` origin, or the development mail sink.
 
@@ -133,8 +138,9 @@ Resend dashboards; nothing in the repository contains a secret.
 | `clientflow-clamav` private svc  | `2c-4g`                | Antivirus for uploads; ClamAV needs 3–4 GB of memory                       |
 
 Check the current prices on Render's pricing page before applying: the antivirus service is the
-largest part. To start without it, delete the `clientflow-clamav` service and the two `CLAMAV_*`
-lines from `render.yaml`. Uploads then keep the built-in checks only, as today (R25).
+largest part. To start without it, delete the `clientflow-clamav` service, replace the two
+`CLAMAV_*` entries in `render.yaml` with `UPLOAD_SCAN=builtin-only`, and record the decision in
+R25. Uploads then keep the built-in checks only.
 
 ### 1. Email: Resend
 
@@ -245,8 +251,73 @@ workspace. It holds a fictional agency with a user for every role and three clie
 - Locally: `npm run demo:tour` rebuilds the demo in `DEMO_DATABASE_URL` and walks each role's main
   journey in Chromium, Firefox and WebKit.
 
-A public demo still needs the owner's hosting choice, a reset schedule (for example nightly) and a
-decision on how visitors get the demo accounts.
+### On a public demo deployment (ADR-071)
+
+With `DEMO_MODE=true` the server also:
+
+- refuses, with 403 `DEMO_RESTRICTED`, the actions that would lock the next visitor out, mint
+  accounts or bring in unchecked content:
+  - password reset and two-step changes;
+  - people changes;
+  - every invitation route;
+  - workspace settings;
+  - uploads, file deletion and CSV imports;
+- caps changes per address (`DEMO_WRITE_LIMIT_PER_IP`, default 120 per 15 minutes);
+- offers "Explore as …" on the sign-in page: one button per role, no password
+  (`GET /api/v1/demo/accounts`, `POST /api/v1/demo/sessions`, demo agencies only, rate-limited).
+
+## Public demo on Render Free + Neon Free
+
+Free, with no payment method: `render.demo.yaml`. The free web service has no disk and sleeps after
+about 15 idle minutes. With `DEMO_RESET_ON_BOOT=clientflow_demo`, the container migrates and then
+rebuilds the demo before it listens, so each wake is a clean demo with its files. There is no reset
+endpoint.
+
+1. **Neon** (free): create the project `clientflow-demo` with a database named `clientflow_demo`.
+   Copy the **direct** connection string, not the `-pooler` host: migrations hold an advisory lock.
+   It ends in `?sslmode=require`.
+2. **Render:** **New → Blueprint**, choose this repository and `render.demo.yaml`. Enter:
+   - `DATABASE_URL`: the Neon string;
+   - `APP_ORIGINS`: `https://clientflow-demo.onrender.com`, or the address Render shows;
+   - `FILE_ENCRYPTION_KEY`: a new key, used only for the demo:
+     `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+3. **GitHub:** add the repository secret `RENDER_DEMO_DEPLOY_HOOK` (Render → service → Settings →
+   Deploy Hook) and the repository variable `DEMO_URL`. Then deploy with **Actions → Deploy demo**,
+   which refuses a commit whose CI did not pass. **Demo health** checks the demo every 6 hours and
+   opens an issue when it fails.
+4. **Check it:**
+   ```bash
+   node scripts/staging-check.mjs --base https://clientflow-demo.onrender.com --demo-role OWNER
+   ```
+
+## Local production-like staging
+
+Costs nothing. It runs the production image behind HTTPS with its own PostgreSQL (app user not a
+superuser), ClamAV and a persistent file volume. Fictional data only.
+
+1. Copy `deploy/staging/staging.env.example` to `deploy/staging/.env.staging`, which is gitignored,
+   and fill in new values.
+2. Start it with `npm run staging:up`. The first start downloads ClamAV signatures, which takes a
+   few minutes. The app is at `https://127.0.0.1:8443`. It uses an IP address so that the
+   production HSTS header cannot affect `localhost` development. Your browser warns about the
+   certificate, because it comes from Caddy's local authority.
+3. Create the owner:
+   ```bash
+   docker compose -f docker-compose.staging.yml --env-file deploy/staging/.env.staging exec app      node apps/api/dist/cli/bootstrap-owner.js --agency "Staging Agency" --name "Your Name" --email you@agency.test
+   ```
+   Then sign in and turn on two-step sign-in.
+4. Check it with `npm run staging:check -- --email you@agency.test`. This trusts Caddy's root
+   certificate for that run only. TRUST_PROXY is reported SKIP locally; check it on a real host.
+5. Backup and restore drill: the database listens on `127.0.0.1:5434` for this machine only.
+   1. Copy the files out:
+      `docker compose -f docker-compose.staging.yml --env-file deploy/staging/.env.staging cp app:/data/files <folder>`
+   2. Back up:
+      `npm run backup -- --out <dir>`, with `DATABASE_URL` set to
+      `postgresql://clientflow_app:…@127.0.0.1:5434/clientflow_staging`, plus `FILE_STORAGE_DIR` and
+      `FILE_ENCRYPTION_KEY`.
+   3. Restore:
+      `npm run restore -- --from <dir> --target-url …/clientflow_staging_restore --storage-dir <folder>`.
+6. Stop it with `npm run staging:down`. The volumes are kept.
 
 ## Known gaps before real client data
 

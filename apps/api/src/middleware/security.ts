@@ -26,14 +26,39 @@ export function securityHeaders(
           baseUri: ["'none'"],
           formAction: ["'self'"],
         };
-  return helmet({
+  const headers = helmet({
     contentSecurityPolicy: { useDefaults: false, directives },
     crossOriginResourcePolicy: { policy: 'same-origin' },
     referrerPolicy: { policy: 'no-referrer' },
     // HSTS only after HTTPS is verified in production (SEC-08).
     strictTransportSecurity: isProduction ? { maxAge: 15_552_000, includeSubDomains: true } : false,
   });
+  return (req, res, next) => {
+    res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
+    headers(req, res, next);
+  };
 }
+
+/**
+ * The app uses no device or payment features, so injected script cannot ask for them either
+ * (security audit F15). Clipboard writes for "Copy link" need no permission.
+ */
+export const PERMISSIONS_POLICY = [
+  'accelerometer=()',
+  'autoplay=()',
+  'browsing-topics=()',
+  'camera=()',
+  'display-capture=()',
+  'geolocation=()',
+  'gyroscope=()',
+  'hid=()',
+  'magnetometer=()',
+  'microphone=()',
+  'midi=()',
+  'payment=()',
+  'serial=()',
+  'usb=()',
+].join(', ');
 
 /** Authenticated API responses must never be cached by browsers or proxies. */
 export const noStore: RequestHandler = (_req, res, next) => {

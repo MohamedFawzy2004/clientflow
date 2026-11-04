@@ -1,0 +1,20 @@
+# Security audit F11: weekly update pull requests for npm packages, GitHub Actions and the
+# Docker base images. Every update still goes through CI (tests, image scan, secret scan).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

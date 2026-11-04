@@ -1,7 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { BootstrapError, bootstrapOwner } from '../src/modules/auth/bootstrap.js';
-import { SESSION_IDLE_MS } from '../src/modules/auth/session.js';
+import {
+  PRIVILEGED_SESSION_ABSOLUTE_MS,
+  PRIVILEGED_SESSION_IDLE_MS,
+  SESSION_ABSOLUTE_MS,
+  SESSION_IDLE_MS,
+} from '../src/modules/auth/session.js';
 import {
   CSRF_SECRET,
   getPreCsrf,
@@ -281,6 +286,42 @@ describe('T-AUTH-03 session lifecycle', () => {
       data: { lastSeenAt: new Date(Date.now() - SESSION_IDLE_MS - 1000) },
     });
     await second.agent.get('/api/v1/auth/me').expect(401);
+  });
+
+  it('gives owners and admins 24-hour sessions with a 1-hour idle timeout (security audit F5)', async () => {
+    const { users } = await seedAgency();
+    const { app } = makeApp();
+    const ago = (ms: number) => new Date(Date.now() - ms);
+    const sessionOf = (userId: string) => ({ userId, revokedAt: null });
+
+    // Owner: 61 minutes idle ends the session; a sales user keeps theirs.
+    const owner = await login(app, users.owner!.email);
+    const sales = await login(app, users.salesA!.email);
+    await db.session.updateMany({ data: { lastSeenAt: ago(PRIVILEGED_SESSION_IDLE_MS + 60_000) } });
+    await owner.agent.get('/api/v1/auth/me').expect(401);
+    await sales.agent.get('/api/v1/auth/me').expect(200);
+
+    // Owner: active, but signed in 24 hours ago, must sign in again; sales lasts up to 7 days.
+    const owner2 = await login(app, users.owner!.email);
+    await db.session.updateMany({
+      where: sessionOf(users.owner!.id),
+      data: { createdAt: ago(PRIVILEGED_SESSION_ABSOLUTE_MS) },
+    });
+    await owner2.agent.get('/api/v1/auth/me').expect(401);
+    await db.session.updateMany({
+      where: sessionOf(users.salesA!.id),
+      data: { createdAt: ago(PRIVILEGED_SESSION_ABSOLUTE_MS + 60_000) },
+    });
+    await sales.agent.get('/api/v1/auth/me').expect(200);
+
+    // Promotion applies the shorter limit to a session that is already open.
+    await db.session.updateMany({
+      where: sessionOf(users.salesA!.id),
+      data: { lastSeenAt: ago(PRIVILEGED_SESSION_IDLE_MS + 60_000) },
+    });
+    await db.user.update({ where: { id: users.salesA!.id }, data: { role: 'ADMIN' } });
+    await sales.agent.get('/api/v1/auth/me').expect(401);
+    expect(SESSION_ABSOLUTE_MS).toBeGreaterThan(PRIVILEGED_SESSION_ABSOLUTE_MS);
   });
 
   it('rejects existing sessions once the user is deactivated', async () => {

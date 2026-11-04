@@ -122,7 +122,7 @@ function InviteDialog({ org, onClose }: { org: ClientOrgDetail; onClose: () => v
           <p className="text-sm text-text">
             {
               {
-                sent: 'We emailed them the invitation. You can also share this link. It is shown only once.',
+                sent: 'We emailed them the invitation link. Only they can use it to join.',
                 failed:
                   'The invitation email could not be sent, so share this link yourself. It is shown only once.',
                 sent_to_dev_sink:
@@ -131,25 +131,27 @@ function InviteDialog({ org, onClose }: { org: ClientOrgDetail; onClose: () => v
               }[created.emailDelivery]
             }
           </p>
-          <div className="flex gap-2">
-            <Input
-              readOnly
-              value={created.acceptUrl}
-              aria-label="Invitation link"
-              className="font-mono text-xs"
-            />
-            <Button
-              variant="secondary"
-              onClick={() =>
-                navigator.clipboard
-                  .writeText(created.acceptUrl)
-                  .then(() => toast.success('Link copied'))
-                  .catch(() => toast.error('Copy failed: select the link and copy it'))
-              }
-            >
-              <Copy aria-hidden className="size-4" /> Copy
-            </Button>
-          </div>
+          {created.acceptUrl ? (
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={created.acceptUrl}
+                aria-label="Invitation link"
+                className="font-mono text-xs"
+              />
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  navigator.clipboard
+                    .writeText(created.acceptUrl ?? '')
+                    .then(() => toast.success('Link copied'))
+                    .catch(() => toast.error('Copy failed: select the link and copy it'))
+                }
+              >
+                <Copy aria-hidden className="size-4" /> Copy
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : (
         <>
