@@ -156,15 +156,60 @@ describe('retention of short-lived security records (NFR-12)', () => {
         { userId: user.id, tokenHash: 'f'.padEnd(64, '0'), createdAt: at(-2), expiresAt: at(-1) },
       ],
     });
+    // Security audit F17: challenges, used recovery codes and dead invitations go the same way.
     await db.mfaChallenge.createMany({
       data: [
         { userId: user.id, tokenHash: 'g'.padEnd(64, '0'), createdAt: at(-32), expiresAt: at(-31) },
         { userId: user.id, tokenHash: 'h'.padEnd(64, '0'), createdAt: at(-2), expiresAt: at(-1) },
       ],
     });
-    expect(await pruneExpiredAuth(db)).toEqual({ sessions: 2, resetTokens: 1, mfaChallenges: 1 });
+    await db.mfaRecoveryCode.createMany({
+      data: [
+        { userId: user.id, codeHash: 'i'.padEnd(64, '0'), createdAt: at(-60), usedAt: at(-31) },
+        { userId: user.id, codeHash: 'j'.padEnd(64, '0'), createdAt: at(-60), usedAt: at(-1) },
+        { userId: user.id, codeHash: 'k'.padEnd(64, '0'), createdAt: at(-60) },
+      ],
+    });
+    const invite = (n: string, expiresAt: Date, extra: object = {}) => ({
+      agencyId: user.agencyId,
+      emailNorm: `${n}@agency.test`,
+      role: 'SALES' as const,
+      tokenHash: Buffer.from(n).toString('hex').padEnd(64, '0'),
+      createdAt: at(-60),
+      expiresAt,
+      invitedById: user.id,
+      ...extra,
+    });
+    await db.invitation.createMany({
+      data: [
+        invite('l', at(-31)), // expired long ago: removed
+        invite('m', at(5), { revokedAt: at(-40) }), // revoked long ago: removed
+        invite('n', at(-1)), // expired recently: kept
+        invite('o', at(5)), // still open: kept
+      ],
+    });
+    const accepted = await db.user.findFirstOrThrow({ where: { role: 'SALES' } });
+    await db.invitation.create({
+      data: invite('p', at(-50), { acceptedAt: at(-55), acceptedUserId: accepted.id }),
+    });
+
+    expect(await pruneExpiredAuth(db)).toEqual({
+      sessions: 2,
+      resetTokens: 1,
+      mfaChallenges: 1,
+      recoveryCodes: 1,
+      invitations: 2,
+    });
     expect((await db.session.findMany()).map((s) => s.tokenHash[0]).sort()).toEqual(['b', 'd']);
-    expect((await db.mfaChallenge.findMany()).map((c) => c.tokenHash[0])).toEqual(['h']);
+    expect((await db.mfaRecoveryCode.findMany()).map((c) => c.codeHash[0]).sort()).toEqual([
+      'j',
+      'k',
+    ]);
+    expect((await db.invitation.findMany()).map((i) => i.emailNorm[0]).sort()).toEqual([
+      'n',
+      'o',
+      'p',
+    ]);
   });
 
   it('removes idempotency records after 30 days, when no retry can still arrive', async () => {

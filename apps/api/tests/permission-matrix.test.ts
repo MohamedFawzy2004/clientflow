@@ -76,6 +76,17 @@ interface Fixtures {
   m8: ScopeFixtures;
   m9: FinanceFixtures;
   m10: AutomationFixtures;
+  gaps: GapFixtures;
+}
+
+/** Security audit F13: role-gated endpoints that were missing from this matrix. */
+interface GapFixtures {
+  userReactivate: string;
+  staffInviteRevoke: string;
+  staffInviteResend: string;
+  orgUserReactivate: string;
+  serviceRestore: string;
+  contactRestore: string;
 }
 
 /** M10: the signed-in user's own notification, a dead job and an import run to undo. */
@@ -231,6 +242,13 @@ const ENDPOINTS: Endpoint[] = [
     allowed: SALES_SIDE,
   },
   {
+    name: 'POST /contacts/:id/restore',
+    method: 'post',
+    path: (f) => `/api/v1/contacts/${f.gaps.contactRestore}/restore`,
+    body: () => ({ version: 1 }),
+    allowed: SALES_SIDE,
+  },
+  {
     name: 'POST /contacts/:id/activities',
     method: 'post',
     path: (f) => `/api/v1/contacts/${f.contactActivity}/activities`,
@@ -252,6 +270,12 @@ const ENDPOINTS: Endpoint[] = [
     allowed: SALES_SIDE,
   },
   { name: 'GET /deals', method: 'get', path: () => '/api/v1/deals', allowed: SALES_SIDE },
+  {
+    name: 'GET /deals/:id',
+    method: 'get',
+    path: (f) => `/api/v1/deals/${f.dealReopen}`,
+    allowed: SALES_SIDE,
+  },
   {
     name: 'GET /deals/board',
     method: 'get',
@@ -360,6 +384,25 @@ const ENDPOINTS: Endpoint[] = [
     body: (r) => ({ email: `invitee-${r.toLowerCase()}@agency.test`, role: 'SALES' }),
     allowed: TEAM_ADMINS,
   },
+  {
+    name: 'POST /invitations/:id/revoke',
+    method: 'post',
+    path: (f) => `/api/v1/invitations/${f.gaps.staffInviteRevoke}/revoke`,
+    allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'POST /invitations/:id/resend',
+    method: 'post',
+    path: (f) => `/api/v1/invitations/${f.gaps.staffInviteResend}/resend`,
+    allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'POST /users/:id/reactivate',
+    method: 'post',
+    path: (f) => `/api/v1/users/${f.gaps.userReactivate}/reactivate`,
+    body: () => ({ version: 1 }),
+    allowed: TEAM_ADMINS,
+  },
   // Service catalog (M4)
   { name: 'GET /services', method: 'get', path: () => '/api/v1/services', allowed: SALES_SIDE },
   {
@@ -380,6 +423,13 @@ const ENDPOINTS: Endpoint[] = [
     name: 'POST /services/:id/archive',
     method: 'post',
     path: (f) => `/api/v1/services/${f.serviceArchive}/archive`,
+    body: () => ({ version: 1 }),
+    allowed: TEAM_ADMINS,
+  },
+  {
+    name: 'POST /services/:id/restore',
+    method: 'post',
+    path: (f) => `/api/v1/services/${f.gaps.serviceRestore}/restore`,
     body: () => ({ version: 1 }),
     allowed: TEAM_ADMINS,
   },
@@ -478,6 +528,13 @@ const ENDPOINTS: Endpoint[] = [
     name: 'POST /client-orgs/:id/users/:id/deactivate',
     method: 'post',
     path: (f) => `/api/v1/client-orgs/${f.orgId}/users/${f.orgUserToDeactivate}/deactivate`,
+    body: () => ({ version: 1 }),
+    allowed: SALES_MANAGERS,
+  },
+  {
+    name: 'POST /client-orgs/:id/users/:id/reactivate',
+    method: 'post',
+    path: (f) => `/api/v1/client-orgs/${f.orgId}/users/${f.gaps.orgUserReactivate}/reactivate`,
     body: () => ({ version: 1 }),
     allowed: SALES_MANAGERS,
   },
@@ -1378,7 +1435,68 @@ async function freshFixtures(seeded: SeededAgency, role?: Role): Promise<Fixture
   const m9 = await financeFixtures(seeded, d, portal.orgId);
   const m10 = await automationFixtures(seeded, role);
 
+  // F13 gap fixtures: a record in the state each endpoint acts on.
+  const archivedAt = new Date();
+  const staffInvite = (n: string, hex: string) =>
+    db.invitation.create({
+      data: {
+        agencyId,
+        emailNorm: `${n}@agency.test`,
+        role: 'SALES',
+        tokenHash: hex.repeat(64),
+        expiresAt: new Date(Date.now() + 86_400_000),
+        invitedById: seeded.users.owner!.id,
+      },
+    });
+  const gaps: GapFixtures = {
+    userReactivate: (
+      await db.user.create({
+        data: {
+          agencyId,
+          emailNorm: 'reactivate-target@targets.test',
+          name: 'reactivate-target',
+          role: 'MEMBER',
+          passwordHash,
+          active: false,
+        },
+      })
+    ).id,
+    staffInviteRevoke: (await staffInvite('pending-revoke', 'a')).id,
+    staffInviteResend: (await staffInvite('pending-resend', 'b')).id,
+    orgUserReactivate: (
+      await db.user.create({
+        data: {
+          agencyId,
+          emailNorm: 'reactivate-me@client.test',
+          name: 'Reactivate me',
+          role: 'CLIENT',
+          clientOrgId: sendOrg.orgId,
+          passwordHash,
+          active: false,
+        },
+      })
+    ).id,
+    serviceRestore: (
+      await db.serviceItem.create({
+        data: {
+          agencyId,
+          name: 'restore',
+          unit: 'hour',
+          rateMinor: 10_000n,
+          currency: 'EGP',
+          archivedAt,
+        },
+      })
+    ).id,
+    contactRestore: (
+      await db.contact.create({
+        data: { agencyId, ownerId, fullName: 'Contact restore', archivedAt },
+      })
+    ).id,
+  };
+
   return {
+    gaps,
     d,
     m8,
     m9,
@@ -1870,11 +1988,25 @@ describe('role × endpoint matrix', () => {
       );
     }
     if (!TEAM_ADMINS.includes(role)) {
-      expect(await db.invitation.count({ where: { role: { not: 'CLIENT' } } })).toBe(0);
+      // Only the two F13 fixtures exist: none created, revoked or resent.
+      expect(await db.invitation.count({ where: { role: { not: 'CLIENT' } } })).toBe(2);
+      expect(
+        await db.invitation.count({ where: { role: { not: 'CLIENT' }, revokedAt: null } }),
+      ).toBe(2);
       const t = await db.user.findMany({
         where: { id: { in: [f.userPatch, f.userDeactivate, f.userRevoke] } },
       });
       expect(t.every((u) => u.role === 'MEMBER' && u.active && u.version === 1)).toBe(true);
+      const parked = await db.user.findUniqueOrThrow({ where: { id: f.gaps.userReactivate } });
+      expect(parked.active).toBe(false);
+    }
+    if (!SALES_MANAGERS.includes(role)) {
+      const client = await db.user.findUniqueOrThrow({ where: { id: f.gaps.orgUserReactivate } });
+      expect(client.active).toBe(false);
+    }
+    if (!TEAM_ADMINS.includes(role)) {
+      const svc = await db.serviceItem.findUniqueOrThrow({ where: { id: f.gaps.serviceRestore } });
+      expect(svc.archivedAt).not.toBeNull();
     }
     if (!SALES_SIDE.includes(role)) {
       // Denied proposal, catalog and portal-setup calls left everything as it was.

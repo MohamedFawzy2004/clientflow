@@ -1,10 +1,26 @@
 import type { CookieOptions } from 'express';
 import type { Db } from '../../db/client.js';
+import type { Role } from '../../generated/prisma/client.js';
 import { generateToken, hmacBase64Url, safeEqual, sha256Hex } from '../../lib/tokens.js';
 import type { AuthContext } from '../../types/express.js';
 
 export const SESSION_ABSOLUTE_MS = 7 * 24 * 60 * 60 * 1000;
 export const SESSION_IDLE_MS = 12 * 60 * 60 * 1000;
+/**
+ * Owners and admins can change who has access, so their sessions are shorter: a fresh sign-in
+ * (with the second step) at least every 24 hours, and after 1 hour without activity. This follows
+ * NIST SP 800-63B-4 for AAL2 (security audit F5). The role is read on every request, so a
+ * promotion applies the shorter limits to sessions that are already open.
+ */
+export const PRIVILEGED_SESSION_ABSOLUTE_MS = 24 * 60 * 60 * 1000;
+export const PRIVILEGED_SESSION_IDLE_MS = 60 * 60 * 1000;
+const PRIVILEGED_ROLES: ReadonlySet<Role> = new Set<Role>(['OWNER', 'ADMIN']);
+
+export function sessionLimits(role: Role): { absoluteMs: number; idleMs: number } {
+  return PRIVILEGED_ROLES.has(role)
+    ? { absoluteMs: PRIVILEGED_SESSION_ABSOLUTE_MS, idleMs: PRIVILEGED_SESSION_IDLE_MS }
+    : { absoluteMs: SESSION_ABSOLUTE_MS, idleMs: SESSION_IDLE_MS };
+}
 const TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 const PRE_SESSION_CSRF_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
@@ -74,10 +90,12 @@ export async function resolveSession(
   });
   if (!session || session.revokedAt) return null;
 
-  const idleExpired = now.getTime() - session.lastSeenAt.getTime() > SESSION_IDLE_MS;
+  const limits = sessionLimits(session.user.role);
+  const idleExpired = now.getTime() - session.lastSeenAt.getTime() > limits.idleMs;
+  const tooOld = now.getTime() - session.createdAt.getTime() >= limits.absoluteMs;
   // A portal user whose organization was archived loses access like a deactivated user.
   const orgClosed = Boolean(session.user.clientOrg?.archivedAt);
-  if (session.expiresAt <= now || idleExpired || !session.user.active || orgClosed) {
+  if (session.expiresAt <= now || tooOld || idleExpired || !session.user.active || orgClosed) {
     await db.session.update({ where: { id: session.id }, data: { revokedAt: now } });
     return null;
   }

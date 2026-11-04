@@ -1,0 +1,68 @@
+# Watches the public demo (ADR-071) for free: every 6 hours, and on demand. A failure opens (or
+# comments on) one GitHub issue labelled "demo-health", so the owner gets GitHub's email.
+#
+# Every 6 hours, not every few minutes: each check wakes the sleeping free service and its Neon
+# database, and both have monthly free limits. Needs the repository variable DEMO_URL.
+name: Demo health
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    name: Probe the demo
+    if: vars.DEMO_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DEMO_URL: ${{ vars.DEMO_URL }}
+    steps:
+      - name: Wake the demo and check that it is ready
+        id: probe
+        run: |
+          set +e
+          problems=""
+          # A sleeping free service takes about a minute to wake, plus a few seconds of demo reset.
+          for _ in $(seq 1 12); do
+            live=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${DEMO_URL}/health/live")
+            [ "$live" = "200" ] && break
+            sleep 15
+          done
+          [ "$live" = "200" ] || problems="${problems}/health/live answered ${live}. "
+          ready=$(curl -s --max-time 60 "${DEMO_URL}/health/ready")
+          echo "Readiness: ${ready}"
+          printf '%s' "$ready" | grep -q '"status":"ok"' || problems="${problems}/health/ready is not ok. "
+          accounts=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${DEMO_URL}/api/v1/demo/accounts")
+          [ "$accounts" = "200" ] || problems="${problems}Demo sign-in list answered ${accounts}. "
+          headers=$(curl -sS -D - -o /dev/null --max-time 60 "${DEMO_URL}/login")
+          for h in strict-transport-security content-security-policy x-content-type-options; do
+            printf '%s' "$headers" | grep -qi "^${h}:" || problems="${problems}Missing header ${h}. "
+          done
+          echo "problems=${problems}" >> "$GITHUB_OUTPUT"
+          if [ -n "$problems" ]; then echo "::error::${problems}"; exit 1; fi
+          echo "The demo is healthy."
+
+      - name: Open or update the demo-health issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBLEMS: ${{ steps.probe.outputs.problems }}
+        run: |
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          body="The scheduled demo check failed: ${PROBLEMS:-see the run log}. Run: ${run_url}"
+          gh label create demo-health --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "Public demo health check" 2>/dev/null || true
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --label demo-health --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --label demo-health \
+              --title "Public demo health check failed" --body "$body"
+          fi

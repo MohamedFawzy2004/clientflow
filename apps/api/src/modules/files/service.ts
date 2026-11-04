@@ -86,10 +86,14 @@ export async function listFiles(
   });
   const archived = p.state === 'ARCHIVED';
   const manage = canManage(actor, p);
+  // A public demo keeps its seeded files and takes no uploads (ADR-071; the API refuses both).
+  const demo = Boolean(deps.config.demo);
   return {
-    files: rows.map((f) => toView(f, !archived && (manage || f.uploadedById === actor.id))),
+    files: rows.map((f) =>
+      toView(f, !demo && !archived && (manage || f.uploadedById === actor.id)),
+    ),
     limits: { maxBytes: limits(deps).maxBytes, extensions: FILE_EXTENSIONS },
-    access: { upload: !archived },
+    access: { upload: !demo && !archived },
   };
 }
 

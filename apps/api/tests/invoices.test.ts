@@ -2,10 +2,12 @@
 // T-PAY-01/02, T-ACL-04/05, US-14, US-18, US-23).
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { hashPassword } from '../src/lib/password.js';
 import {
   login,
   makeApp,
   ORIGIN,
+  PASSWORD,
   resetDb,
   seedAgency,
   testDb,
@@ -668,5 +670,61 @@ describe('idempotent draft creation (O31, SEC-15)', () => {
       .expect(422);
     await send(finance, 'post', '/invoices', body, { 'Idempotency-Key': 'not-a-uuid' }).expect(422);
     expect(await db.invoice.count()).toBe(before + 1);
+  });
+});
+
+// QA release suite: payment inputs that must be refused without writing anything.
+describe('payment edge cases (QA)', () => {
+  it('refuses payments on drafts and bad amounts, dates and fields, and writes nothing', async () => {
+    const d = await draft();
+    // A draft has no number and is not owed yet.
+    const onDraft = await pay(finance, d.id, { amount: '10.00', receivedOn: '2026-10-20' });
+    expect(onDraft.status).toBe(409);
+
+    const i = await issued();
+    const bad: Array<[string, object, number]> = [
+      ['zero', { amount: '0', receivedOn: '2026-10-20' }, 422],
+      ['negative', { amount: '-5.00', receivedOn: '2026-10-20' }, 422],
+      ['three decimals', { amount: '10.005', receivedOn: '2026-10-20' }, 422],
+      ['not a number', { amount: 'ten', receivedOn: '2026-10-20' }, 422],
+      ['empty', { amount: '', receivedOn: '2026-10-20' }, 422],
+      ['huge', { amount: '9'.repeat(25), receivedOn: '2026-10-20' }, 422],
+      ['bad date', { amount: '10.00', receivedOn: '2026-02-30' }, 422],
+      ['future date', { amount: '10.00', receivedOn: '2099-01-01' }, 422],
+      ['unknown field', { amount: '10.00', receivedOn: '2026-10-20', paidMinor: '1' }, 422],
+      [
+        'card number',
+        { amount: '10.00', receivedOn: '2026-10-20', reference: '4111 1111 1111 1111' },
+        422,
+      ],
+      ['unknown method', { amount: '10.00', receivedOn: '2026-10-20', method: 'CRYPTO' }, 422],
+    ];
+    for (const [label, body, status] of bad) {
+      const r = await pay(finance, i.id, body);
+      expect(r.status, label).toBe(status);
+      expect(r.body.error, label).toBeDefined();
+    }
+    await pay(finance, randomUUID(), { amount: '10.00', receivedOn: '2026-10-20' }).expect(404);
+    expect(await db.payment.count()).toBe(0);
+    const inv = await db.invoice.findUniqueOrThrow({ where: { id: i.id } });
+    expect(inv.paidMinor).toBe(0n);
+  });
+
+  it('another agency’s finance user cannot see or pay this invoice (404, nothing written)', async () => {
+    const i = await issued();
+    const other = await db.agency.create({ data: { name: 'Other Agency', slug: 'other-qa' } });
+    await db.user.create({
+      data: {
+        agencyId: other.id,
+        emailNorm: 'finance@other-qa.test',
+        name: 'Other finance',
+        role: 'FINANCE',
+        passwordHash: await hashPassword(PASSWORD),
+      },
+    });
+    const outsider = await login(app, 'finance@other-qa.test');
+    await get(outsider, `/invoices/${i.id}`).expect(404);
+    await pay(outsider, i.id, { amount: '10.00', receivedOn: '2026-10-20' }).expect(404);
+    expect(await db.payment.count()).toBe(0);
   });
 });

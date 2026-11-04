@@ -576,3 +576,25 @@ The built-in checks (allowlist, file signature, active content, test signature) 
 - **Without `CLAMAV_HOST`:** behaviour is unchanged (built-in checks only), and the server logs a warning at startup.
 - **On Render:** the official `clamav/clamav:1.5.4` image as a private service. It needs 3–4 GB of memory to load signatures and updates them itself (freshclam). clamd's default stream limit (25 MB) matches the default upload limit; raising `FILE_MAX_BYTES` needs a matching `StreamMaxLength`.
 - **Tests** use a fake clamd that speaks the real framing; the report records a check against the real image.
+
+## ADR-071 — Free public demo (Render Free + Neon Free) and local production-like staging (ACCEPTED, demo hosting)
+
+The owner set a budget of no paid subscriptions and no payment method for now. No free host meets staging's needs (a persistent disk, a private database with backups, and ClamAV with 3–4 GB of memory), so staging and the demo are split. Full comparison and owner checklist: `docs/24_STAGING_AND_DEMO.md`.
+
+- **Staging is local for now.** `docker-compose.staging.yml` runs the production image behind Caddy's internal HTTPS at `https://127.0.0.1:8443`, with its own PostgreSQL (app user `clientflow_app`, not a superuser), ClamAV and a file volume. It uses an IP address rather than `localhost` because browsers never store HSTS for an IP (RFC 6797 §8.1), so the production HSTS header cannot affect other local servers. The paid `render.yaml` (ADR-067) stays ready for the pilot.
+- **The public demo runs on Render Free with Neon Free** (`render.demo.yaml`). The free web service has no disk and sleeps after about 15 idle minutes. So with `DEMO_RESET_ON_BOOT=<database name>` the container migrates, then rebuilds the demo before it listens, behind the same guard as `demo:reset` (ADR-066). Each wake is a clean, fictional workspace whose seeded files exist on that container's disk, and there is no reset endpoint at all. A refusal stops the process (verified against a non-demo database).
+- **Demo-mode protection lives in the API**, not the UI. `middleware/demo.ts` answers 403 `DEMO_RESTRICTED` to the following, and `GET` routes and everyday work stay open:
+  - password reset;
+  - two-step setup and changes;
+  - people changes;
+  - every invitation route, because their responses carry accept links;
+  - workspace settings;
+  - uploads, file deletion and CSV imports.
+- **Demo write cap:** changes are capped at `DEMO_WRITE_LIMIT_PER_IP`, default 120 per 15 minutes, in memory, because a demo is one instance.
+- **Explore as a role:** `GET /api/v1/demo/accounts` returns a role and a name only, and `POST /api/v1/demo/sessions` signs in as the first active person with that role. Both exist only when `DEMO_MODE=true`, and only people of an agency flagged `isDemo` can be chosen. The sign-in is rate-limited and needs the pre-session form token, like password sign-in. No password is ever published.
+- **Free-tier fit:** `JOBS_POLL_SECONDS=60` and the 6-hourly health probe let Neon scale to zero between visits; Neon Free allows 100 CU-hours a month.
+- **Rejected:**
+  - Fly.io, Koyeb, Oracle and the cloud free tiers need a payment card on file.
+  - Render Free Postgres expires after 30 days.
+  - A GitHub Actions reset would put the seeded files on the runner, not on the app.
+  - A public reset endpoint was ruled out by the requirements.

@@ -29,6 +29,7 @@ export function UploadButton({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const upload = useUpload(projectId);
+  const { data: user } = useSession();
   const pick = (file: File | undefined) => {
     if (!file) return;
     // Quick feedback only; the API enforces the limit and checks the content.
@@ -47,6 +48,14 @@ export function UploadButton({
       },
     });
   };
+  // The public demo takes no uploads (ADR-071); the API refuses them too.
+  if (user?.agency.isDemo) {
+    return (
+      <Button variant="secondary" disabled title="Uploads are turned off in the public demo.">
+        <Upload aria-hidden className="size-4" /> Uploads are off in the demo
+      </Button>
+    );
+  }
   return (
     <>
       <input
@@ -129,6 +138,9 @@ export function FilesPage() {
         Private to the project team and stored encrypted. Up to {formatBytes(limits.maxBytes)} per
         file: {limits.extensions.map((e) => `.${e}`).join(', ')}. Web pages, SVG and scripts are
         refused. Clients only see files you publish in a deliverable.
+        {user?.agency.isDemo
+          ? ' In the public demo, uploading and deleting files are turned off, so every visitor sees the same files.'
+          : ''}
       </p>
       {files.length === 0 ? (
         <EmptyState

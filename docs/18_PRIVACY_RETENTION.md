@@ -27,7 +27,9 @@ ClientFlow **never stores** card numbers or bank logins: the API and the databas
 | Finished background jobs                     | 30 days after they finished (failed ones are kept for review) |
 | Rate-limit counters                          | When their 15-minute window ends (hourly cleanup)             |
 | Ended sessions, expired password-reset links | 30 days after they ended (hourly cleanup, M11)                |
-| Expired two-step sign-in challenges          | 30 days after they expired (hourly cleanup)                   |
+| Two-step sign-in challenges                  | 30 days after they expired (hourly cleanup)                   |
+| Used recovery codes                          | 30 days after they were used (hourly cleanup)                 |
+| Invitations never accepted                   | 30 days after they expired or were revoked (hourly cleanup)   |
 | Idempotency records (retry protection)       | 30 days after the request (hourly cleanup)                    |
 | Everything else                              | **Not removed automatically**                                 |
 

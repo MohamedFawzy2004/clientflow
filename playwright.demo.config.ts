@@ -54,6 +54,8 @@ export default defineConfig({
         MAIL_TRANSPORT: 'disabled',
         // Three engines sign in as each role from one address.
         LOGIN_RATE_LIMIT_PER_IP: '500',
+        // Every journey's changes come from one address too (ADR-071 demo write cap).
+        DEMO_WRITE_LIMIT_PER_IP: '100000',
         FILE_STORAGE_DIR: DEMO_STORAGE,
       },
     },

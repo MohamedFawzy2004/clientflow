@@ -167,8 +167,9 @@ export function createMailer(
 export type EmailDelivery = Mailer['delivery'] | 'failed';
 
 /**
- * For emails sent during a request whose link is also shown on screen (invitations): a provider
+ * For emails sent during a request whose link may be shown on screen (invitations): a provider
  * outage must not fail the request, so the person sharing the link is told to send it themselves.
+ * The link is shown only when the result is not 'sent' (see linkForInviter, security audit F4).
  */
 export async function sendOrReport(
   mailer: Mailer,
