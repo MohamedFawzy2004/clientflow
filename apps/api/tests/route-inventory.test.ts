@@ -28,6 +28,9 @@ const OUTSIDE_MATRIX: Record<string, string> = {
   'POST /invitations/preview': 'one-time token (invitations.test.ts)',
   'POST /invitations/accept': 'one-time token (invitations.test.ts)',
   'GET /files/download/:p': 'short-lived token bound to one user (delivery-portal.test.ts)',
+  // Mounted only when DEMO_MODE=true (the matrix app is not a demo), so they are 404s there.
+  'GET /demo/accounts': 'public demo only: role + name of isDemo people (demo-hosting.test.ts)',
+  'POST /demo/sessions': 'public demo only: sign-in as a demo role (demo-hosting.test.ts)',
 };
 
 const norm = (route: string) =>
