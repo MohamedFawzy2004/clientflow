@@ -6,7 +6,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeDeal } from '../src/modules/deals/service.js';
 import { publishDeliverable } from '../src/modules/deliverables/service.js';
 import { decideOnProposal } from '../src/modules/portal/service.js';
-import { changeProjectState } from '../src/modules/projects/service.js';
+import { changeProjectState, removeMember } from '../src/modules/projects/service.js';
+import { updateTask } from '../src/modules/tasks/service.js';
 import type { AuthUser } from '../src/types/express.js';
 import { resetDb, seedAgency, testDb, type SeededAgency } from './helpers.js';
 import {
@@ -271,6 +272,61 @@ describe('project completion and new client work (F2)', () => {
     const p = await db.project.findUniqueOrThrow({ where: { id: project.id } });
     const d = await db.deliverable.findUniqueOrThrow({ where: { id: deliverable.id } });
     expect([p.state, d.status]).toEqual(['ACTIVE', 'PUBLISHED']);
+  });
+});
+
+describe('task assignment and member removal (F14)', () => {
+  /** Resolves once `p` has settled or `n` transactions wait on a lock, whichever comes first. */
+  async function settledOrWaiting(p: Promise<unknown>, n: number) {
+    let settled = false;
+    void p.then(
+      () => (settled = true),
+      () => (settled = true),
+    );
+    for (let i = 0; i < 200 && !settled; i++) {
+      const [row] = await db.$queryRaw<Array<{ n: bigint }>>`
+        SELECT count(*)::bigint AS n FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'`;
+      if (Number(row!.n) >= n) return;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+  }
+
+  it('a member removed while a task is being assigned to them never keeps that task', async () => {
+    const pm = staff('pm');
+    const memberId = seeded.users.member!.id;
+    const { projectId } = await makeProject(db, {
+      agencyId: seeded.agencyId,
+      managerId: pm.id,
+      createdById: pm.id,
+      memberIds: [memberId],
+    });
+    const task = await db.task.create({
+      data: { agencyId: seeded.agencyId, projectId, title: 'Hero banner', createdById: pm.id },
+    });
+    // Holds the task row, so the assignment stops after its team check, before it writes.
+    const l = await locker();
+    await l.lock('SELECT id FROM tasks WHERE id = $1 FOR NO KEY UPDATE', task.id);
+    const assign = updateTask(
+      db,
+      pm,
+      task.id,
+      { version: task.version, assigneeId: memberId } as never,
+      'Africa/Cairo',
+    );
+    await waitForWaiters(1);
+    const remove = removeMember(db, pm, projectId, memberId, 'r1');
+    // Before the fix the removal finished here, while the assignment was still waiting.
+    await settledOrWaiting(remove, 2);
+    await l.release();
+    const results = await Promise.allSettled([assign, remove]);
+    expect(results.map(statusOf)).toEqual([200, 200]);
+
+    const after = await db.task.findUniqueOrThrow({ where: { id: task.id } });
+    const stillMember = await db.projectMember.count({ where: { projectId, userId: memberId } });
+    expect(stillMember).toBe(0);
+    // The removal ran after the assignment and handed the task back, as it does one at a time.
+    expect(after.assigneeId).toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@
 // volume. An S3-compatible adapter can implement the same port once hosting is chosen (ADR-043).
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { createReadStream, createWriteStream, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
-import { mkdir, rename, rm } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -91,4 +91,39 @@ export class LocalEncryptedStorage implements FileStorage {
   async remove(key: string) {
     await rm(this.pathFor(key), { force: true });
   }
+
+  /**
+   * Every object on disk, plus `.part` files a crash left mid-write, with their age. For the
+   * orphan report (files/orphans.ts); never used on a request path.
+   */
+  async *list(): AsyncGenerator<StoredObjectEntry> {
+    let dirs: string[];
+    try {
+      dirs = await readdir(this.root);
+    } catch {
+      return;
+    }
+    for (const d of dirs.sort()) {
+      if (!/^[0-9a-f]{2}$/.test(d)) continue;
+      for (const name of (await readdir(join(this.root, d))).sort()) {
+        const m = /^([0-9a-f-]{36})\.bin(\.part)?$/.exec(name);
+        if (!m || !KEY_PATTERN.test(m[1]!)) continue;
+        const info = await stat(join(this.root, d, name));
+        yield { key: m[1]!, partial: Boolean(m[2]), modifiedAt: info.mtime, bytes: info.size };
+      }
+    }
+  }
+
+  /** Removes a crash leftover (`.part`) for `key`. */
+  async removePartial(key: string) {
+    await rm(`${this.pathFor(key)}.part`, { force: true });
+  }
+}
+
+export interface StoredObjectEntry {
+  key: string;
+  /** A `.part` file: a write that never finished. */
+  partial: boolean;
+  modifiedAt: Date;
+  bytes: number;
 }

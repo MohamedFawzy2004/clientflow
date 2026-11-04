@@ -131,12 +131,14 @@ async function teamOf(db: Db | Tx, project: { id: string; managerId: string }) {
   return [rows.manager, ...rows.members.map((m) => m.user)].filter((u) => u.active);
 }
 
-async function assertAssignable(
-  db: Db | Tx,
-  project: { id: string; managerId: string },
-  id: string,
-) {
-  const team = await teamOf(db, project);
+/**
+ * The assignee must be on the team when the assignment commits. The project lock makes this wait
+ * for a member removal in progress (removeMember takes it first and then unassigns that member's
+ * open tasks), so a task can never end up assigned to someone who just left the project.
+ */
+async function assertAssignable(tx: Tx, project: { id: string; managerId: string }, id: string) {
+  await lockProject(tx, project.id);
+  const team = await teamOf(tx, project);
   if (!team.some((u) => u.id === id)) {
     throw validationFailed({
       assigneeId: ['Assign the task to the project manager or a project member.'],

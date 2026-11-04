@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { pruneExpiredAuth } from '../src/lib/retention.js';
+import { pruneExpiredAuth, pruneIdempotencyRecords } from '../src/lib/retention.js';
 import { PostgresRateLimitStore, pruneRateLimits } from '../src/middleware/rate-limit-store.js';
 import { getPreCsrf, login, makeApp, ORIGIN, resetDb, seedAgency, testDb } from './helpers.js';
 
@@ -209,6 +209,28 @@ describe('retention of short-lived security records (NFR-12)', () => {
       'n',
       'o',
       'p',
+    ]);
+  });
+
+  it('removes idempotency records after 30 days, when no retry can still arrive', async () => {
+    const user = await db.user.findFirstOrThrow({ where: { emailNorm: 'owner@agency.test' } });
+    const at = (d: number) => new Date(Date.now() + d * 86_400_000);
+    const rec = (scope: string, createdAt: Date) => ({
+      agencyId: user.agencyId,
+      actorId: user.id,
+      scope,
+      key: crypto.randomUUID(),
+      requestHash: '0'.repeat(64),
+      resultId: crypto.randomUUID(),
+      createdAt,
+    });
+    await db.idempotencyRecord.createMany({
+      data: [rec('old', at(-31)), rec('recent', at(-29)), rec('today', at(0))],
+    });
+    expect(await pruneIdempotencyRecords(db)).toEqual({ idempotencyRecords: 1 });
+    expect((await db.idempotencyRecord.findMany()).map((r) => r.scope).sort()).toEqual([
+      'recent',
+      'today',
     ]);
   });
 });

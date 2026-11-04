@@ -682,6 +682,9 @@ export async function removeMember(
   if (!UUID_PATTERN.test(userId)) throw notFound();
   await db.$transaction(async (tx) => {
     const p = await findManageable(tx, actor, id);
+    // Waits for any task assignment in progress (assertAssignable takes the same lock), so the
+    // unassign below sees every task assigned to this member.
+    await lockProject(tx, p.id);
     const res = await tx.projectMember.deleteMany({ where: { projectId: p.id, userId } });
     if (res.count === 0) return;
     // Their open tasks go back to the manager's queue: they can no longer see the project.

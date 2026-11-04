@@ -30,6 +30,7 @@ ClientFlow **never stores** card numbers or bank logins: the API and the databas
 | Two-step sign-in challenges                  | 30 days after they expired (hourly cleanup)                   |
 | Used recovery codes                          | 30 days after they were used (hourly cleanup)                 |
 | Invitations never accepted                   | 30 days after they expired or were revoked (hourly cleanup)   |
+| Idempotency records (retry protection)       | 30 days after the request (hourly cleanup)                    |
 | Everything else                              | **Not removed automatically**                                 |
 
 ## Proposed retention periods (owner to decide)

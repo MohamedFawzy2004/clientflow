@@ -1888,17 +1888,24 @@ async function financeFixtures(
   const invVoid = await invoice('ISSUED');
   const invDelete = await invoice('DRAFT');
   const invPay = await invoice('ISSUED');
-  const invReverse = await invoice('ISSUED', { status: 'PARTIALLY_PAID', paidMinor: 100n });
-  const payment = await db.payment.create({
-    data: {
-      agencyId,
-      invoiceId: invReverse.id,
-      amountMinor: 100n,
-      currency: 'EGP',
-      receivedOn: new Date('2026-10-01'),
-      recordedById: financeId,
-    },
-  });
+  const invReverse = await invoice('ISSUED');
+  // The payment and the paid total together: the database checks they agree at commit.
+  const [payment] = await db.$transaction([
+    db.payment.create({
+      data: {
+        agencyId,
+        invoiceId: invReverse.id,
+        amountMinor: 100n,
+        currency: 'EGP',
+        receivedOn: new Date('2026-10-01'),
+        recordedById: financeId,
+      },
+    }),
+    db.invoice.update({
+      where: { id: invReverse.id },
+      data: { status: 'PARTIALLY_PAID', paidMinor: 100n },
+    }),
+  ]);
   const portalInvoice = await invoice('ISSUED', { publishedAt: new Date() });
   // The counter matches the numbers used above, as issuing would have left it.
   await db.agency.update({ where: { id: agencyId }, data: { invoiceSeq: n } });

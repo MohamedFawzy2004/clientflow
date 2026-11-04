@@ -213,6 +213,8 @@ The handler checks for a stored result twice: before starting, and again after t
 | Different key for a deal that already has a project | 409                                      |
 | A unique-index race the lock did not prevent        | Answered from whatever the winner stored |
 
+`POST /deals` and `POST /proposals` accept the same header, but it is **optional** there, so older clients keep working: without a key every request creates a record, as before. With a key, a doubled or retried create returns the first record with 200 (the body is the record, as on 201), a reused key for other values or by another user is 409, and a key that is not a UUID is 422. The losing request of a race rolls back as a whole, so it uses no proposal reference number. The shared helper is `apps/api/src/lib/idempotency.ts` (backend audit F15a/F17). Records are pruned after 30 days (`docs/18_PRIVACY_RETENTION.md`).
+
 The web dialog creates one key when it opens and reuses it on retry, so a lost response cannot create a second project.
 
 **Fault injection (T-HAND-02):** `AppDeps.hooks.beforeHandoffCommit` is a test-only fault-injection point. `server.ts` never sets it.

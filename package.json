@@ -39,6 +39,7 @@
     "jobs:once": "npm run jobs:once -w @clientflow/api",
     "jobs:worker": "npm run jobs:worker -w @clientflow/api",
     "backup": "npm run backup -w @clientflow/api --",
+    "files:orphans": "npm run files:orphans -w @clientflow/api --",
     "restore": "npm run restore -w @clientflow/api --"
   },
   "devDependencies": {
