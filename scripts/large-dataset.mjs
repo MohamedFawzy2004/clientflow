@@ -92,12 +92,16 @@ await pool(N_DEALS, async (i) => {
     'create deal',
   );
 });
-const staff = must(await call('GET', '/api/v1/projects/staff'), 'staff');
+// The staff picker lists every delivery role; only an owner, admin or PM may manage a project.
+const managers = must(await call('GET', '/api/v1/projects/staff'), 'staff').filter((u) =>
+  ['OWNER', 'ADMIN', 'PM'].includes(u.role),
+);
+if (!managers.length) throw new Error('no owner, admin or PM to manage the projects');
 await pool(N_PROJECTS, async (i) => {
   must(
     await call('POST', '/api/v1/projects', {
       title: `Bulk ${tag} project ${i}`,
-      managerId: staff[i % staff.length].id,
+      managerId: managers[i % managers.length].id,
       currency: currencies[i % 3],
     }),
     'create project',
