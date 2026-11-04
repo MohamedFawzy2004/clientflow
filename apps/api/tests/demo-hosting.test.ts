@@ -32,6 +32,14 @@ const RESTRICTED: Array<[method: 'post' | 'patch', path: string]> = [
     'post',
     '/client-orgs/00000000-0000-4000-8000-000000000001/invitations/00000000-0000-4000-8000-000000000002/revoke',
   ],
+  [
+    'post',
+    '/client-orgs/00000000-0000-4000-8000-000000000001/users/00000000-0000-4000-8000-000000000002/deactivate',
+  ],
+  [
+    'post',
+    '/client-orgs/00000000-0000-4000-8000-000000000001/users/00000000-0000-4000-8000-000000000002/reactivate',
+  ],
   ['patch', '/agency'],
   ['post', '/projects/00000000-0000-4000-8000-000000000001/files'],
   ['post', '/files/00000000-0000-4000-8000-000000000001/delete'],
@@ -61,6 +69,15 @@ describe('demo route rules', () => {
     expect(isDemoRestricted('POST', '/invitations-x')).toBe(false);
     expect(isDemoRestricted('PATCH', '/users/abc/extra')).toBe(false);
   });
+
+  it('match the way Express routes do: any letter case, optional trailing slash', () => {
+    expect(isDemoRestricted('PATCH', '/AGENCY')).toBe(true);
+    expect(isDemoRestricted('PATCH', '/agency/')).toBe(true);
+    expect(isDemoRestricted('POST', '/Invitations/')).toBe(true);
+    expect(isDemoRestricted('POST', '/users/abc/Deactivate/')).toBe(true);
+    expect(isDemoRestricted('post', '/files/abc/delete')).toBe(true);
+    expect(isDemoRestricted('POST', '/contacts/')).toBe(false);
+  });
 });
 
 describe('demo guard on the real app', () => {
@@ -80,6 +97,32 @@ describe('demo guard on the real app', () => {
       expect(res.status, `${method} ${path}`).toBe(403);
       expect(res.body.error.code, `${method} ${path}`).toBe('DEMO_RESTRICTED');
     }
+  });
+
+  it('cannot be stepped around with letter case or a trailing slash', async () => {
+    const { app } = makeApp(DEMO);
+    const { agent, csrf } = await login(app, 'owner@agency.test');
+    const variants = RESTRICTED.flatMap(([method, path]) => [
+      [method, path.toUpperCase()],
+      [method, `${path}/`],
+    ]) as Array<[(typeof RESTRICTED)[number][0], string]>;
+    for (const [method, path] of variants) {
+      const res = await agent[method](`/api/v1${path}`)
+        .set('Origin', ORIGIN)
+        .set('X-CSRF-Token', csrf)
+        .send({});
+      expect(res.status, `${method} ${path}`).toBe(403);
+      expect(res.body.error.code, `${method} ${path}`).toBe('DEMO_RESTRICTED');
+    }
+    // And the real handler is reachable with those spellings, so the guard is what stops them.
+    const { app: plain } = makeApp();
+    const owner = await login(plain, 'owner@agency.test');
+    const res = await owner.agent
+      .patch('/api/v1/AGENCY/')
+      .set('Origin', ORIGIN)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({});
+    expect(res.status).not.toBe(404);
   });
 
   it('refuses them signed out too (password reset is reachable without a session)', async () => {
