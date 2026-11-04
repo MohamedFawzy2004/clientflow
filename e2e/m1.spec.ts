@@ -167,14 +167,20 @@ test.describe.serial('M1 journey', () => {
   });
 
   test('keyboard: skip link and dialog focus management', async ({ page, browserName }) => {
-    // WebKit (like Safari) skips links on Tab unless the user turns on full keyboard access.
-    test.skip(browserName === 'webkit', 'Tab skips links by default in WebKit.');
     await signIn(page, creds().salesA);
     await page.goto('/app/leads');
     // Wait for the shell: before the session check finishes there is nothing to focus.
     await expect(page.getByRole('link', { name: 'Salma Ibrahim' }).first()).toBeVisible();
-    await page.keyboard.press('Tab');
-    await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
+    const skip = page.getByRole('link', { name: 'Skip to content' });
+    if (browserName === 'webkit') {
+      // WebKit (like Safari) skips links on Tab (and Alt+Tab) unless the user turns on full
+      // keyboard access, so focus the link directly; the rest of the test runs as in the others.
+      await skip.focus();
+      await expect(skip).toBeInViewport();
+    } else {
+      await page.keyboard.press('Tab');
+    }
+    await expect(skip).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('#main')).toBeFocused();
     await page.getByRole('button', { name: 'Add lead' }).first().focus();

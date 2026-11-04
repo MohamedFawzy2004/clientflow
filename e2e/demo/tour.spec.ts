@@ -15,7 +15,8 @@ const all = () =>
   JSON.parse(readFileSync('apps/api/.demo-credentials.local.json', 'utf8')) as Cred[];
 const who = (prefix: string) => all().find((c) => c.email.startsWith(`${prefix}@`))!;
 
-const DIR = 'docs/milestones/m12-screenshots';
+// SCREENSHOT_DIR lets a portfolio capture write elsewhere without replacing the M12 evidence.
+const DIR = process.env.SCREENSHOT_DIR ?? 'docs/milestones/m12-screenshots';
 const WIDTHS = [360, 390, 768, 1024, 1280, 1440, 1920];
 
 /** Screenshots at every spec width (Chromium only, CAPTURE_SCREENSHOTS=1). */
@@ -40,6 +41,23 @@ async function zoomed(page: Page) {
 }
 
 test.describe('demo tour', () => {
+  test('visitor: the sign-in page offers one demo button per role', async ({
+    page,
+    browserName,
+  }) => {
+    await page.goto('/login');
+    await expect(page.getByRole('heading', { name: 'Explore the demo' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Explore as / })).toHaveCount(8);
+    await noSeriousA11y(page);
+    for (const width of [360, 1440]) {
+      await page.setViewportSize({ width, height: width < 768 ? 800 : 900 });
+      await noOverflow(page);
+      if (browserName === 'chromium') {
+        await shot(page, `${DIR}/login-demo-${width}.png`, { fullPage: width < 768 });
+      }
+    }
+  });
+
   test('owner: dashboard with the demo notice', async ({ page, browserName }) => {
     await signIn(page, who('owner'));
     await expect(page.getByRole('note')).toContainText('Demo workspace.');
@@ -162,14 +180,19 @@ test.describe('demo tour', () => {
   });
 
   test('keyboard: skip link reaches the content', async ({ page, browserName }) => {
-    // WebKit (like Safari) skips links on Tab unless the user turns on full keyboard access.
-    test.skip(browserName === 'webkit', 'Tab skips links by default in WebKit.');
     await signIn(page, who('owner'));
     // A fresh page load, so the first Tab starts at the top of the document.
     await page.goto('/app/leads');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await page.keyboard.press('Tab');
     const skip = page.getByRole('link', { name: 'Skip to content' });
+    if (browserName === 'webkit') {
+      // WebKit (like Safari) skips links on Tab (and Alt+Tab) unless the user turns on full
+      // keyboard access, so focus the link directly and check it shows and works.
+      await skip.focus();
+      await expect(skip).toBeInViewport();
+    } else {
+      await page.keyboard.press('Tab');
+    }
     await expect(skip).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('#main')).toBeFocused();
