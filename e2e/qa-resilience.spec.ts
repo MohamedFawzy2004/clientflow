@@ -23,7 +23,10 @@ async function expireSessions(email: string) {
   await db.connect();
   try {
     const res = await db.query(
-      `UPDATE sessions SET expires_at = now() - interval '1 second'
+      // In the past, but never before created_at (CHECK sessions_expiry_after_creation): a fast
+      // engine can sign in and get here within the same second.
+      `UPDATE sessions
+          SET expires_at = greatest(created_at + interval '1 millisecond', now() - interval '1 second')
         WHERE revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE email_norm = lower($1))`,
       [email],
     );
