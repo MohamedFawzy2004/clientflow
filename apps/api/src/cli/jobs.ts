@@ -2,7 +2,7 @@
 //   npm run jobs:once    scan reminders now and run every due job, then exit
 //   npm run jobs:worker  run the worker as its own process (with JOBS_ENABLED=false on the API)
 import { loadEnv } from '../config/env.js';
-import { createDb } from '../db/client.js';
+import { createDb, dbOptionsFromEnv } from '../db/client.js';
 import { runReminderScan } from '../jobs/reminders.js';
 import { runDueJobs, startWorker } from '../jobs/worker.js';
 import { createMailer } from '../lib/mailer.js';
@@ -16,7 +16,7 @@ if (mode !== 'once' && mode !== 'worker') {
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
-const db = createDb(env.DATABASE_URL);
+const db = createDb(env.DATABASE_URL, dbOptionsFromEnv(env));
 const mailer = createMailer(env, logger);
 const deps = {
   db,

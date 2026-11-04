@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { ContactSource } from '@clientflow/contracts';
 import { loadEnv } from '../config/env.js';
-import { createDb } from '../db/client.js';
+import { createDb, dbOptionsFromEnv } from '../db/client.js';
 import type { Role } from '../generated/prisma/enums.js';
 import { bootstrapOwner } from '../modules/auth/bootstrap.js';
 import { hashPassword } from '../lib/password.js';
@@ -112,7 +112,7 @@ const LEADS: Array<{
   },
 ];
 
-const db = createDb(env.DATABASE_URL);
+const db = createDb(env.DATABASE_URL, dbOptionsFromEnv(env));
 const credentials: Record<string, { email: string; role: Role; password: string }> = {};
 
 try {

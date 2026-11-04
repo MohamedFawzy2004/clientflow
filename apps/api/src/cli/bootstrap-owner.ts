@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline';
 import { generateToken } from '../lib/tokens.js';
 import { loadEnv } from '../config/env.js';
-import { createDb } from '../db/client.js';
+import { createDb, dbOptionsFromEnv } from '../db/client.js';
 import { BootstrapError, bootstrapOwner } from '../modules/auth/bootstrap.js';
 
 function promptHidden(question: string): Promise<string> {
@@ -58,7 +58,7 @@ async function main() {
     generated = true;
   }
 
-  const db = createDb(env.DATABASE_URL);
+  const db = createDb(env.DATABASE_URL, dbOptionsFromEnv(env));
   try {
     const result = await bootstrapOwner(db, {
       agencyName: values.agency,

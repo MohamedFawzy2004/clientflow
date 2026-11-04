@@ -14,7 +14,8 @@ import {
 import type { z } from 'zod';
 import type { AppDeps } from '../../app.js';
 import type { Db } from '../../db/client.js';
-import { Prisma } from '../../generated/prisma/client.js';
+import { type Prisma } from '../../generated/prisma/client.js';
+import { isUniqueViolation } from '../../lib/db-errors.js';
 import { agencyToday, formatDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, notFound } from '../../lib/errors.js';
@@ -206,10 +207,6 @@ const DECISION: Record<
   REQUEST_REVISION: 'REVISION_REQUESTED',
   REJECT: 'REJECTED',
 };
-
-function isUniqueViolation(err: unknown) {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
-}
 
 /**
  * The client's decision on the latest published version (FR-S07, US-13). One decision per

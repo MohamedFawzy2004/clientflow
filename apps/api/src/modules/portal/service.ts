@@ -7,7 +7,8 @@ import {
 import type { z } from 'zod';
 import type { AppDeps } from '../../app.js';
 import type { Db } from '../../db/client.js';
-import { Prisma } from '../../generated/prisma/client.js';
+import { type Prisma } from '../../generated/prisma/client.js';
+import { isUniqueViolation } from '../../lib/db-errors.js';
 import { agencyToday, formatDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound } from '../../lib/errors.js';
@@ -106,10 +107,6 @@ const DECISION_WORDS = {
   REJECT: 'declined',
   REQUEST_CHANGES: 'asked for changes to',
 } as const;
-
-function isUniqueViolation(err: unknown) {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
-}
 
 /**
  * The client's decision on the version they were shown (FR-Q07–Q09, US-09, T-PROP-02/03).

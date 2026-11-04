@@ -4,6 +4,12 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.string().url().startsWith('postgresql://'),
+  /** Database pool and limits (db/client.ts has the defaults and what each one does). */
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(200).optional(),
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(100).max(3_600_000).optional(),
+  DB_LOCK_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).optional(),
+  DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(3_600_000).optional(),
+  DB_CONNECT_TIMEOUT_MS: z.coerce.number().int().min(100).max(120_000).optional(),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   /** Interface to listen on. Containers need 0.0.0.0; local development keeps 127.0.0.1. */
   HOST: z.string().min(1).default('127.0.0.1'),

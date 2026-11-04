@@ -24,7 +24,8 @@ import {
 import type { z } from 'zod';
 import type { AppDeps } from '../../app.js';
 import type { Db } from '../../db/client.js';
-import { Prisma } from '../../generated/prisma/client.js';
+import { type Prisma } from '../../generated/prisma/client.js';
+import { isUniqueViolation } from '../../lib/db-errors.js';
 import { addDays, agencyToday, formatDateOnly, parseDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, staleVersion, validationFailed } from '../../lib/errors.js';
@@ -283,10 +284,6 @@ function requestHash(dealId: string, input: z.output<typeof convertDealSchema>) 
     input.dueOn ?? null,
   ]);
   return createHash('sha256').update(canonical).digest('hex');
-}
-
-function isUniqueViolation(err: unknown) {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 }
 
 /**

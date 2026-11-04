@@ -25,7 +25,8 @@ import {
 } from '@clientflow/contracts';
 import type { z } from 'zod';
 import type { Db } from '../../db/client.js';
-import { Prisma } from '../../generated/prisma/client.js';
+import { type Prisma } from '../../generated/prisma/client.js';
+import { isUniqueViolation } from '../../lib/db-errors.js';
 import { parseDateOnly } from '../../lib/agency-time.js';
 import { writeAudit } from '../../lib/audit.js';
 import { conflict, forbidden, notFound, validationFailed } from '../../lib/errors.js';
@@ -440,10 +441,6 @@ function toRunView(r: Prisma.ImportRunGetPayload<{ include: typeof runInclude }>
   };
 }
 
-function isUniqueViolation(err: unknown) {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
-}
-
 function reasonFor(r: CheckedRow) {
   if (r.status === 'duplicate') {
     return r.duplicateOf?.kind === 'line'
@@ -492,6 +489,10 @@ export async function commitImport(
   try {
     return await db.$transaction(
       async (tx) => {
+        // One import per agency at a time: a second one waits its turn, within this
+        // transaction's 60 s, instead of failing at the pool's short default lock timeout.
+        await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '50s'`);
+        await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = '55s'`);
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('clientflow.import'), hashtext(${actor.agencyId}))`;
         const again = await replay(tx);
         if (again) return again;
