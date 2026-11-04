@@ -9,8 +9,9 @@ import { Button } from '../../components/ui/button';
 import { Banner } from '../../components/ui/feedback';
 import { Field, Input, PasswordInput } from '../../components/ui/form';
 import { Wordmark } from '../../components/ui/brand';
+import { DemoSignIn } from './DemoSignIn';
 import { MfaStep } from './MfaStep';
-import { useLogin, useSession } from './session';
+import { useDemoAccounts, useLogin, useSession } from './session';
 
 /** Where each kind of user starts: staff in the app, client portal users in the portal. */
 export function homeFor(role: Role | undefined): string {
@@ -74,6 +75,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const session = useSession();
   const login = useLogin();
+  const demo = useDemoAccounts();
+  const demoAccounts = demo.data ?? [];
   const requested = params.get('next');
   const expired = params.get('expired') === '1';
   const [codeStep, setCodeStep] = useState(false);
@@ -181,6 +184,19 @@ export function LoginPage() {
                 ) : null}
               </div>
 
+              {demoAccounts.length > 0 ? (
+                <>
+                  <DemoSignIn
+                    accounts={demoAccounts}
+                    onSignedIn={(role) =>
+                      navigate(safeNextPath(requested, role), { replace: true })
+                    }
+                  />
+                  <p className="mt-6 text-[13px] font-medium text-muted">
+                    Or sign in with an email and password
+                  </p>
+                </>
+              ) : null}
               <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-5">
                 <Field label="Email" required error={errors.email?.message}>
                   {(p) => (
