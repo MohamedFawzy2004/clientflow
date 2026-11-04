@@ -421,3 +421,52 @@ describe('two-step sign-in', () => {
     expect(audit?.targetId).toBe(seeded.users.admin!.id);
   });
 });
+
+// QA release suite: the two-step management routes are outside the permission matrix (they act
+// on the caller's own account and need fresh proof), so their gates are pinned here.
+describe('two-step management routes (QA)', () => {
+  let seeded: SeededAgency;
+  let app: Express;
+
+  beforeEach(async () => {
+    await resetDb();
+    seeded = await seedAgency();
+    app = makeApp().app;
+  });
+
+  it('signed-out calls to setup, enable, recovery codes and disable get 401', async () => {
+    const agent = request.agent(app);
+    const pre = await getPreCsrf(agent);
+    for (const path of ['setup', 'enable', 'recovery-codes', 'disable']) {
+      const res = await agent
+        .post(`/api/v1/auth/mfa/${path}`)
+        .set('Origin', ORIGIN)
+        .set('X-CSRF-Token', pre)
+        .send({ password: PASSWORD, code: '123456' });
+      expect({ path, status: res.status }).toEqual({ path, status: 401 });
+    }
+  });
+
+  it('new recovery codes need the password and a code; the old ones stop working', async () => {
+    const email = seeded.users.salesA!.email;
+    const { secret, recoveryCodes, session } = await enroll(app, email);
+    const post = (body: object) =>
+      session.agent
+        .post('/api/v1/auth/mfa/recovery-codes')
+        .set('Origin', ORIGIN)
+        .set('X-CSRF-Token', session.csrf)
+        .send(body);
+    expect((await post({ password: 'not the password', code: nextCode(secret) })).status).toBe(422);
+    expect((await post({ password: PASSWORD })).status).toBe(422);
+    const fresh = await post({ password: PASSWORD, code: nextCode(secret) }).expect(200);
+    const codes = fresh.body.data.recoveryCodes as string[];
+    expect(codes).toHaveLength(10);
+    expect(codes).not.toContain(recoveryCodes[0]);
+    expect(await db.auditEvent.count({ where: { action: 'mfa.recovery_codes_replaced' } })).toBe(1);
+
+    const old = await passwordStep(app, email);
+    expect((await verify(old, { recoveryCode: recoveryCodes[0] })).status).toBe(422);
+    const next = await passwordStep(app, email);
+    await verify(next, { recoveryCode: codes[0] }).expect(200);
+  });
+});
