@@ -3,7 +3,7 @@
 import { handleJob, type WorkerDeps } from './handlers.js';
 import { pruneExpiredAuth } from '../lib/retention.js';
 import { pruneRateLimits } from '../middleware/rate-limit-store.js';
-import { buryAbandoned, claimJobs, completeJob, enqueue, failJob } from './outbox.js';
+import { buryAbandoned, claimJobs, completeJob, enqueue, failJob, renewClaim } from './outbox.js';
 
 export type { WorkerDeps } from './handlers.js';
 
@@ -16,24 +16,43 @@ export interface RunResult {
 /** Runs due jobs until none are left or `max` have run. Tests and the CLI call it directly. */
 export async function runDueJobs(deps: WorkerDeps, max = 200): Promise<RunResult> {
   const result: RunResult = { done: 0, retried: 0, dead: 0 };
-  while (result.done + result.retried + result.dead < max) {
-    const batch = await claimJobs(
-      deps.db,
-      Math.min(20, max - result.done - result.retried - result.dead),
-    );
+  // Jobs whose claim passed to another worker while this one waited; that worker reports them.
+  let lost = 0;
+  const handled = () => result.done + result.retried + result.dead + lost;
+  while (handled() < max) {
+    const batch = await claimJobs(deps.db, Math.min(20, max - handled()));
     if (batch.length === 0) break;
     for (const job of batch) {
+      if (!(await renewClaim(deps.db, job))) {
+        lost += 1;
+        deps.logger.warn({ jobId: job.id, kind: job.kind }, 'Job claim lost before it ran');
+        continue;
+      }
+      let completed: boolean;
       try {
         await handleJob(deps, job);
-        await completeJob(deps.db, job.id);
-        result.done += 1;
+        completed = await completeJob(deps.db, job);
       } catch (err) {
-        const dead = await failJob(deps.db, job, err);
-        if (dead) result.dead += 1;
-        else result.retried += 1;
+        const outcome = await failJob(deps.db, job, err);
+        if (outcome === 'dead') result.dead += 1;
+        else if (outcome === 'retry') result.retried += 1;
+        else lost += 1;
         deps.logger.warn(
-          { jobId: job.id, kind: job.kind, attempt: job.attempts, dead },
-          dead ? 'Job failed for good (dead letter)' : 'Job failed; retry scheduled',
+          { jobId: job.id, kind: job.kind, attempt: job.attempts, outcome },
+          outcome === 'dead'
+            ? 'Job failed for good (dead letter)'
+            : outcome === 'retry'
+              ? 'Job failed; retry scheduled'
+              : 'Job failed after its claim passed to another worker; not recorded',
+        );
+        continue;
+      }
+      if (completed) result.done += 1;
+      else {
+        lost += 1;
+        deps.logger.warn(
+          { jobId: job.id, kind: job.kind, attempt: job.attempts },
+          'Job finished after its claim passed to another worker; that worker records the outcome',
         );
       }
     }

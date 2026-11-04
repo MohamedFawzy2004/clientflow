@@ -86,11 +86,35 @@ export function backoffMs(attempt: number, random = Math.random): number {
   return Math.round(base * (0.8 + 0.4 * random()));
 }
 
-export async function completeJob(db: Db, id: string) {
-  await db.outboxJob.updateMany({
-    where: { id, state: 'RUNNING' },
+/**
+ * The claim a worker holds. Every claim counts an attempt, so (id, attempts) names one claim: a
+ * worker whose claim expired and was taken over no longer matches, and its writes change nothing.
+ */
+const claimOf = (job: ClaimedJob) => ({
+  id: job.id,
+  state: 'RUNNING' as const,
+  attempts: job.attempts,
+});
+
+/**
+ * Restarts the claim just before the job runs, so each job of a batch gets the full CLAIM_SECONDS
+ * and not what is left after the jobs before it. False: another worker took the job over.
+ */
+export async function renewClaim(db: Db, job: ClaimedJob, now = new Date()) {
+  const res = await db.outboxJob.updateMany({
+    where: claimOf(job),
+    data: { lockedUntil: new Date(now.getTime() + CLAIM_SECONDS * 1000) },
+  });
+  return res.count === 1;
+}
+
+/** False: the claim was lost to another worker, which now owns the outcome. */
+export async function completeJob(db: Db, job: ClaimedJob) {
+  const res = await db.outboxJob.updateMany({
+    where: claimOf(job),
     data: { state: 'DONE', lockedUntil: null, finishedAt: new Date(), lastError: null },
   });
+  return res.count === 1;
 }
 
 /** A short, safe description of a failure: the error class and the first line of its message. */
@@ -102,11 +126,19 @@ export function describeError(err: unknown): string {
   return `${name}: ${line}`.slice(0, 300);
 }
 
-/** Schedules a retry, or moves the job to the dead letter once it used all its attempts. */
-export async function failJob(db: Db, job: ClaimedJob, err: unknown, now = new Date()) {
+/**
+ * Schedules a retry, or moves the job to the dead letter once it used all its attempts. 'lost':
+ * the claim had passed to another worker, so this failure is not recorded.
+ */
+export async function failJob(
+  db: Db,
+  job: ClaimedJob,
+  err: unknown,
+  now = new Date(),
+): Promise<'retry' | 'dead' | 'lost'> {
   const dead = job.attempts >= job.maxAttempts;
-  await db.outboxJob.updateMany({
-    where: { id: job.id, state: 'RUNNING' },
+  const res = await db.outboxJob.updateMany({
+    where: claimOf(job),
     data: dead
       ? { state: 'DEAD', lockedUntil: null, finishedAt: now, lastError: describeError(err) }
       : {
@@ -116,7 +148,8 @@ export async function failJob(db: Db, job: ClaimedJob, err: unknown, now = new D
           lastError: describeError(err),
         },
   });
-  return dead;
+  if (res.count === 0) return 'lost';
+  return dead ? 'dead' : 'retry';
 }
 
 /** Jobs whose claim expired after their last attempt: nobody will run them again. */
