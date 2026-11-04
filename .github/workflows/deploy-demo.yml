@@ -1,0 +1,82 @@
+# Deploys the public portfolio demo (ADR-071) on Render Free. Manual only: Actions → "Deploy demo"
+# → Run workflow (from main). It refuses a commit whose CI did not pass, then calls Render's deploy
+# hook and waits until the demo answers again. Render builds the branch set on the service (main).
+#
+# Setup (owner, once): repository secret RENDER_DEMO_DEPLOY_HOOK (Render → service → Settings →
+# Deploy Hook; anyone with that URL can start a deploy) and repository variable DEMO_URL
+# (e.g. https://clientflow-demo.onrender.com). Optional: a "demo" environment with required
+# reviewers, so each deploy waits for your approval.
+name: Deploy demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy the demo
+    if: github.ref == 'refs/heads/main' && vars.DEMO_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: demo
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DEMO_URL: ${{ vars.DEMO_URL }}
+    steps:
+      - name: Require a green CI run on this commit
+        run: |
+          conclusion=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&event=push&status=completed" \
+            --jq '.workflow_runs[0].conclusion // "none"')
+          echo "CI on ${GITHUB_SHA}: ${conclusion}"
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::CI has not passed on ${GITHUB_SHA}. Nothing was deployed."
+            exit 1
+          fi
+
+      - name: Start the Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEMO_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Set the RENDER_DEMO_DEPLOY_HOOK repository secret."
+            exit 1
+          fi
+          # The URL is a secret: never printed, and curl stays quiet about it.
+          curl --fail --silent --show-error --max-time 30 -X POST "$HOOK" -o /dev/null
+          echo "Deploy started on Render for main (${GITHUB_SHA})."
+
+      - name: Wait until the demo answers
+        run: |
+          # Render builds the image, then the container migrates and rebuilds the demo before it
+          # listens. The previous release keeps answering until then, so give it time first.
+          sleep 240
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${DEMO_URL}/health/ready" || true)
+            if [ "$code" = "200" ]; then
+              echo "Ready after about $((240 + i * 30)) seconds."
+              exit 0
+            fi
+            echo "Not ready yet (HTTP ${code}), waiting…"
+            sleep 30
+          done
+          echo "::error::The demo did not report ready. Check the deploy log in Render, and roll back there if needed."
+          exit 1
+
+      - name: Check the public security headers
+        run: |
+          headers=$(curl -sS -D - -o /dev/null --max-time 60 "${DEMO_URL}/login")
+          for h in strict-transport-security content-security-policy x-content-type-options referrer-policy; do
+            if ! printf '%s' "$headers" | grep -qi "^${h}:"; then
+              echo "::error::Missing header: ${h}"
+              exit 1
+            fi
+          done
+          echo "Security headers present."

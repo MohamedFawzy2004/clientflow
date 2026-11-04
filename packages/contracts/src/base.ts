@@ -62,6 +62,8 @@ export type ErrorCode =
   | 'RATE_LIMITED'
   | 'SERVICE_UNAVAILABLE'
   | 'MFA_SETUP_REQUIRED'
+  /** The action is turned off in a public demo workspace (ADR-071). */
+  | 'DEMO_RESTRICTED'
   | 'INTERNAL_ERROR';
 
 export interface ApiErrorBody {
@@ -137,6 +139,20 @@ export interface MfaChallengeResponse {
 }
 
 export type LoginResult = LoginResponse | MfaChallengeResponse;
+
+// ---------------------------------------------------------------------------
+// Public demo (ADR-071)
+// ---------------------------------------------------------------------------
+
+/** One "Explore as …" entry on the demo sign-in page: a role and the fictional person behind it. */
+export interface DemoAccount {
+  role: Role;
+  name: string;
+}
+
+/** Signs a visitor in as the demo person for a role. Only answered on a demo deployment. */
+export const demoSessionRequestSchema = z.object({ role: z.enum(ROLES) }).strict();
+export type DemoSessionRequest = z.infer<typeof demoSessionRequestSchema>;
 
 // ---------------------------------------------------------------------------
 // Two-step sign-in (ADR-069)
@@ -345,8 +361,11 @@ export type EmailDelivery = 'sent' | 'failed' | 'sent_to_dev_sink' | 'disabled';
 
 export interface InvitationCreated {
   invitation: InvitationSummary;
-  /** Shown once to the inviter so the invite works even without email delivery. */
-  acceptUrl: string;
+  /**
+   * Shown once to the inviter only when the email did not reach an inbox, so the invite still
+   * works; null once it was sent (only the invitee holds the link).
+   */
+  acceptUrl: string | null;
   emailDelivery: EmailDelivery;
 }
 

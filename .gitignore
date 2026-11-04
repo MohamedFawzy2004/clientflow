@@ -14,6 +14,9 @@ apps/api/src/generated/
 *.local.json
 *.pem
 *.key
+# local staging: its settings and the exported Caddy root certificate
+deploy/staging/.env.staging
+*.crt
 
 # test & tooling output
 coverage/

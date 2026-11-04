@@ -3,6 +3,8 @@ import { loadEnv, mfaRequiredRoles } from './config/env.js';
 import { createDb, dbOptionsFromEnv } from './db/client.js';
 import { ClamdScanner } from './lib/clamav.js';
 import { createMailer } from './lib/mailer.js';
+import { DemoRefused, checkDemoTarget } from './demo/guard.js';
+import { resetDemo } from './demo/reset.js';
 import { deriveMfaKey } from './lib/totp.js';
 import { startWorker } from './jobs/worker.js';
 import { createLogger } from './middleware/logger.js';
@@ -35,6 +37,42 @@ const scanner = env.CLAMAV_HOST ? new ClamdScanner(env.CLAMAV_HOST, env.CLAMAV_P
 if (!scanner)
   logger.warn('No antivirus scanner configured (CLAMAV_HOST): uploads get built-in checks only');
 
+// Public demo (ADR-071): a fresh, fictional workspace every time the process starts. On a free
+// host the disk is wiped on each restart, so the seeded files are rebuilt with the data. Every
+// demo:reset safety check applies; a refusal stops the process before anything is deleted.
+if (env.DEMO_RESET_ON_BOOT) {
+  try {
+    const target = await checkDemoTarget(db, {
+      demoMode: env.DEMO_MODE,
+      confirm: env.DEMO_RESET_ON_BOOT,
+    });
+    const started = Date.now();
+    const result = await resetDemo({
+      db,
+      storage,
+      csrfSecret: env.CSRF_SECRET,
+      files: { maxBytes: env.FILE_MAX_BYTES, projectQuotaBytes: env.FILE_PROJECT_QUOTA_BYTES },
+    });
+    // Counts only: the generated passwords are never logged (visitors use "Explore as …").
+    logger.info(
+      {
+        database: target.database,
+        accounts: result.credentials.length,
+        removedFiles: result.removedFiles,
+        ms: Date.now() - started,
+      },
+      'Demo workspace rebuilt on start',
+    );
+  } catch (err) {
+    logger.fatal(
+      { err: err instanceof DemoRefused ? err.message : err },
+      'Demo reset on start failed; not starting',
+    );
+    await db.$disconnect();
+    process.exit(1);
+  }
+}
+
 const app = createApp({
   db,
   logger,
@@ -59,6 +97,7 @@ const app = createApp({
       key: deriveMfaKey(Buffer.from(env.FILE_ENCRYPTION_KEY, 'hex')),
       requiredRoles: mfaRequiredRoles(env),
     },
+    ...(env.DEMO_MODE ? { demo: { writesPerWindow: env.DEMO_WRITE_LIMIT_PER_IP } } : {}),
   },
 });
 

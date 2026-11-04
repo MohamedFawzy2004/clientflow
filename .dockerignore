@@ -5,9 +5,14 @@
 **/node_modules
 **/dist
 apps/api/src/generated
-.env
-.env.*
+**/.env
+**/.env.*
 !.env.example
+!**/*.env.example
+# Local staging secrets and the Caddy root certificate (ADR-071).
+deploy/staging/.env.staging
+*.crt
+**/*.crt
 **/*.local.json
 **/.mail-sink
 **/.storage
@@ -15,4 +20,13 @@ e2e/.auth
 test-results
 playwright-report
 docs/milestones/*-screenshots
+docs/portfolio/screenshots
 *.log
+# Security audit F12: local backups, demo and restore copies and crash dumps may hold real data.
+backups
+**/backups
+**/.demo-storage
+**/.restore-storage
+*.stackdump
+**/*.dump
+**/*.sql.gz
