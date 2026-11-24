@@ -6,6 +6,7 @@ import { formatDateTime, relativeDay } from '../../lib/format';
 import { Badge, EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
 import { useSession } from '../auth/session';
 import { useFollowUps } from '../deals/api';
+import { DocumentTitle } from '../../components/ui/page';
 
 function ItemRow({
   item,
@@ -187,6 +188,7 @@ export function FollowUpsPage() {
 
   return (
     <>
+      <DocumentTitle title={'Follow-ups'} />
       <h1 className="page-title">Follow-ups</h1>
       <p className="mt-1 text-sm text-muted">
         {user.role === 'SALES'

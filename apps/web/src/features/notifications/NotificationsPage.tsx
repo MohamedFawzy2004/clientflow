@@ -22,6 +22,7 @@ import { Button } from '../../components/ui/button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
 import { useSession } from '../auth/session';
 import { useCanNotify, useMarkRead, useNotifications, useUnreadCount } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 const ICONS: Record<NotificationCategory, typeof Receipt> = {
   CLIENT_ACTIVITY: MessageSquare,
@@ -175,6 +176,7 @@ export function NotificationsPage() {
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
+          <DocumentTitle title={'Notifications'} />
           <h1 className="page-title">Notifications</h1>
           <p className="mt-1 text-sm text-muted">
             {unread === 1 ? '1 unread' : `${unread} unread`}. Only you see your notifications.

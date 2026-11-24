@@ -7,6 +7,7 @@ import { ApiError } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 import { Banner, EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
 import { useCanNotify, usePreferences, useSavePreferences } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 type Choice = Pick<NotificationPreferenceView, 'inApp' | 'email'>;
 
@@ -81,6 +82,7 @@ export function NotificationSettingsPage() {
         <ArrowLeft aria-hidden className="size-4" />
         Notifications
       </Link>
+      <DocumentTitle title={'Notification settings'} />
       <h1 className="mt-1 page-title">Notification settings</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         Choose where each kind of notification reaches you. Emails only say that something happened

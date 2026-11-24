@@ -15,6 +15,12 @@ export function useDocumentTitle(title: string | null | undefined) {
   }, [title]);
 }
 
+/** Render-only form of useDocumentTitle, for pages that set the title after early returns. */
+export function DocumentTitle({ title }: { title: string | null | undefined }) {
+  useDocumentTitle(title);
+  return null;
+}
+
 export interface Crumb {
   label: string;
   to?: string;

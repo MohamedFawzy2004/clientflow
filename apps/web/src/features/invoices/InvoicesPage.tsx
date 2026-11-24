@@ -12,6 +12,7 @@ import { Field, Input, Select } from '../../components/ui/form';
 import { InvoiceStatusBadge, NOT_ACCOUNTING_NOTICE } from '../../components/finance/finance-ui';
 import { useSession } from '../auth/session';
 import { useInvoiceAction, useInvoiceOptions, useInvoices } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 export function invoiceMessage(err: unknown) {
   if (err instanceof ApiError && err.code === 'CONFLICT_STALE_VERSION') {
@@ -155,6 +156,7 @@ export function InvoicesPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
+          <DocumentTitle title={'Invoices'} />
           <h1 className="page-title">Invoices</h1>
           <p className="mt-1 text-sm text-muted">{NOT_ACCOUNTING_NOTICE}</p>
         </div>

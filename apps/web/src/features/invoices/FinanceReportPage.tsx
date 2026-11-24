@@ -17,6 +17,7 @@ import { InvoiceStatusBadge, NOT_ACCOUNTING_NOTICE } from '../../components/fina
 import { useSession } from '../auth/session';
 import { exportUrl, useFinanceReport } from './api';
 import { invoiceMessage } from './InvoicesPage';
+import { DocumentTitle } from '../../components/ui/page';
 
 function Totals({ t }: { t: FinanceTotals }) {
   const m = (v: string) => formatMoney(v, t.currency);
@@ -91,6 +92,7 @@ export function FinanceReportPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
+          <DocumentTitle title={'Finance report'} />
           <h1 className="page-title">Finance report</h1>
           <p className="mt-1 text-sm text-muted">{NOT_ACCOUNTING_NOTICE}</p>
         </div>

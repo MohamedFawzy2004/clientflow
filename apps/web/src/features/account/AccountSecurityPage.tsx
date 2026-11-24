@@ -9,6 +9,7 @@ import { Card } from '../../components/proposals/proposal-ui';
 import { useSession } from '../auth/session';
 import { useMfaDisable, useMfaRegenerate } from './api';
 import { RecoveryCodes, TwoStepSetup } from './TwoStepSetup';
+import { DocumentTitle } from '../../components/ui/page';
 
 const fieldError = (err: unknown, field: string) =>
   err instanceof ApiError ? err.fieldErrors?.[field]?.[0] : undefined;
@@ -90,6 +91,7 @@ export function AccountSecurityPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
+        <DocumentTitle title={'Account security'} />
         <h1 className="page-title">Account security</h1>
         <p className="mt-1 text-sm text-muted">Signed in as {user.email}.</p>
       </div>

@@ -21,6 +21,7 @@ import { useAssignableOwners, useDeal, useDealAction, usePipeline } from './api'
 import { DealFormDialog } from './DealFormDialog';
 import { DealProposalsCard } from '../proposals/DealProposalsCard';
 import { DealHandoffCard } from '../projects/DealHandoffCard';
+import { DocumentTitle } from '../../components/ui/page';
 
 type Dialog = 'edit' | 'lost' | 'won' | 'reopen' | 'reassign' | null;
 
@@ -260,6 +261,7 @@ export function DealDetailPage() {
 
       <header className="mt-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <DocumentTitle title={deal.title} />
           <h1 className="min-w-0 break-words page-title">{deal.title}</h1>
           <DealStatusBadge status={deal.status} />
         </div>

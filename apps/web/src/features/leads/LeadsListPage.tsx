@@ -29,6 +29,7 @@ import { useSession } from '../auth/session';
 import { AddLeadDialog } from './AddLeadDialog';
 import { useAssignableOwners } from '../deals/api';
 import { useLeads } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 const PAGE_SIZE = 25;
 const LIFECYCLE_FILTERS: Array<{ value: ContactLifecycle | ''; label: string }> = [
@@ -371,6 +372,7 @@ export function LeadsListPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
+          <DocumentTitle title={'Leads'} />
           <h1 className="page-title">Leads</h1>
           <p className="mt-1 text-sm text-muted">
             {user?.role === 'SALES' ? 'Leads assigned to you.' : 'Every lead in your agency.'}

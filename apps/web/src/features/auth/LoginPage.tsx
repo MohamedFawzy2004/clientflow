@@ -12,6 +12,7 @@ import { Wordmark } from '../../components/ui/brand';
 import { DemoSignIn } from './DemoSignIn';
 import { MfaStep } from './MfaStep';
 import { useDemoAccounts, useLogin, useSession } from './session';
+import { DocumentTitle } from '../../components/ui/page';
 
 /** Where each kind of user starts: staff in the app, client portal users in the portal. */
 export function homeFor(role: Role | undefined): string {
@@ -152,6 +153,7 @@ export function LoginPage() {
       <section className="flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-[400px]">
           <Wordmark className="mb-10 lg:hidden" />
+          <DocumentTitle title={'Sign in'} />
           <h1 className="page-title">Sign in</h1>
           <p className="mt-1.5 text-sm text-muted">
             {codeStep

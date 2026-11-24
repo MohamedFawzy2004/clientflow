@@ -13,6 +13,7 @@ import { Card } from '../../components/proposals/proposal-ui';
 import { ChangeStatusBadge } from '../../components/projects/delivery-ui';
 import { useSession } from '../auth/session';
 import { useChangeDecision, usePortalChange } from '../changes/api';
+import { DocumentTitle } from '../../components/ui/page';
 import { CommentsThread } from '../changes/CommentsThread';
 
 /** The client's explicit decision on the version they see (FR-S03, FR-S04). */
@@ -138,6 +139,7 @@ export function PortalChangePage() {
       </Link>
       <header className="mt-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <DocumentTitle title={`${c.reference} ${c.title}`} />
           <h1 className="min-w-0 break-words page-title">
             <span className="text-muted">{c.reference}</span> {c.title}
           </h1>

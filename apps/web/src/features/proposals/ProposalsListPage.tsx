@@ -13,6 +13,7 @@ import { Money } from '../../components/sales/sales-ui';
 import { ProposalStatusBadge } from '../../components/proposals/proposal-ui';
 import { useSession } from '../auth/session';
 import { useProposals } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 function isStatus(v: string | null): v is ProposalStatus {
   return v !== null && (PROPOSAL_STATUSES as readonly string[]).includes(v);
@@ -118,6 +119,7 @@ export function ProposalsListPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
+          <DocumentTitle title={'Proposals'} />
           <h1 className="page-title">Proposals</h1>
           <p className="mt-1 text-sm text-muted">
             {user?.role === 'SALES'

@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Wordmark } from '../../components/ui/brand';
 import { homeFor } from '../auth/LoginPage';
 import { useLogout, useSession } from '../auth/session';
+import { DocumentTitle } from '../../components/ui/page';
 import { TwoStepSetup } from './TwoStepSetup';
 
 /**
@@ -31,7 +32,8 @@ export function MfaRequiredPage() {
           </Button>
         </div>
         <div className="rounded-lg border border-border bg-surface p-5 shadow-card md:p-6">
-          <h1 className="flex items-center gap-2 text-[22px] font-semibold leading-7 text-text">
+          <DocumentTitle title="Turn on two-step sign-in" />
+          <h1 className="flex items-center gap-2 text-[22px] font-semibold leading-7 text-ink">
             <ShieldAlert aria-hidden className="size-5 text-warning" />
             Turn on two-step sign-in to continue
           </h1>

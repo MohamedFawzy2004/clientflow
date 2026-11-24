@@ -27,6 +27,7 @@ import {
   usePreviewImport,
   useUndoImport,
 } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 /** "1 contact", "3 contacts". */
 const count = (n: number, kind: ImportKind) =>
@@ -313,6 +314,7 @@ export function ImportPage() {
 
   return (
     <>
+      <DocumentTitle title={'Import from CSV'} />
       <h1 className="page-title">Import from CSV</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         Bring contacts or deals from a spreadsheet. You see every row before anything is saved,

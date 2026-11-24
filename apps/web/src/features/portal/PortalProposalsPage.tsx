@@ -7,6 +7,7 @@ import { Money } from '../../components/sales/sales-ui';
 import { ProposalStatusBadge } from '../../components/proposals/proposal-ui';
 import { useSession } from '../auth/session';
 import { usePortalProposals } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 export function PortalProposalsPage() {
   const { data: user } = useSession();
@@ -71,6 +72,7 @@ export function PortalProposalsPage() {
 
   return (
     <>
+      <DocumentTitle title={'Proposals'} />
       <h1 className="page-title">Proposals</h1>
       <p className="mt-1 text-sm text-muted">
         Proposals {user?.agency.name} shared with {user?.clientOrg?.name ?? 'you'}.

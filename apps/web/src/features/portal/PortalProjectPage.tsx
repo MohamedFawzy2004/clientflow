@@ -9,6 +9,7 @@ import { OverdueBadge, PortalDeliverableBadge } from '../../components/projects/
 import { useSession } from '../auth/session';
 import { usePortalProject } from './api';
 import { PortalChangesCard } from './PortalChanges';
+import { DocumentTitle } from '../../components/ui/page';
 
 /** One shared project: status, milestones and the published deliverables (FR-X03). */
 export function PortalProjectPage() {
@@ -64,6 +65,7 @@ export function PortalProjectPage() {
       {back}
       <header className="mt-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <DocumentTitle title={p.title} />
           <h1 className="min-w-0 break-words page-title">{p.title}</h1>
           <ProjectStateBadge state={p.state} />
         </div>

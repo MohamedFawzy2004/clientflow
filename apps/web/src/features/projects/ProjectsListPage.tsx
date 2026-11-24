@@ -29,6 +29,7 @@ import {
   useProjects,
 } from './api';
 import { ConvertDealDialog } from './ConvertDealDialog';
+import { DocumentTitle } from '../../components/ui/page';
 
 function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const { data: user } = useSession();
@@ -308,6 +309,7 @@ export function ProjectsListPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
+          <DocumentTitle title={'Projects'} />
           <h1 className="page-title">Projects</h1>
           <p className="mt-1 text-sm text-muted">Delivery work handed off from won deals.</p>
         </div>

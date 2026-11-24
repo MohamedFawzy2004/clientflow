@@ -11,6 +11,7 @@ import { Field, Input, Select } from '../../components/ui/form';
 import { useSession } from '../auth/session';
 import { useCostRates, useFinancePermissions, useSetCostRate } from './api';
 import { invoiceMessage } from './InvoicesPage';
+import { DocumentTitle } from '../../components/ui/page';
 
 function SetRateDialog({
   person,
@@ -122,6 +123,7 @@ export function CostRatesPage() {
   }
   return (
     <>
+      <DocumentTitle title={'Cost rates'} />
       <h1 className="page-title">Cost rates</h1>
       <p className="mt-1 text-sm text-muted">
         Internal hourly costs for estimating margin. Each change starts on a date and keeps the

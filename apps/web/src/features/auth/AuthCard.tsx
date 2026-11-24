@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { clearFragment, readTokenFromFragment } from '../../lib/api';
 import { Wordmark } from '../../components/ui/brand';
+import { DocumentTitle } from '../../components/ui/page';
 
 /** Centered layout for signed-out flows (invite, forgot, reset). */
 export function AuthCard({
@@ -22,6 +23,7 @@ export function AuthCard({
           <Wordmark />
         </Link>
         <div className="rounded-xl border border-border bg-surface p-5 shadow-card sm:p-8">
+          <DocumentTitle title={title} />
           <h1 className="page-title">{title}</h1>
           {subtitle ? <div className="mt-1.5 text-sm text-muted">{subtitle}</div> : null}
           <div className="mt-6">{children}</div>

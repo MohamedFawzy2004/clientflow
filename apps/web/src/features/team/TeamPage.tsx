@@ -19,6 +19,7 @@ import { useSession } from '../auth/session';
 import { useInvitationAction, useInvitations, useMembers } from './api';
 import { InvitationLinkNotice, InviteDialog } from './InviteDialog';
 import { ManageMemberDialog, manageBlockReason } from './ManageMemberDialog';
+import { DocumentTitle } from '../../components/ui/page';
 
 function StatusBadge({ status }: { status: TeamMember['status'] }) {
   return status === 'ACTIVE' ? (
@@ -371,6 +372,7 @@ export function TeamPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
+          <DocumentTitle title={'Team'} />
           <h1 className="page-title">Team</h1>
           <p className="mt-1 text-sm text-muted">
             Who can sign in to {user.agency.name}, and what they can do.

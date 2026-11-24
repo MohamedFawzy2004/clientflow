@@ -20,6 +20,7 @@ import { useSession } from '../auth/session';
 import { startDownload } from '../delivery/FilesPage';
 import { CommentsThread } from '../changes/CommentsThread';
 import { useDeliverableDecision, usePortalDeliverable } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 type Decision = DeliverableDecisionInput['decision'];
 
@@ -162,6 +163,7 @@ export function PortalDeliverablePage() {
       </Link>
       <header className="mt-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <DocumentTitle title={d.title} />
           <h1 className="min-w-0 break-words page-title">{d.title}</h1>
           <PortalDeliverableBadge state={d.state} />
           {d.overdue ? <OverdueBadge /> : null}

@@ -28,6 +28,7 @@ import { useSession } from '../auth/session';
 import { useFinancePermissions, useInvoice, useInvoiceAction, useProjectFinance } from './api';
 import { ProjectMoney } from './ProjectMoney';
 import { invoiceMessage } from './InvoicesPage';
+import { DocumentTitle } from '../../components/ui/page';
 
 type Line = InvoiceItemInput & { key: string };
 
@@ -581,6 +582,7 @@ export function InvoicePage() {
       <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <DocumentTitle title={inv.reference} />
             <h1 className="page-title">{inv.reference}</h1>
             <InvoiceStatusBadge status={inv.displayStatus} />
             {inv.published ? <Badge tone="info">In the client portal</Badge> : null}
