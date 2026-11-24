@@ -75,7 +75,7 @@ function NavSection({
           aria-controls={listId}
           className={cn(
             'group mb-1 flex h-8 w-full items-center justify-between rounded-md px-3 text-left text-xs font-medium text-nav-muted hover:text-white',
-            rail && 'sr-only lg:not-sr-only',
+            rail && 'max-lg:sr-only',
           )}
         >
           {group.label}
@@ -108,7 +108,7 @@ function NavSection({
                 }
               >
                 <Icon aria-hidden className="size-[18px] shrink-0" />
-                <span className={cn('min-w-0 flex-1 truncate', rail && 'sr-only lg:not-sr-only')}>
+                <span className={cn('min-w-0 flex-1 truncate', rail && 'max-lg:sr-only')}>
                   {label}
                 </span>
                 {count && count.total > 0 ? (
