@@ -19,6 +19,7 @@ import {
 } from '@clientflow/contracts';
 import { useBoard, useCanSeeDeals, useFollowUps } from '../deals/api';
 import { DeliveryDashboardSection } from './DeliveryDashboard';
+import { ExecutiveStrip } from './ExecutiveStrip';
 import { RemindersCard, SalesDashboard } from './SalesDashboard';
 import { useLeadSources, useWonByMonth } from './insights';
 import { canSeeLeads } from '../../app/nav';
@@ -601,6 +602,7 @@ export function DashboardPage() {
         }`}
       />
       <div className="mt-7 flex flex-col gap-10">
+        <ExecutiveStrip />
         {sales ? (
           <SalesCommandCenter timeZone={timeZone} canInvite={can(user.role, 'team.invite')} />
         ) : null}
