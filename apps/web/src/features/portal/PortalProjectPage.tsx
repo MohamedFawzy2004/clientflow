@@ -61,7 +61,7 @@ export function PortalSchedule({
         />
         {dayNo(today) >= lo && dayNo(today) <= hi ? (
           <div className="absolute top-0 h-7 w-px bg-ink" style={{ left: `${elapsed}%` }}>
-            <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium text-ink">
+            <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium text-ink">
               Today
             </span>
           </div>
@@ -80,7 +80,7 @@ export function PortalSchedule({
                     ? 'bg-danger'
                     : m.status === 'IN_PROGRESS'
                       ? 'bg-violet'
-                      : 'bg-control',
+                      : 'border-control! bg-surface',
               )}
               style={{ left: at(m.dueOn!) }}
             />
@@ -99,7 +99,8 @@ export function PortalSchedule({
           <span aria-hidden className="size-2.5 rounded-full bg-violet" /> In progress
         </li>
         <li className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-control" /> Planned
+          <span aria-hidden className="size-2.5 rounded-full border-2 border-control bg-surface" />{' '}
+          Planned
         </li>
         <li className="flex items-center gap-1.5">
           <span aria-hidden className="size-2.5 rounded-full bg-danger" /> Past its date

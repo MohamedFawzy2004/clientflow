@@ -326,7 +326,7 @@ export function ExecutiveStrip() {
               >
                 {t.note}
               </dd>
-              <dd className="mt-2 text-[11px] leading-4 text-muted">{t.definition}</dd>
+              <dd className="mt-2 text-xs leading-4 text-muted">{t.definition}</dd>
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 ring-2 ring-inset ring-primary opacity-0 group-focus-within:opacity-100"
