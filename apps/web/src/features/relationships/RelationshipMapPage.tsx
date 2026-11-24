@@ -213,6 +213,15 @@ function GraphSvg({
       if (e.from === selected) near.add(e.to);
       if (e.to === selected) near.add(e.from);
     }
+  // Nodes that have a child one ring further out.
+  const parents = new Set(
+    edges.flatMap((e) => {
+      const a = byId.get(e.from);
+      const b = byId.get(e.to);
+      if (!a || !b) return [];
+      return a.depth < b.depth ? [a.id] : b.depth < a.depth ? [b.id] : [];
+    }),
+  );
   const key = (e: KeyboardEvent, id: string) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -263,14 +272,6 @@ function GraphSvg({
         const s = KIND_STYLE[n.kind];
         const isSel = n.id === selected;
         const dim = selected && !isSel && !near.has(n.id);
-        // Labels sit outside the node, pointing away from the centre, so fans do not collide.
-        const dist = Math.hypot(n.x, n.y);
-        const cos = dist ? n.x / dist : 0;
-        const sin = dist ? n.y / dist : 1;
-        const side =
-          n.depth !== 1 ? 'middle' : cos > 0.35 ? 'start' : cos < -0.35 ? 'end' : 'middle';
-        const lx = side === 'middle' ? 0 : cos * (n.r + 8);
-        const ly = side === 'middle' ? (sin >= 0 ? n.r + 17 : -n.r - 9) : sin * (n.r + 8) + 4.5;
         return (
           <g
             key={n.id}
@@ -297,23 +298,45 @@ function GraphSvg({
               <circle r={n.r + 5} fill="none" stroke="var(--color-ink)" strokeWidth={2} />
             ) : null}
             <Shape kind={n.kind} r={n.r} fill={s.fill} stroke={s.stroke} strokeWidth={2} />
-            <text
-              x={lx}
-              y={ly}
-              textAnchor={side}
-              className="pointer-events-none select-none"
-              fontSize={n.kind === 'contact' ? 16 : 13}
-              fontWeight={n.kind === 'contact' || isSel ? 640 : 500}
-              fill="var(--color-ink)"
-              stroke="var(--color-bg)"
-              strokeWidth={4}
-              paintOrder="stroke"
-            >
-              {truncate(n.label, n.kind === 'contact' ? 28 : 22)}
-            </text>
           </g>
         );
       })}
+      {/* Labels draw after every shape, so no node covers another node's name. */}
+      <g aria-hidden className="pointer-events-none select-none">
+        {placed.map((n) => {
+          const isSel = n.id === selected;
+          const dim = selected && !isSel && !near.has(n.id);
+          // Leaves label outward, away from the centre. A node with children labels sideways
+          // (along its ring), because its children fan out on the outward side.
+          const dist = Math.hypot(n.x, n.y);
+          const out = dist ? [n.x / dist, n.y / dist] : [0, 1];
+          // Alternate the side per ring so a parent's label and its child's do not stack.
+          const turn = n.depth % 2 === 1 ? 1 : -1;
+          const [cos, sin] =
+            parents.has(n.id) && n.depth > 0 ? [-out[1]! * turn, out[0]! * turn] : out;
+          const radial = n.depth === 1 || parents.has(n.id);
+          const side = !radial ? 'middle' : cos! > 0.35 ? 'start' : cos! < -0.35 ? 'end' : 'middle';
+          const lx = side === 'middle' ? 0 : cos! * (n.r + 8);
+          const ly = side === 'middle' ? (sin! >= 0 ? n.r + 17 : -n.r - 9) : sin! * (n.r + 8) + 4.5;
+          return (
+            <g key={n.id} transform={`translate(${n.x} ${n.y})`} opacity={dim ? 0.4 : 1}>
+              <text
+                x={lx}
+                y={ly}
+                textAnchor={side}
+                fontSize={n.kind === 'contact' ? 16 : 13}
+                fontWeight={n.kind === 'contact' || isSel ? 640 : 500}
+                fill="var(--color-ink)"
+                stroke="var(--color-bg)"
+                strokeWidth={4}
+                paintOrder="stroke"
+              >
+                {truncate(n.label, n.kind === 'contact' ? 28 : 22)}
+              </text>
+            </g>
+          );
+        })}
+      </g>
     </svg>
   );
 }
@@ -564,7 +587,9 @@ function MapBody({ lead }: { lead: ContactWithDeals }) {
           description={
             loading
               ? 'Loading linked proposals, projects and invoices…'
-              : 'Size shows how many links a record has here. Shapes and colours show the type.'
+              : view === 'map'
+                ? 'Size shows how many links a record has here. Shapes and colours show the type.'
+                : 'Each line is a stored link. Indented records hang off the deal above them.'
           }
         >
           {view === 'map' ? (
