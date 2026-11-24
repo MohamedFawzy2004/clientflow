@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { changePercent, periodSums } from '../src/features/dashboard/ExecutiveStrip';
+import { changePercent, expectedTiles, periodSums } from '../src/features/dashboard/ExecutiveStrip';
+import { can, canAny, type Role } from '@clientflow/contracts';
 
 describe('executive strip maths', () => {
   it('compares periods in whole percent from integers, and says nothing when there was nothing', () => {
@@ -30,5 +31,23 @@ describe('executive strip maths', () => {
     const s = periodSums([{ v: 5n }], 3, (p) => [['EGP', p.v]]);
     expect(s.now).toEqual({ EGP: 5n });
     expect(s.before).toEqual({});
+  });
+
+  it('knows each role tile count before data arrives, so loading does not shift the page', () => {
+    const count = (role: Role) =>
+      expectedTiles({
+        sales: can(role, 'dashboard.sales'),
+        delivery: can(role, 'delivery.work'),
+        invoices: canAny(role, ['invoices.read.all', 'invoices.read.project']),
+        financeView: can(role, 'finance.view'),
+      });
+    // Owner: 3 sales + received + outstanding + margin + 2 delivery.
+    expect(count('OWNER')).toBe(8);
+    expect(count('SALES')).toBe(3);
+    // Finance: received + invoiced + outstanding + margin.
+    expect(count('FINANCE')).toBe(4);
+    // PM: received + invoiced (project invoices) + 2 delivery.
+    expect(count('PM')).toBe(4);
+    expect(count('MEMBER')).toBe(2);
   });
 });

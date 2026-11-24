@@ -69,6 +69,33 @@ function compareMoney(now: Money, before: Money, period: string): Pick<Tile, 'no
 }
 
 /**
+ * How many tiles a role gets, from its permissions alone, so the loading grid has the final
+ * shape and the page below does not jump when the data arrives (layout shift).
+ */
+export function expectedTiles(p: {
+  sales: boolean;
+  delivery: boolean;
+  invoices: boolean;
+  financeView: boolean;
+}) {
+  return (
+    (p.sales ? 3 : 0) +
+    (p.invoices ? (p.sales ? 1 : 2) : 0) +
+    (p.financeView ? 2 : 0) +
+    (p.delivery ? 2 : 0)
+  );
+}
+
+/** Grid columns for a strip of N tiles: no hole in the last row at any width. */
+const gridClass = (count: number) =>
+  cn(
+    'grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border min-[420px]:grid-cols-2',
+    count % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-4',
+  );
+const cellSpan = (count: number, i: number) =>
+  count % 2 === 1 && i === count - 1 && 'min-[420px]:col-span-2 lg:col-span-1';
+
+/**
  * The executive strip: the agency's position in one row, each tile from a permission-scoped
  * endpoint (ADR-072 and the finance report), with its rule stated and a link to the records
  * behind it. A role sees only the tiles its permissions can read.
@@ -92,6 +119,7 @@ export function ExecutiveStrip() {
   const span = n === 1 ? 'This month' : 'Last 3 months';
   const today = todayIn(user.agency.timezone);
   const tiles: Tile[] = [];
+  const expected = expectedTiles({ sales, delivery, invoices, financeView });
   const pending =
     (sales && !s.data) ||
     (delivery && !d.data) ||
@@ -272,23 +300,40 @@ export function ExecutiveStrip() {
           ]}
         />
       </div>
-      {pending && tiles.length === 0 ? (
-        <Skeleton className="h-36" />
+      {pending ? (
+        // Same grid and line heights as a loaded tile: label, figure, note, two-line rule.
+        <div aria-hidden className={gridClass(expected)}>
+          {Array.from({ length: expected }, (_, i) => (
+            <div
+              key={i}
+              className={cn('flex flex-col bg-surface px-4 py-3.5', cellSpan(expected, i))}
+            >
+              <span className="flex h-4 items-center">
+                <Skeleton className="h-3 w-24" />
+              </span>
+              <span className="flex mt-1 h-7 items-center">
+                <Skeleton className="h-5 w-32" />
+              </span>
+              <span className="flex mt-1 h-4 items-center">
+                <Skeleton className="h-3 w-28" />
+              </span>
+              <span className="flex mt-2 h-4 items-center">
+                <Skeleton className="h-3 w-full" />
+              </span>
+              <span className="flex h-4 items-center">
+                <Skeleton className="h-3 w-2/3" />
+              </span>
+            </div>
+          ))}
+        </div>
       ) : (
-        <dl
-          className={cn(
-            'grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border min-[420px]:grid-cols-2',
-            tiles.length % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-4',
-          )}
-        >
+        <dl className={gridClass(tiles.length)}>
           {tiles.map((t, i) => (
             <div
               key={t.key}
               className={cn(
                 'group relative flex min-w-0 flex-col bg-surface px-4 py-3.5',
-                tiles.length % 2 === 1 &&
-                  i === tiles.length - 1 &&
-                  'min-[420px]:col-span-2 lg:col-span-1',
+                cellSpan(tiles.length, i),
               )}
             >
               <dt className="flex items-center justify-between gap-2 text-xs text-muted">
