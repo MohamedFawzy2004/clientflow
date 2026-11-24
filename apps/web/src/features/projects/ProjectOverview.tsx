@@ -536,7 +536,17 @@ export function ProjectOverview() {
         <Team p={p} manage={manage} />
         {manage ? <PortalAccessCard project={p} /> : null}
         <Card title="History">
-          <Timeline entries={p.activities} timeZone={timeZone} />
+          {/* Long histories scroll inside the card instead of stretching the page. */}
+          <div
+            role="group"
+            aria-label="Project history, newest first"
+            // A scrolling area must take focus so keyboard users can scroll it (axe scrollable-region-focusable).
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+            tabIndex={0}
+            className="-mx-1 max-h-[560px] overflow-y-auto px-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <Timeline entries={p.activities} timeZone={timeZone} />
+          </div>
         </Card>
       </div>
     </div>

@@ -18,47 +18,74 @@ import { useSession } from '../auth/session';
 import { exportUrl, useFinanceReport } from './api';
 import { invoiceMessage } from './InvoicesPage';
 import { DocumentTitle } from '../../components/ui/page';
+import { SEQ } from '../../components/charts/charts';
+
+/** Age buckets run from not yet due to the oldest, so they share one hue, light to dark. */
+const AGING_STEPS = [SEQ[0], SEQ[1], SEQ[2], SEQ[3], SEQ[5]] as const;
 
 function Totals({ t }: { t: FinanceTotals }) {
   const m = (v: string) => formatMoney(v, t.currency);
+  const buckets = [
+    ['Not yet due', t.aging.current],
+    ['1–30 days', t.aging.d1to30],
+    ['31–60 days', t.aging.d31to60],
+    ['61–90 days', t.aging.d61to90],
+    ['Over 90 days', t.aging.over90],
+  ] as const;
+  // Widths only: Number() is precise enough to draw a share, never to show an amount.
+  const open = buckets.reduce((s, [, v]) => s + Number(v), 0);
+  const figures = [
+    { label: `Invoiced (${t.invoiced.count})`, value: t.invoiced.totalMinor, danger: false },
+    { label: 'Received', value: t.receivedMinor, danger: false },
+    { label: 'Outstanding', value: t.outstandingMinor, danger: false },
+    {
+      label: `Overdue (${t.overdue.count})`,
+      value: t.overdue.balanceMinor,
+      danger: t.overdue.count > 0,
+    },
+  ];
   return (
     <Card title={`In ${t.currency}`}>
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div>
-          <dt className="text-xs text-muted">Invoiced ({t.invoiced.count})</dt>
-          <dd className="font-semibold tabular-nums text-text">{m(t.invoiced.totalMinor)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted">Received</dt>
-          <dd className="font-semibold tabular-nums text-text">{m(t.receivedMinor)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted">Outstanding</dt>
-          <dd className="font-semibold tabular-nums text-text">{m(t.outstandingMinor)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted">Overdue ({t.overdue.count})</dt>
-          <dd
-            className={`font-semibold tabular-nums ${t.overdue.count > 0 ? 'text-danger' : 'text-text'}`}
-          >
-            {m(t.overdue.balanceMinor)}
-          </dd>
-        </div>
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+        {figures.map((f) => (
+          <div key={f.label} className="min-w-0">
+            <dt className="text-[13px] text-muted">{f.label}</dt>
+            <dd
+              className={`figure mt-0.5 truncate text-[22px] leading-7 ${f.danger ? 'text-danger' : 'text-ink'}`}
+            >
+              {m(f.value)}
+            </dd>
+          </div>
+        ))}
       </dl>
-      <h3 className="mt-4 text-[13px] font-semibold text-text">Open balance by days past due</h3>
-      <dl className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
-        {(
-          [
-            ['Not yet due', t.aging.current],
-            ['1–30 days', t.aging.d1to30],
-            ['31–60 days', t.aging.d31to60],
-            ['61–90 days', t.aging.d61to90],
-            ['Over 90 days', t.aging.over90],
-          ] as const
-        ).map(([label, v]) => (
-          <div key={label} className="rounded-md bg-surface-alt/60 px-2.5 py-2">
-            <dt className="text-xs text-muted">{label}</dt>
-            <dd className="tabular-nums text-text">{m(v)}</dd>
+      <h3 className="mt-6 text-[13px] font-semibold text-ink">Open balance by days past due</h3>
+      {open > 0 ? (
+        <div aria-hidden className="mt-2 flex h-3 gap-[2px] overflow-hidden rounded-sm">
+          {buckets.map(([label, v], i) =>
+            Number(v) > 0 ? (
+              <span
+                key={label}
+                className="chart-mark"
+                style={{ width: `${(Number(v) / open) * 100}%`, background: AGING_STEPS[i] }}
+              />
+            ) : null,
+          )}
+        </div>
+      ) : (
+        <p className="mt-1 text-[13px] text-muted">Nothing is open in {t.currency}.</p>
+      )}
+      <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-2 text-sm min-[420px]:grid-cols-2 sm:grid-cols-5">
+        {buckets.map(([label, v], i) => (
+          <div key={label} className="flex min-w-0 items-start gap-2">
+            <span
+              aria-hidden
+              className="mt-1 size-2.5 shrink-0 rounded-[2px]"
+              style={{ background: AGING_STEPS[i] }}
+            />
+            <div className="min-w-0">
+              <dt className="text-xs text-muted">{label}</dt>
+              <dd className="truncate text-ink tabular">{m(v)}</dd>
+            </div>
           </div>
         ))}
       </dl>
