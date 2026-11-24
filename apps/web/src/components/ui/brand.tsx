@@ -7,16 +7,16 @@ import { cn, initials } from '../../lib/format';
 export function LogoMark({ className, inverse }: { className?: string; inverse?: boolean }) {
   return (
     <svg viewBox="0 0 32 32" aria-hidden className={cn('size-8', className)}>
-      <rect width="32" height="32" rx="7" fill={inverse ? '#A5D6B5' : '#142D2A'} />
+      <rect width="32" height="32" rx="7" fill={inverse ? '#64BBA1' : '#102C28'} />
       <path
         d="M8.5 21.5c4.2 0 5.3-11 9.6-11h5.4"
-        stroke={inverse ? '#142D2A' : '#A5D6B5'}
+        stroke={inverse ? '#102C28' : '#64BBA1'}
         strokeWidth="2.2"
         strokeLinecap="round"
         fill="none"
       />
-      <circle cx="8.5" cy="21.5" r="2.6" fill={inverse ? '#142D2A' : '#FFFFFF'} />
-      <circle cx="23.5" cy="10.5" r="2.6" fill={inverse ? '#142D2A' : '#FFFFFF'} />
+      <circle cx="8.5" cy="21.5" r="2.6" fill={inverse ? '#102C28' : '#FFFFFF'} />
+      <circle cx="23.5" cy="10.5" r="2.6" fill={inverse ? '#102C28' : '#FFFFFF'} />
     </svg>
   );
 }

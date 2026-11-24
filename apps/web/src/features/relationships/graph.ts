@@ -3,6 +3,7 @@ import type {
   InvoiceSummary,
   ProjectSummary,
   ProposalSummary,
+  RelationshipGraphData,
 } from '@clientflow/contracts';
 
 /**
@@ -18,7 +19,8 @@ import type {
  * of links the node has in this graph (its degree), which the legend states.
  */
 
-export type NodeKind = 'contact' | 'person' | 'org' | 'deal' | 'proposal' | 'project' | 'invoice';
+export type NodeKind =
+  'contact' | 'person' | 'org' | 'deal' | 'proposal' | 'project' | 'invoice' | 'deliverable';
 
 export interface GraphNode {
   id: string;
@@ -50,6 +52,7 @@ export const KIND_LABELS: Record<NodeKind, string> = {
   proposal: 'Proposal',
   project: 'Project',
   invoice: 'Invoice',
+  deliverable: 'Deliverable',
 };
 
 /** Filterable relationship types (the focus contact is always shown). */
@@ -60,7 +63,11 @@ export const FILTER_KINDS: Array<Exclude<NodeKind, 'contact'>> = [
   'proposal',
   'project',
   'invoice',
+  'deliverable',
 ];
+
+/** People links (owner, manager) draw dashed; record links draw solid. */
+export const PEOPLE_LINKS = new Set(['owned by', 'managed by']);
 
 export function buildGraph(input: {
   contact: ContactWithDeals;
@@ -186,6 +193,129 @@ export function buildGraph(input: {
   return { nodes: [...nodes.values()], edges };
 }
 
+/**
+ * The same graph from `GET /contacts/:id/graph` (ADR-072). The server applies every read scope
+ * and returns stored keys only; this only turns them into nodes and links. Kinds the viewer cannot
+ * read arrive empty, so they never appear, not even as a count.
+ */
+export function buildServerGraph(
+  data: RelationshipGraphData,
+  money: (minor: string, currency: string) => string,
+): RelationshipGraph {
+  const { contact } = data;
+  const nodes = new Map<string, GraphNode>();
+  const edges: GraphEdge[] = [];
+  const add = (n: Omit<GraphNode, 'degree'>) => {
+    if (!nodes.has(n.id)) nodes.set(n.id, { ...n, degree: 0 });
+    return n.id;
+  };
+  const link = (from: string, to: string, label: string) => {
+    if (!nodes.has(from) || !nodes.has(to)) return;
+    if (edges.some((e) => e.from === from && e.to === to)) return;
+    edges.push({ from, to, label });
+  };
+  const person = (p: { id: string; name: string }, parent: string | null) =>
+    add({
+      id: `person:${p.id}`,
+      kind: 'person',
+      label: p.name,
+      detail: KIND_LABELS.person,
+      href: null,
+      parent,
+    });
+  const root = add({
+    id: `contact:${contact.id}`,
+    kind: 'contact',
+    label: contact.fullName,
+    detail: contact.companyName ?? (contact.lifecycle === 'CUSTOMER' ? 'Customer' : 'Lead'),
+    href: `/app/leads/${contact.id}`,
+    parent: null,
+  });
+  link(root, person(contact.owner, null), 'owned by');
+  if (contact.clientOrg) {
+    const org = add({
+      id: `org:${contact.clientOrg.id}`,
+      kind: 'org',
+      label: contact.clientOrg.name,
+      detail: KIND_LABELS.org,
+      href: null,
+      parent: null,
+    });
+    link(root, org, 'belongs to');
+  }
+  for (const d of data.deals) {
+    const id = add({
+      id: `deal:${d.id}`,
+      kind: 'deal',
+      label: d.title,
+      detail: `${money(d.amountMinor, d.currency)}, ${
+        d.status === 'OPEN' ? d.stage : d.status === 'WON' ? 'won' : 'lost'
+      }`,
+      href: `/app/deals/${d.id}`,
+      parent: null,
+    });
+    link(root, id, 'deal');
+    if (d.owner.id !== contact.owner.id) link(id, person(d.owner, id), 'owned by');
+  }
+  for (const p of data.proposals) {
+    const parent = `deal:${p.dealId}`;
+    const id = add({
+      id: `proposal:${p.id}`,
+      kind: 'proposal',
+      label: p.reference,
+      detail: `${p.title}, ${money(p.totalMinor, p.currency)}`,
+      href: `/app/proposals/${p.id}`,
+      parent,
+    });
+    link(parent, id, 'proposal');
+  }
+  for (const p of data.projects) {
+    // A project reached through a deal hangs off that deal; one linked only to the contact
+    // hangs off the contact.
+    const viaDeal = p.dealId && nodes.has(`deal:${p.dealId}`) ? `deal:${p.dealId}` : null;
+    const id = add({
+      id: `project:${p.id}`,
+      kind: 'project',
+      label: p.title,
+      detail: `${p.milestones.done}/${p.milestones.total} milestones done`,
+      href: `/app/projects/${p.id}`,
+      parent: viaDeal,
+    });
+    link(viaDeal ?? root, id, viaDeal ? 'handed off to' : 'project');
+    link(id, person(p.manager, viaDeal ?? id), 'managed by');
+  }
+  const status = (s: string) => s.toLowerCase().replace(/_/g, ' ');
+  for (const i of data.invoices) {
+    const project = nodes.get(`project:${i.projectId}`);
+    const id = add({
+      id: `invoice:${i.id}`,
+      kind: 'invoice',
+      label: i.reference,
+      detail: `${money(i.totalMinor, i.currency)}, ${status(i.status)}`,
+      href: `/app/invoices/${i.id}`,
+      parent: project?.parent ?? project?.id ?? null,
+    });
+    link(`project:${i.projectId}`, id, 'invoice');
+  }
+  for (const d of data.deliverables) {
+    const project = nodes.get(`project:${d.projectId}`);
+    const id = add({
+      id: `deliverable:${d.id}`,
+      kind: 'deliverable',
+      label: d.title,
+      detail: `Deliverable, ${status(d.status)}`,
+      href: `/app/projects/${d.projectId}/deliverables/${d.id}`,
+      parent: project?.parent ?? project?.id ?? null,
+    });
+    link(`project:${d.projectId}`, id, 'deliverable');
+  }
+  for (const e of edges) {
+    nodes.get(e.from)!.degree += 1;
+    nodes.get(e.to)!.degree += 1;
+  }
+  return { nodes: [...nodes.values()], edges };
+}
+
 export interface Placed extends GraphNode {
   x: number;
   y: number;
@@ -201,6 +331,7 @@ const KIND_ORDER: NodeKind[] = [
   'proposal',
   'project',
   'invoice',
+  'deliverable',
 ];
 
 /**

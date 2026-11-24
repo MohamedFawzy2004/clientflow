@@ -27,6 +27,7 @@ function ProjectTabs({ id, work }: { id: string; work: boolean }) {
     { to: 'changes', label: 'Changes', end: false },
     ...(work
       ? [
+          { to: 'plan', label: 'Plan', end: false },
           { to: 'board', label: 'Tasks', end: false },
           { to: 'deliverables', label: 'Deliverables', end: false },
           { to: 'files', label: 'Files', end: false },

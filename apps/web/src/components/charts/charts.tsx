@@ -14,7 +14,7 @@ import { formatMoney, type Currency } from '@clientflow/contracts';
 import { cn } from '../../lib/format';
 
 export const SERIES = ['#0B8A78', '#7464C7', '#B07A12', '#B04A6E'] as const;
-export const SEQ = ['#A5D6B5', '#6DBB9F', '#2F9B86', '#0B7A6A', '#145A50', '#142D2A'] as const;
+export const SEQ = ['#A5D6B5', '#6DBB9F', '#2F9B86', '#0B7A6A', '#145A50', '#102C28'] as const;
 
 /** Picks n ordered steps from the mint→forest ramp (for ordered categories such as stages). */
 export function seqSteps(n: number): string[] {
@@ -182,7 +182,7 @@ export function BarList({
   valueHeader,
   partHeader,
   color = SERIES[0],
-  partColor = '#142D2A',
+  partColor = '#102C28',
   empty = 'Nothing to show yet.',
 }: {
   rows: BarRow[];
@@ -421,7 +421,7 @@ export function DayHeat({ days, caption }: { days: DayCell[]; caption: string })
   const shade = (c: number) => {
     if (c === 0) return { bg: '#F3F1EC', fg: '#5A6763' };
     const step = Math.min(SEQ.length - 1, Math.ceil((c / max) * 4));
-    return { bg: SEQ[step] ?? SEQ[3], fg: step >= 2 ? '#FFFFFF' : '#142D2A' };
+    return { bg: SEQ[step] ?? SEQ[3], fg: step >= 2 ? '#FFFFFF' : '#102C28' };
   };
   // Seven columns on phones (two weeks wrap into two rows), one row of fourteen from 640 px.
   return (

@@ -19,6 +19,7 @@ import { exportUrl, useFinanceReport } from './api';
 import { invoiceMessage } from './InvoicesPage';
 import { DocumentTitle } from '../../components/ui/page';
 import { SEQ } from '../../components/charts/charts';
+import { FinanceTrends } from '../intelligence/FinanceTrends';
 
 /** Age buckets run from not yet due to the oldest, so they share one hue, light to dark. */
 const AGING_STEPS = [SEQ[0], SEQ[1], SEQ[2], SEQ[3], SEQ[5]] as const;
@@ -231,6 +232,7 @@ export function FinanceReportPage() {
           </>
         )}
       </div>
+      <FinanceTrends />
     </>
   );
 }

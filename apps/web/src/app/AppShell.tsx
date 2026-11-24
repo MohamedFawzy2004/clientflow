@@ -1,6 +1,17 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
-import { ChevronDown, FileUp, LogOut, Menu, Plus, Search, UserPlus, X } from 'lucide-react';
+import {
+  ChevronDown,
+  FileUp,
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Search,
+  UserPlus,
+  X,
+} from 'lucide-react';
 import { can, ROLE_LABELS, type SessionUser } from '@clientflow/contracts';
 import { toast } from 'sonner';
 import { Avatar, Wordmark } from '../components/ui/brand';
@@ -24,6 +35,20 @@ const DealFormDialog = lazy(() =>
 );
 
 const COLLAPSE_KEY = 'cf.nav.collapsed';
+const RAIL_KEY = 'cf.nav.rail';
+
+/** `true`: icon rail below 1024 px only. `'always'`: the person chose the rail on desktop too. */
+type Rail = boolean | 'always';
+const hideOnRail = (rail?: Rail) =>
+  rail === 'always' ? 'sr-only' : rail ? 'max-lg:sr-only' : undefined;
+
+function readRail() {
+  try {
+    return localStorage.getItem(RAIL_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 function readCollapsed(): string[] {
   try {
@@ -54,7 +79,7 @@ function NavSection({
 }: {
   group: NavGroup;
   user: SessionUser;
-  rail?: boolean;
+  rail?: Rail;
   collapsed: boolean;
   onToggle: () => void;
   onNavigate?: () => void;
@@ -67,27 +92,25 @@ function NavSection({
   const hidden = collapsed && !rail;
   return (
     <div>
-      {group.id === 'overview' ? null : (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={!hidden}
-          aria-controls={listId}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!hidden}
+        aria-controls={listId}
+        className={cn(
+          'group mb-1 flex h-8 w-full items-center justify-between rounded-md px-3 text-left text-xs font-medium text-nav-muted hover:text-white',
+          hideOnRail(rail),
+        )}
+      >
+        {group.label}
+        <ChevronDown
+          aria-hidden
           className={cn(
-            'group mb-1 flex h-8 w-full items-center justify-between rounded-md px-3 text-left text-xs font-medium text-nav-muted hover:text-white',
-            rail && 'max-lg:sr-only',
+            'size-3.5 opacity-60 transition-transform duration-150 group-hover:opacity-100',
+            hidden && '-rotate-90',
           )}
-        >
-          {group.label}
-          <ChevronDown
-            aria-hidden
-            className={cn(
-              'size-3.5 opacity-60 transition-transform duration-150 group-hover:opacity-100',
-              hidden && '-rotate-90',
-            )}
-          />
-        </button>
-      )}
+        />
+      </button>
       <ul id={listId} hidden={hidden} className="flex flex-col gap-px">
         {items.map(({ to, label, icon: Icon, counter }) => {
           const count = counter === 'follow-ups' ? followUps : null;
@@ -100,7 +123,9 @@ function NavSection({
                 className={({ isActive }) =>
                   cn(
                     'relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors',
-                    rail && 'justify-center lg:justify-start',
+                    rail === 'always'
+                      ? 'justify-center'
+                      : rail && 'justify-center lg:justify-start',
                     isActive
                       ? 'bg-nav-active text-white before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r-full before:bg-mint'
                       : 'text-nav-text hover:bg-nav-raised hover:text-white',
@@ -108,15 +133,15 @@ function NavSection({
                 }
               >
                 <Icon aria-hidden className="size-[18px] shrink-0" />
-                <span className={cn('min-w-0 flex-1 truncate', rail && 'max-lg:sr-only')}>
-                  {label}
-                </span>
+                <span className={cn('min-w-0 flex-1 truncate', hideOnRail(rail))}>{label}</span>
                 {count && count.total > 0 ? (
                   <span
                     className={cn(
                       'tabular grid h-5 min-w-5 place-items-center rounded-sm px-1.5 text-[11px] font-semibold',
                       count.overdue > 0 ? 'bg-mint text-ink' : 'bg-nav-line text-nav-text',
-                      rail && 'absolute right-1 top-1 lg:static',
+                      rail === 'always'
+                        ? 'absolute right-1 top-1'
+                        : rail && 'absolute right-1 top-1 lg:static',
                     )}
                   >
                     <span aria-hidden>{count.total}</span>
@@ -141,7 +166,7 @@ function NavLinks({
 }: {
   user: SessionUser;
   onNavigate?: () => void;
-  rail?: boolean;
+  rail?: Rail;
 }) {
   const [collapsed, setCollapsed] = useState<string[]>(readCollapsed);
   const followUps = useFollowUpCounter(canSeeLeads(user.role));
@@ -173,9 +198,14 @@ function NavLinks({
   );
 }
 
-function WorkspaceCard({ user, rail }: { user: SessionUser; rail?: boolean }) {
+function WorkspaceCard({ user, rail }: { user: SessionUser; rail?: Rail }) {
   return (
-    <div className={cn('rounded-lg bg-nav-raised px-3 py-2.5', rail && 'hidden lg:block')}>
+    <div
+      className={cn(
+        'rounded-lg bg-nav-raised px-3 py-2.5',
+        rail === 'always' ? 'hidden' : rail && 'hidden lg:block',
+      )}
+    >
       <p className="truncate text-[13px] font-semibold text-white">{user.agency.name}</p>
       <p className="truncate text-xs text-nav-muted">
         {user.agency.defaultCurrency} · {user.agency.timezone.replace('_', ' ')}
@@ -191,12 +221,17 @@ function UserBlock({
   signingOut,
 }: {
   user: SessionUser;
-  rail?: boolean;
+  rail?: Rail;
   onSignOut: () => void;
   signingOut: boolean;
 }) {
   return (
-    <div className={cn('flex items-center gap-1', rail && 'flex-col lg:flex-row')}>
+    <div
+      className={cn(
+        'flex items-center gap-1',
+        rail === 'always' ? 'flex-col' : rail && 'flex-col lg:flex-row',
+      )}
+    >
       {/* Your name opens your account security (two-step sign-in, ADR-069). */}
       <Link
         to="/app/account"
@@ -204,7 +239,7 @@ function UserBlock({
         className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1.5 transition-colors hover:bg-nav-raised"
       >
         <Avatar name={user.name} className="ring-2 ring-nav-line" />
-        <span className={cn('min-w-0 flex-1', rail && 'max-lg:sr-only')}>
+        <span className={cn('min-w-0 flex-1', hideOnRail(rail))}>
           <span className="block truncate text-sm font-medium text-white">{user.name}</span>
           <span className="block truncate text-xs text-nav-muted">{ROLE_LABELS[user.role]}</span>
         </span>
@@ -343,6 +378,7 @@ export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [creating, setCreating] = useState<CreateKind>(null);
+  const [railed, setRailed] = useState(readRail);
 
   const openPalette = useCallback(() => setPaletteOpen(true), []);
   useEffect(() => {
@@ -358,6 +394,16 @@ export function AppShell() {
 
   if (!user) return null;
   const section = sectionFor(location.pathname);
+  const rail: Rail = railed ? 'always' : true;
+  const toggleRail = () =>
+    setRailed((r) => {
+      try {
+        localStorage.setItem(RAIL_KEY, r ? '0' : '1');
+      } catch {
+        // Private mode: the choice lasts for this page only.
+      }
+      return !r;
+    });
 
   const signOut = () =>
     logout.mutate(undefined, {
@@ -376,19 +422,40 @@ export function AppShell() {
       </a>
 
       {/* Forest sidebar: 72 px rail on tablets, 248 px from 1024 px, 264 px from 1440 px. */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden flex-col bg-nav print:!hidden md:flex md:w-[72px] lg:w-[248px] wide:w-[264px]">
-        <div className="flex h-16 items-center px-4 lg:px-5">
-          <Wordmark tone="nav" compact className="lg:hidden" />
-          <Wordmark tone="nav" className="hidden lg:flex" />
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 hidden flex-col bg-nav print:!hidden md:flex md:w-[72px]',
+          !railed && 'lg:w-[248px] wide:w-[264px]',
+        )}
+      >
+        <div className={cn('flex h-16 items-center px-4', !railed && 'lg:px-5')}>
+          <Wordmark tone="nav" compact className={railed ? undefined : 'lg:hidden'} />
+          {railed ? null : <Wordmark tone="nav" className="hidden lg:flex" />}
         </div>
         <div className="px-3 pb-2">
-          <WorkspaceCard user={user} rail />
+          <WorkspaceCard user={user} rail={rail} />
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-3 [scrollbar-color:var(--color-nav-line)_transparent]">
-          <NavLinks user={user} rail />
+          <NavLinks user={user} rail={rail} />
         </div>
-        <div className="border-t border-nav-line p-2 lg:p-3">
-          <UserBlock user={user} rail onSignOut={signOut} signingOut={logout.isPending} />
+        <div className={cn('border-t border-nav-line p-2', !railed && 'lg:p-3')}>
+          <UserBlock user={user} rail={rail} onSignOut={signOut} signingOut={logout.isPending} />
+          <button
+            type="button"
+            onClick={toggleRail}
+            aria-pressed={railed}
+            title={railed ? 'Show the full sidebar' : 'Collapse the sidebar to icons'}
+            className="mt-1 hidden h-9 w-full items-center justify-center gap-2 rounded-md text-xs font-medium text-nav-muted hover:bg-nav-raised hover:text-white lg:flex"
+          >
+            {railed ? (
+              <PanelLeftOpen aria-hidden className="size-4" />
+            ) : (
+              <PanelLeftClose aria-hidden className="size-4" />
+            )}
+            <span className={railed ? 'sr-only' : undefined}>
+              {railed ? 'Show the full sidebar' : 'Collapse sidebar'}
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -447,7 +514,7 @@ export function AppShell() {
         </span>
       </header>
 
-      <div className="md:pl-[72px] lg:pl-[248px] wide:pl-[264px] print:!pl-0">
+      <div className={cn('md:pl-[72px] print:!pl-0', !railed && 'lg:pl-[248px] wide:pl-[264px]')}>
         <header className="sticky top-0 z-20 hidden h-16 items-center gap-3 border-b border-border bg-bg/90 px-6 backdrop-blur print:!hidden md:flex wide:px-10">
           <p className="min-w-0 flex-1 truncate text-sm text-muted">
             {section ? (

@@ -454,7 +454,7 @@ function LeadSourcesPanel() {
             caption="Leads and clients per source"
             valueHeader="Leads"
             partHeader="Became clients"
-            color="#A5D6B5"
+            color="#64BBA1"
             partColor="#0B7A6A"
             rows={q.rows.map((r) => ({
               id: r.source,

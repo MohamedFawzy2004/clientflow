@@ -6,6 +6,7 @@ import {
   FileText,
   FileUp,
   FolderKanban,
+  GanttChart,
   Layers,
   LayoutDashboard,
   Network,
@@ -41,22 +42,16 @@ export interface NavGroup {
 // Only shipped, working sections appear. Later modules join the nav when they exist.
 export const NAV: NavGroup[] = [
   {
-    id: 'overview',
-    label: 'Overview',
+    id: 'workspace',
+    label: 'Workspace',
     items: [
       {
         to: '/app/dashboard',
         label: 'Dashboard',
         icon: LayoutDashboard,
-        keywords: 'home command center',
+        keywords: 'home dashboard overview',
         visible: () => true,
       },
-    ],
-  },
-  {
-    id: 'relationships',
-    label: 'Relationships',
-    items: [
       {
         to: '/app/follow-ups',
         label: 'Follow-ups',
@@ -65,6 +60,12 @@ export const NAV: NavGroup[] = [
         visible: canSeeLeads,
         counter: 'follow-ups',
       },
+    ],
+  },
+  {
+    id: 'sales',
+    label: 'Sales & relationships',
+    items: [
       {
         to: '/app/leads',
         label: 'Leads',
@@ -79,17 +80,11 @@ export const NAV: NavGroup[] = [
         keywords: 'graph network connections',
         visible: canSeeLeads,
       },
-    ],
-  },
-  {
-    id: 'revenue',
-    label: 'Revenue',
-    items: [
       {
         to: '/app/deals',
         label: 'Deals',
         icon: Briefcase,
-        keywords: 'pipeline opportunities board kanban',
+        keywords: 'deals opportunities board kanban insights',
         visible: (r) => canAny(r, ['deals.read.all', 'deals.read.own']),
       },
       {
@@ -110,7 +105,7 @@ export const NAV: NavGroup[] = [
   },
   {
     id: 'delivery',
-    label: 'Delivery',
+    label: 'Project delivery',
     items: [
       {
         to: '/app/projects',
@@ -119,6 +114,13 @@ export const NAV: NavGroup[] = [
         keywords: 'delivery tasks milestones',
         visible: (r) =>
           canAny(r, ['projects.read.all', 'projects.read.member', 'projects.read.linked']),
+      },
+      {
+        to: '/app/delivery',
+        label: 'Delivery portfolio',
+        icon: GanttChart,
+        keywords: 'timeline gantt workload portfolio',
+        visible: (r) => can(r, 'delivery.work'),
       },
     ],
   },
@@ -137,7 +139,7 @@ export const NAV: NavGroup[] = [
         to: '/app/reports/finance',
         label: 'Finance report',
         icon: BarChart3,
-        keywords: 'aging receivables profit',
+        keywords: 'aging receivables profit revenue trend',
         visible: (r) => can(r, 'finance.view'),
       },
       {
@@ -150,8 +152,8 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    id: 'workspace',
-    label: 'Workspace',
+    id: 'admin',
+    label: 'Administration',
     items: [
       {
         to: '/app/team',

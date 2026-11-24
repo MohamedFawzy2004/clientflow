@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 import {
   Briefcase,
   Hourglass,
+  ChartColumn,
   KanbanSquare,
   List,
   PanelRightOpen,
@@ -19,6 +20,7 @@ import { Avatar } from '../../components/ui/brand';
 import { Button } from '../../components/ui/button';
 import { Badge, EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
 import { PageHeader, Segmented } from '../../components/ui/page';
+import { SalesIntelligence } from '../intelligence/SalesIntelligence';
 import { seqSteps } from '../../components/charts/charts';
 import { DealStatusBadge, Money, Totals } from '../../components/sales/sales-ui';
 import { useSession } from '../auth/session';
@@ -773,7 +775,8 @@ export function DealsPage() {
   const canSee = useCanSeeDeals();
   const [params, setParams] = useSearchParams();
   const [newOpen, setNewOpen] = useState(false);
-  const view = params.get('view') === 'list' ? 'list' : 'board';
+  const raw = params.get('view');
+  const view = raw === 'list' || raw === 'insights' ? raw : 'board';
   if (!user) return null;
   const timeZone = user.agency.timezone;
 
@@ -801,7 +804,7 @@ export function DealsPage() {
             <Segmented
               label="View"
               value={view}
-              onChange={(v) => setParams(v === 'board' ? {} : { view: 'list' })}
+              onChange={(v) => setParams(v === 'board' ? {} : { view: v })}
               options={[
                 {
                   value: 'board',
@@ -809,6 +812,11 @@ export function DealsPage() {
                   icon: <KanbanSquare aria-hidden className="size-4" />,
                 },
                 { value: 'list', label: 'List', icon: <List aria-hidden className="size-4" /> },
+                {
+                  value: 'insights',
+                  label: 'Insights',
+                  icon: <ChartColumn aria-hidden className="size-4" />,
+                },
               ]}
             />
             <Button onClick={() => setNewOpen(true)}>
@@ -825,8 +833,16 @@ export function DealsPage() {
             onNew={() => setNewOpen(true)}
             showOwner={user.role !== 'SALES'}
           />
-        ) : (
+        ) : view === 'list' ? (
           <DealList timeZone={timeZone} />
+        ) : (
+          <SalesIntelligence
+            scopeNote={
+              user.role === 'SALES'
+                ? 'Built from your deals only, the same ones you see on the board.'
+                : 'Built from every deal in the agency. Archived deals are left out.'
+            }
+          />
         )}
       </div>
       <DealFormDialog open={newOpen} onOpenChange={setNewOpen} />

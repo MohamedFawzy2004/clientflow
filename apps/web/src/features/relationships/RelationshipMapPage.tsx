@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight, ListTree, Network, Search, ShieldAlert, Users } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ListTree,
+  Maximize2,
+  Minus,
+  Network,
+  Plus,
+  Search,
+  ShieldAlert,
+  Users,
+} from 'lucide-react';
 import {
   formatMoney,
   type ApiSuccess,
@@ -16,11 +26,12 @@ import { PageHeader, Panel, Segmented } from '../../components/ui/page';
 import { useSession } from '../auth/session';
 import { canSeeLeads } from '../../app/nav';
 import { useLead } from '../leads/api';
-import { useLinkedRecords } from '../leads/client360';
+import { useContactGraph } from '../intelligence/api';
 import {
   bounds,
-  buildGraph,
+  buildServerGraph,
   FILTER_KINDS,
+  PEOPLE_LINKS,
   KIND_LABELS,
   layout,
   type GraphNode,
@@ -37,6 +48,7 @@ const KIND_STYLE: Record<NodeKind, { fill: string; stroke: string }> = {
   proposal: { fill: 'var(--color-series-2)', stroke: '#FFFFFF' },
   project: { fill: 'var(--color-series-3)', stroke: '#FFFFFF' },
   invoice: { fill: 'var(--color-series-4)', stroke: '#FFFFFF' },
+  deliverable: { fill: '#FFFFFF', stroke: 'var(--color-series-3)' },
 };
 
 const PLURAL: Record<NodeKind, string> = {
@@ -47,6 +59,7 @@ const PLURAL: Record<NodeKind, string> = {
   proposal: 'Proposals',
   project: 'Projects',
   invoice: 'Invoices',
+  deliverable: 'Deliverables',
 };
 
 /** Each kind also has its own shape, so identity never depends on colour alone. */
@@ -70,6 +83,16 @@ function Shape({
       return (
         <polygon points={`0,${-r * 1.15} ${r * 1.15},0 0,${r * 1.15} ${-r * 1.15},0`} {...rest} />
       );
+    case 'deliverable': {
+      const h = r * 0.95;
+      const w = r * 1.1;
+      return (
+        <polygon
+          points={`${-w / 2},${-h} ${w / 2},${-h} ${w},0 ${w / 2},${h} ${-w / 2},${h} ${-w},0`}
+          {...rest}
+        />
+      );
+    }
     case 'invoice':
       return (
         <polygon
@@ -192,18 +215,108 @@ function ContactPicker({ focus, onPick }: { focus: string | null; onPick: (id: s
 // Map and list views
 // ---------------------------------------------------------------------------
 
+/**
+ * Zoom with the buttons (or + and - while the map has focus) and pan by dragging. The view is
+ * only a viewBox change: every node stays a focusable button, and the list view is the
+ * text equivalent.
+ */
+function ZoomableGraph(props: Omit<Parameters<typeof GraphSvg>[0], 'viewBox'>) {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<[number, number]>([0, 0]);
+  const drag = useRef<{ x: number; y: number; pan: [number, number]; w: number } | null>(null);
+  const [x, y, w, h] = bounds(props.placed);
+  const vw = w / zoom;
+  const vh = h / zoom;
+  const viewBox = [x + (w - vw) / 2 + pan[0], y + (h - vh) / 2 + pan[1], vw, vh].join(' ');
+  const step = (f: number) => setZoom((z) => Math.min(4, Math.max(1, +(z * f).toFixed(2))));
+  const reset = () => {
+    setZoom(1);
+    setPan([0, 0]);
+  };
+  return (
+    <div className="relative">
+      <div
+        role="group"
+        aria-label="Map zoom"
+        className="absolute right-0 top-2 z-10 flex overflow-hidden rounded-md border border-border bg-surface shadow-sm"
+      >
+        <button
+          type="button"
+          onClick={() => step(1.4)}
+          disabled={zoom >= 4}
+          aria-label="Zoom in"
+          className="grid size-9 place-items-center text-ink hover:bg-surface-alt disabled:opacity-40"
+        >
+          <Plus aria-hidden className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => step(1 / 1.4)}
+          disabled={zoom <= 1}
+          aria-label="Zoom out"
+          className="grid size-9 place-items-center border-l border-border text-ink hover:bg-surface-alt disabled:opacity-40"
+        >
+          <Minus aria-hidden className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          disabled={zoom === 1 && pan[0] === 0 && pan[1] === 0}
+          aria-label="Reset zoom and position"
+          className="grid size-9 place-items-center border-l border-border text-ink hover:bg-surface-alt disabled:opacity-40"
+        >
+          <Maximize2 aria-hidden className="size-4" />
+        </button>
+      </div>
+      {/* Drag-to-pan and key zoom are conveniences; the buttons and the list view are the
+          accessible paths, so this wrapper is not itself a control. */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+      <div
+        role="group"
+        aria-label="Map canvas. With a record focused, plus and minus zoom and 0 resets."
+        className={cn('touch-none', zoom > 1 ? 'cursor-grab active:cursor-grabbing' : undefined)}
+        onKeyDown={(e) => {
+          if (e.key === '+' || e.key === '=') step(1.4);
+          else if (e.key === '-') step(1 / 1.4);
+          else if (e.key === '0') reset();
+        }}
+        onPointerDown={(e) => {
+          if (zoom === 1 || (e.target as Element).closest('[role="button"]')) return;
+          drag.current = { x: e.clientX, y: e.clientY, pan, w: e.currentTarget.clientWidth };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d) return;
+          const scale = vw / d.w;
+          setPan([d.pan[0] - (e.clientX - d.x) * scale, d.pan[1] - (e.clientY - d.y) * scale]);
+        }}
+        onPointerUp={() => {
+          drag.current = null;
+        }}
+      >
+        <GraphSvg {...props} viewBox={viewBox} />
+      </div>
+    </div>
+  );
+}
+
 function GraphSvg({
   placed,
   graph,
   selected,
   onSelect,
   contactName,
+  highlighted,
+  viewBox,
 }: {
   placed: Placed[];
   graph: RelationshipGraph;
   selected: string | null;
   onSelect: (id: string) => void;
   contactName: string;
+  highlighted: Set<string>;
+  viewBox: string;
 }) {
   const byId = new Map(placed.map((p) => [p.id, p]));
   const edges = graph.edges.filter((e) => byId.has(e.from) && byId.has(e.to));
@@ -230,7 +343,7 @@ function GraphSvg({
   };
   return (
     <svg
-      viewBox={bounds(placed).join(' ')}
+      viewBox={viewBox}
       className="block h-auto w-full"
       role="group"
       aria-label={`Relationship map for ${contactName}: ${placed.length} records and people, ${edges.length} links. Each shape is a button; the list view shows the same links as text.`}
@@ -263,6 +376,7 @@ function GraphSvg({
               y2={b.y}
               stroke={hot ? 'var(--color-ink)' : 'var(--color-border-strong)'}
               strokeWidth={hot ? 2 : 1.25}
+              strokeDasharray={PEOPLE_LINKS.has(e.label) ? '5 4' : undefined}
               opacity={selected && !hot ? 0.45 : 1}
             />
           );
@@ -296,6 +410,14 @@ function GraphSvg({
             />
             {isSel ? (
               <circle r={n.r + 5} fill="none" stroke="var(--color-ink)" strokeWidth={2} />
+            ) : highlighted.has(n.id) ? (
+              <circle
+                r={n.r + 5}
+                fill="none"
+                stroke="var(--color-violet)"
+                strokeWidth={2}
+                strokeDasharray="3 3"
+              />
             ) : null}
             <Shape kind={n.kind} r={n.r} fill={s.fill} stroke={s.stroke} strokeWidth={2} />
           </g>
@@ -487,7 +609,7 @@ function SelectionPanel({
 }
 
 function MapBody({ lead }: { lead: ContactWithDeals }) {
-  const linked = useLinkedRecords(lead);
+  const server = useContactGraph(lead.id);
   const [view, setView] = useState<'map' | 'list'>(() =>
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 639px)').matches
       ? 'list'
@@ -497,16 +619,10 @@ function MapBody({ lead }: { lead: ContactWithDeals }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
 
-  const graph = useMemo(
-    () =>
-      buildGraph({
-        contact: lead,
-        proposals: linked.proposals.rows,
-        projects: linked.projects.rows,
-        invoices: linked.invoices.rows,
-        money,
-      }),
-    [lead, linked.proposals.rows, linked.projects.rows, linked.invoices.rows],
+  const [search, setSearch] = useState('');
+  const graph = useMemo<RelationshipGraph>(
+    () => (server.data ? buildServerGraph(server.data, money) : { nodes: [], edges: [] }),
+    [server.data],
   );
   const visible = (n: GraphNode) =>
     n.kind === 'contact' || (!hidden.has(n.kind) && (!n.parent || !collapsed.has(n.parent)));
@@ -515,9 +631,15 @@ function MapBody({ lead }: { lead: ContactWithDeals }) {
     k,
     n: graph.nodes.filter((n) => n.kind === k).length,
   }));
-  const loading = [linked.proposals.q, linked.projects.q, linked.invoices.q].some(
-    (q) => q.isPending && q.fetchStatus !== 'idle',
-  );
+  const loading = server.isPending;
+  const truncated = server.data
+    ? Object.entries(server.data.truncated)
+        .filter(([, more]) => more)
+        .map(([k]) => k)
+    : [];
+  const matches = search.trim()
+    ? graph.nodes.filter((n) => n.label.toLowerCase().includes(search.trim().toLowerCase()))
+    : [];
   const selNode = graph.nodes.find((n) => n.id === selected) ?? null;
   const parents = graph.nodes.filter((n) => graph.nodes.some((k) => k.parent === n.id));
 
@@ -556,6 +678,29 @@ function MapBody({ lead }: { lead: ContactWithDeals }) {
           })}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <label className="relative flex items-center">
+            <span className="sr-only">Find a record in this map</span>
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute left-2.5 size-4 text-muted"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && matches[0]) {
+                  e.preventDefault();
+                  setSelected(matches[0].id);
+                }
+              }}
+              placeholder="Find in map"
+              className="h-9 w-44 rounded-md border border-control bg-surface pl-8 pr-2 text-[13px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-primary"
+            />
+          </label>
+          <span role="status" className="sr-only">
+            {search.trim() ? `${matches.length} match${matches.length === 1 ? '' : 'es'}` : ''}
+          </span>
           {parents.length > 0 ? (
             <button
               type="button"
@@ -592,12 +737,21 @@ function MapBody({ lead }: { lead: ContactWithDeals }) {
                 : 'Each line is a stored link. Indented records hang off the deal above them.'
           }
         >
-          {view === 'map' ? (
+          {server.isError ? (
+            <div className="p-5">
+              <ErrorState
+                title="We could not load the links"
+                message="The contact loaded, but its linked records did not. Try again."
+                onRetry={() => void server.refetch()}
+              />
+            </div>
+          ) : view === 'map' ? (
             <div className="px-2 pb-3 sm:px-5">
-              <GraphSvg
+              <ZoomableGraph
                 placed={placed}
                 graph={graph}
                 selected={selected}
+                highlighted={new Set(matches.map((m) => m.id))}
                 onSelect={setSelected}
                 contactName={lead.fullName}
               />
@@ -632,9 +786,19 @@ function MapBody({ lead }: { lead: ContactWithDeals }) {
               </li>
               <li>Nothing is guessed or scored. A record you cannot open is not shown.</li>
               <li>
-                Proposals, projects and invoices come from their lists (up to 200, 200 and 500
-                records), so a very large agency can miss older ones here.
+                The server applies your access to each kind of record. Kinds your role cannot open
+                are left out entirely, not counted.
               </li>
+              <li>
+                Dashed lines link people (owner, manager); solid lines link records. Up to 50
+                records of each kind are shown.
+              </li>
+              {truncated.length > 0 ? (
+                <li className="text-ink">
+                  More {truncated.join(', ')} exist than this map shows. Open the contact for the
+                  full lists.
+                </li>
+              ) : null}
             </ul>
           </Panel>
         </div>
