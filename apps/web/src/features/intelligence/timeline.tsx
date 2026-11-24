@@ -76,8 +76,16 @@ export function Timeline({
 
   return (
     <div>
-      <div aria-hidden className="overflow-x-auto">
-        <div className="min-w-[640px]">
+      {/* The drawing scrolls sideways on narrow screens, so its scroller takes focus (arrow keys
+          scroll it). The drawing itself is hidden from assistive tech; the table below carries it. */}
+      <div
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling area must take focus (axe scrollable-region-focusable)
+        tabIndex={0}
+        role="region"
+        aria-label={`${caption}, drawing`}
+        className="overflow-x-auto rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <div aria-hidden className="min-w-[640px]">
           <div className="grid grid-cols-[minmax(9rem,14rem)_1fr] border-b border-border text-[11px] text-muted">
             <span className="px-3 py-1.5">{labelHeader}</span>
             <div className="relative h-7">
@@ -280,8 +288,15 @@ export function DependencyMap({
 
   return (
     <div className="flex flex-col gap-4">
-      <div aria-hidden className="overflow-x-auto rounded-md border border-border bg-bg p-4">
+      <div
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling area must take focus (axe scrollable-region-focusable)
+        tabIndex={0}
+        role="region"
+        aria-label="Task dependency drawing"
+        className="overflow-x-auto rounded-md border border-border bg-bg p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
         <svg
+          aria-hidden
           width={width}
           height={height}
           viewBox={`-2 -2 ${width + 4} ${height + 4}`}

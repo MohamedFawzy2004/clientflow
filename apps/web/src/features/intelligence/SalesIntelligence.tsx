@@ -154,7 +154,13 @@ export function SalesIntelligence({ scopeNote }: { scopeNote: string }) {
         description="Every deal by its contact's source. Win rate counts closed deals only."
         bodyClassName="p-0"
       >
-        <div className="overflow-x-auto">
+        <div
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling area must take focus (axe scrollable-region-focusable)
+          tabIndex={0}
+          role="region"
+          aria-label="Deals, wins and won value by lead source"
+          className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+        >
           <table className="w-full text-[13px]">
             <caption className="sr-only">Deals, wins and won value by lead source</caption>
             <thead className="bg-surface-alt text-xs text-muted">

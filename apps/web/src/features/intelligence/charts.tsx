@@ -30,7 +30,14 @@ export function HeatTable({
     return { background: SEQ[i], color: i >= 3 ? '#FFFFFF' : 'var(--color-ink)' };
   };
   return (
-    <div className="overflow-x-auto">
+    // Focusable so keyboard users can scroll a wide table at 360 px (WCAG 2.1.1).
+    <div
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling area must take focus (axe scrollable-region-focusable)
+      tabIndex={0}
+      role="region"
+      aria-label={caption}
+      className="overflow-x-auto rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
       <table className="w-full border-separate border-spacing-0.5 text-[13px]">
         <caption className="sr-only">{caption}</caption>
         <thead>

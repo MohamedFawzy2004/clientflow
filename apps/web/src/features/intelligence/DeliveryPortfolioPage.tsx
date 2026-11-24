@@ -70,7 +70,9 @@ export function DeliveryPortfolioPage() {
     id: p.id,
     name: p.title,
     label: (
-      <Link to={`/app/projects/${p.id}/plan`} className="hover:underline">
+      // A pointer shortcut inside the hidden drawing; keyboard and screen-reader users reach
+      // the same project from the health table below.
+      <Link to={`/app/projects/${p.id}/plan`} tabIndex={-1} className="hover:underline">
         {p.title}
       </Link>
     ),

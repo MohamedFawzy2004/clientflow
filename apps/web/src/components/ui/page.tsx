@@ -127,7 +127,9 @@ export function Panel({
             ) : null}
             {description ? <p className="text-[13px] leading-5 text-muted">{description}</p> : null}
           </div>
-          {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
+          {action ? (
+            <div className="flex max-w-full shrink-0 items-center gap-2">{action}</div>
+          ) : null}
         </div>
       ) : null}
       {/* bodyClassName replaces the default padding (cn is plain clsx, so classes would not override). */}
@@ -156,7 +158,10 @@ export function Segmented<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className={cn('flex gap-0.5 rounded-md border border-border bg-surface-alt p-0.5', className)}
+      className={cn(
+        'flex flex-wrap gap-0.5 rounded-md border border-border bg-surface-alt p-0.5',
+        className,
+      )}
     >
       {options.map((o) => (
         <button
