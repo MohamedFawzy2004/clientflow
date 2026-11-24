@@ -403,7 +403,7 @@ function Board({
       </div>
       <p className="-mt-2 text-xs text-muted">
         Drag cards between columns, or use each card’s stage menu. Needs attention means no next
-        step, a next step in the past, or no change for {STALL_DAYS}+ days.
+        step or a next step in the past. Stalled adds no change for {STALL_DAYS}+ days.
         {capped ? ' The board loads up to 100 deals per stage: use the list for the rest.' : ''}
       </p>
       <div className="-mx-4 md:mx-0">
