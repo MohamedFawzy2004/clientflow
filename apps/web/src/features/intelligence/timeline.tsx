@@ -120,7 +120,7 @@ export function Timeline({
                   <span className="absolute inset-y-0 w-0.5 bg-ink/70" style={{ left: x(today) }} />
                   {r.start && r.end && ms(r.end) >= ms(r.start) ? (
                     <span
-                      className="absolute top-1/2 h-3 -translate-y-1/2 rounded-[4px] bg-mint"
+                      className="absolute top-1/2 h-3 -translate-y-1/2 rounded-[4px] bg-seq-3"
                       style={{
                         left: x(r.start),
                         width: `${(((ms(r.end) - ms(r.start)) / span) * 100).toFixed(3)}%`,
@@ -149,7 +149,7 @@ export function Timeline({
       </div>
       <ul aria-hidden className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
         <li className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-5 rounded-[3px] bg-mint" /> Stored start to due date
+          <span className="h-2.5 w-5 rounded-[3px] bg-seq-3" /> Stored start to due date
         </li>
         <li className="inline-flex items-center gap-1.5">
           <span className="size-2.5 rotate-45 rounded-[2px] border-2 border-ink bg-primary" />

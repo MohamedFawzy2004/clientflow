@@ -1,6 +1,11 @@
 # Proposals: intelligence features, specified but not built
 
-Nothing in this file is implemented. Each proposal is a rule set or a stored fact that the owner
+> **Status, final signature release.** P8 is implemented as `GET /api/v1/contacts/:id/graph`
+> (ADR-072), and the time-in-stage part of P1 is served read-only by `GET /api/v1/insights/sales`,
+> which uses the latest `deal.stage_changed` activity, falling back to `createdAt`. There is no new
+> column or migration. Every other proposal remains unbuilt.
+
+Apart from the status note above, nothing in this file is implemented. Each proposal is a rule set or a stored fact that the owner
 can approve, reject or reorder. None of them uses a model, and none should be called "AI" in the
 product. A feature that calls an external model would also need a separate privacy and cost
 review, under the owner rule "no new paid services".
@@ -123,7 +128,12 @@ createdAt)`. The query holds only whitelisted filter keys.
   - It respects notification settings.
   - Only one digest is sent per user per week.
 
-## P8. Relationship map: server-built graph
+## P8. Relationship map: server-built graph (implemented)
+
+> Built as `GET /api/v1/contacts/:id/graph`. It returns typed record lists per kind, each
+> capped at 50 with a `truncated` flag, and the browser draws the edges from the stored keys. A
+> kind the viewer cannot read comes back empty with `readable: false`, so it adds no nodes, no
+> counts and no metadata. There is no `depth` parameter: the graph is one contact deep.
 
 - **Problem.** The map joins three capped lists in the browser.
 - **API.** `GET /api/v1/contacts/:id/graph?depth=3` → `{ nodes, edges }` built from foreign keys

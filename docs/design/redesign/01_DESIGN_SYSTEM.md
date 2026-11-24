@@ -29,20 +29,21 @@ The one bold element is the forest navigation against the ivory page. Everything
 
 The brief's base palette, adjusted where it failed WCAG AA:
 
-| Token                                       | Hex                                        | Role                                                                          |
-| ------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `bg`                                        | `#FAF9F6`                                  | Ivory canvas                                                                  |
-| `surface` / `surface-alt`                   | `#FFFFFF` / `#F3F1EC`                      | Panels, and sunk wells (table heads)                                          |
-| `ink`                                       | `#142D2A`                                  | Forest: headings, figures, navigation background                              |
-| `text`                                      | `#1B2A27`                                  | Body text                                                                     |
-| `muted`                                     | `#5A6763`                                  | Secondary text (darkened from the brief's neutral to pass AA)                 |
-| `subtle` / `control`                        | `#8C8577`                                  | Icons and control borders only, never text                                    |
-| `primary`                                   | `#087F70`                                  | Jade: primary buttons and links                                               |
-| `primary-strong`                            | `#06685C`                                  | Jade text on tinted backgrounds                                               |
-| `mint`                                      | `#A5D6B5`                                  | Accents on forest: the active-count pill and the start of the sequential ramp |
-| `violet` / `violet-strong`                  | `#7464C7` / `#5B4BB0`                      | Second data series, proposals, info notes (`info` is violet)                  |
-| `border`                                    | `#E9E4DB`                                  | The warm neutral from the brief, used for decorative hairlines only           |
-| `success`, `warning`, `attention`, `danger` | `#1F7A4D`, `#8A5A00`, `#B07A12`, `#B3261E` | Reserved for status. Never used as chart series                               |
+| Token                                       | Hex                                        | Role                                                                   |
+| ------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
+| `bg`                                        | `#FAF9F6`                                  | Ivory canvas                                                           |
+| `surface` / `surface-alt`                   | `#FFFFFF` / `#F3F1EC`                      | Panels, and sunk wells (table heads)                                   |
+| `ink` / `nav`                               | `#102C28`                                  | Forest: headings, figures, navigation background                       |
+| `nav-raised`                                | `#193D37`                                  | Elevated forest: hover and group surfaces inside the navigation        |
+| `text`                                      | `#172B29`                                  | Body text                                                              |
+| `muted`                                     | `#5A6763`                                  | Secondary text (darkened from the brief's neutral to pass AA)          |
+| `subtle` / `control`                        | `#8C8577`                                  | Icons and control borders only, never text                             |
+| `primary`                                   | `#087F70`                                  | Jade: primary buttons and links                                        |
+| `primary-strong`                            | `#06685C`                                  | Jade text on tinted backgrounds                                        |
+| `mint`                                      | `#64BBA1`                                  | Accents on forest only: the active-item rule, the count pill, the logo |
+| `violet` / `violet-strong`                  | `#7464C7` / `#5B4BB0`                      | Second data series, proposals, info notes (`info` is violet)           |
+| `border`                                    | `#E9E4DB`                                  | The warm neutral from the brief, used for decorative hairlines only    |
+| `success`, `warning`, `attention`, `danger` | `#1F7A4D`, `#8A5A00`, `#B07A12`, `#B3261E` | Reserved for status. Never used as chart series                        |
 
 ### Measured contrast (WCAG 2.1 relative luminance)
 
@@ -50,8 +51,8 @@ The ratios were computed with the session's contrast script.
 
 | Pair                                 | Ratio                  | Need         |
 | ------------------------------------ | ---------------------- | ------------ |
-| text on ivory                        | 14.18                  | 4.5          |
-| ink on ivory                         | 13.87                  | 4.5          |
+| text on ivory                        | 14.11                  | 4.5          |
+| ink on ivory / white                 | 14.12 / 14.86          | 4.5          |
 | muted on ivory / white / surface-alt | 5.61 / 5.91 / 5.23     | 4.5          |
 | jade link on ivory                   | 4.66                   | 4.5          |
 | white on jade button                 | 4.91                   | 4.5          |
@@ -60,14 +61,23 @@ The ratios were computed with the session's contrast script.
 | success on success-soft              | 4.65                   | 4.5          |
 | warning on warning-soft              | 5.28                   | 4.5          |
 | danger on danger-soft / white        | 5.61 / 6.54            | 4.5          |
-| nav text / nav muted on forest       | 9.97 / 6.64            | 4.5          |
+| nav text / nav muted on forest       | 10.15 / 6.76           | 4.5          |
+| nav text on elevated forest          | 8.13                   | 4.5          |
 | white on active nav item             | 10.42                  | 4.5          |
-| mint on forest                       | 8.96                   | 4.5          |
+| mint on forest (and forest on mint)  | 6.49                   | 4.5          |
+| Gantt bar (`seq-3`) on white         | 3.41                   | 3 (graphics) |
 | control border on white              | 3.66                   | 3 (non-text) |
 | series 1–4 marks on white            | 4.27, 4.78, 3.72, 5.18 | 3 (graphics) |
 
-Changes from the brief:
+Changes from the brief (final signature release, measured with the same script):
 
+- forest is `#102C28` and the elevated forest `#193D37`, as the brief asked; both carry the
+  navigation text at more than 8:1;
+- mint is the brief's `#64BBA1`. It measures 2.29:1 on white, so on white it appears only where
+  printed values or an ink outline carry the meaning (lead-source totals, organization nodes on
+  the map). Gantt bars on white use `seq-3` (3.41:1) instead;
+- `muted` stays `#5A6763`. The brief's `#64746F` measures 4.67:1 on ivory but 4.36:1 on the sunk
+  table heads, which fails AA;
 - `muted` is darker than a straight warm neutral;
 - `#E9E4DB` is used only for borders, because it fails as text at 1.2:1;
 - violet text uses `#5B4BB0`, not `#7464C7`, on tints.
@@ -77,7 +87,7 @@ Changes from the brief:
 - **Categorical order.** Jade `#0B8A78`, violet `#7464C7`, amber `#B07A12`, rose `#B04A6E`, always
   in that order. The order was checked with the dataviz palette validator: lightness band,
   chroma, colour-vision separation and contrast all pass.
-- **Sequential.** Mint to forest: `#A5D6B5 → #6DBB9F → #2F9B86 → #0B7A6A → #145A50 → #142D2A`. It
+- **Sequential.** Mint to forest: `#A5D6B5 → #6DBB9F → #2F9B86 → #0B7A6A → #145A50 → #102C28`. It
   is used for ordered stages and for invoice age.
 - **Money.** Amounts are never summed across currencies. A chart with money shows one series or
   small multiple per currency.

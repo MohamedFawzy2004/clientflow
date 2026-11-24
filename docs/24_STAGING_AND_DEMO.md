@@ -203,6 +203,24 @@ The compose file sets everything else (production mode, origin, ClamAV, proxy co
   - a visitor's change was gone after a restart.
 - **Not verified, needing the owner's accounts:** the real Render and Neon deploy, the deploy hook, the scheduled health check, and TRUST_PROXY behind Render's proxy.
 
+## 11a. What to show in the demo (final signature release)
+
+These screens use the same fictional workspace (`npm run demo:reset`). Sign in with the role in
+the first column from the "Explore the demo" panel.
+
+| Role    | Where                                                   | What it shows                                                                 |
+| ------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Owner   | Deals → Insights (`/app/deals?view=insights`)           | Funnel by stage, time in stage, won value per currency, lead sources          |
+| Owner   | Relationship map, or a client's "Relationship map" link | Contact, organization, deals, proposals, projects, invoices, deliverables     |
+| Sales   | Deals → Insights                                        | The same view, limited to the rep's own deals                                 |
+| PM      | Delivery portfolio (`/app/delivery`)                    | Timeline from stored dates, task health, open tasks per person by due week    |
+| PM      | A project → Plan                                        | Milestone windows, task due dates, stored task dependencies as a map and list |
+| Finance | Finance report (`/app/reports/finance`)                 | Invoiced and received per month, per currency, plus per-project totals        |
+| Client  | Portal home (`/portal`)                                 | What waits on the client, milestone progress, open balance per currency       |
+
+The demo data is dated in November 2026, so monthly trends show mostly empty months. That is the
+data, not a rendering fault.
+
 ## 12. Owner decisions and steps still needed
 
 1. **Create accounts, no card:** Render (sign in with GitHub) and Neon. If either asks for a payment method, stop and tell me.
