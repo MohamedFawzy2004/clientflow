@@ -60,6 +60,7 @@ export function useLead(id: string) {
   const userKey = useUserKey();
   return useQuery({
     queryKey: [...userKey, 'contact', id],
+    enabled: id.length > 0,
     queryFn: ({ signal }) =>
       api.get<ApiSuccess<ContactWithDeals>>(`/api/v1/contacts/${encodeURIComponent(id)}`, {
         signal,

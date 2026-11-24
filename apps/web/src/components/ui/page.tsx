@@ -124,7 +124,8 @@ export function Panel({
           {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
         </div>
       ) : null}
-      <div className={cn(title || action ? 'px-5 pb-5 pt-3' : 'p-5', bodyClassName)}>
+      {/* bodyClassName replaces the default padding (cn is plain clsx, so classes would not override). */}
+      <div className={bodyClassName ?? (title || action ? 'px-5 pb-5 pt-3' : 'p-5')}>
         {children}
       </div>
     </Tag>

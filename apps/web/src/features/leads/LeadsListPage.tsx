@@ -45,10 +45,10 @@ export function NextAction({ iso, timeZone }: { iso: string | null; timeZone: st
       Overdue · {relativeDay(iso, new Date(), timeZone)}
     </Badge>
   ) : (
-    <span className="inline-flex items-center gap-1.5 text-text">
+    <span className="inline-flex flex-wrap items-center gap-x-1.5 text-text">
       <CalendarClock aria-hidden className="size-3.5 text-muted" />
-      <span className="tabular">{formatDate(iso, timeZone)}</span>
-      <span className="text-muted">· {relativeDay(iso, new Date(), timeZone)}</span>
+      <span className="whitespace-nowrap tabular">{formatDate(iso, timeZone)}</span>
+      <span className="whitespace-nowrap text-muted">{relativeDay(iso, new Date(), timeZone)}</span>
     </span>
   );
 }

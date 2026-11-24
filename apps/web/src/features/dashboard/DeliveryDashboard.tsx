@@ -10,12 +10,15 @@ import { useDeliveryDashboard } from '../projects/api';
 
 /** One ledger cell: a labelled figure with an optional note and link (same grammar as Results). */
 function Cell({
+  name,
   label,
   value,
   tone = 'ink',
   note,
   link,
 }: {
+  /** Accessible region name; kept stable for the end-to-end suites. */
+  name?: string;
   label: string;
   value: number;
   tone?: 'ink' | 'warning' | 'danger';
@@ -23,7 +26,7 @@ function Cell({
   link?: { to: string; label: string };
 }) {
   return (
-    <section aria-label={label} className="flex min-w-0 flex-col p-5">
+    <section aria-label={name ?? label} className="flex min-w-0 flex-col p-5">
       <h3 className="text-[13px] text-muted">{label}</h3>
       <p
         className={cn(
@@ -77,7 +80,7 @@ export function DeliveryDashboardSection() {
   if (query.isPending) return <Skeleton className="h-40 rounded-lg" />;
   if (query.isError) {
     return (
-      <Panel title="Delivery">
+      <Panel bodyClassName="p-0" title="Delivery">
         <ErrorState
           className="py-8"
           message={query.error.message}
@@ -116,12 +119,14 @@ export function DeliveryDashboardSection() {
         />
         {d.handoffWaiting !== null ? (
           <Cell
+            name="Waiting for handoff"
             label="Won deals waiting for handoff"
             value={d.handoffWaiting}
             link={{ to: '/app/projects', label: 'Start projects' }}
           />
         ) : null}
         <Cell
+          name="Waiting for the client"
           label="Deliverables waiting for the client"
           value={d.deliverables.awaitingClient}
           note={
@@ -136,7 +141,12 @@ export function DeliveryDashboardSection() {
       </div>
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
         {d.myTasks.length > 0 ? (
-          <Panel title="My open tasks" description="Tasks assigned to you, soonest first.">
+          <Panel
+            bodyClassName="p-0"
+            id="my-tasks"
+            title="My tasks"
+            description="Open tasks assigned to you, soonest first."
+          >
             <ul className="mt-2 divide-y divide-border border-t border-border">
               {d.myTasks.map((t) => (
                 <li key={t.id}>
@@ -160,6 +170,8 @@ export function DeliveryDashboardSection() {
           </Panel>
         ) : null}
         <Panel
+          bodyClassName="p-0"
+          id="next-milestones"
           title="Next milestones"
           description="Open milestones by due date."
           className={d.myTasks.length > 0 ? undefined : 'xl:col-span-2'}

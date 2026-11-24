@@ -164,6 +164,13 @@ export const router = createBrowserRouter([
         path: 'leads/:id',
         lazy: screen(() => import('../features/leads/LeadDetailPage'), 'LeadDetailPage'),
       },
+      {
+        path: 'relationships',
+        lazy: screen(
+          () => import('../features/relationships/RelationshipMapPage'),
+          'RelationshipMapPage',
+        ),
+      },
       { path: 'team', lazy: screen(() => import('../features/team/TeamPage'), 'TeamPage') },
       { path: 'deals', lazy: screen(() => import('../features/deals/DealsPage'), 'DealsPage') },
       {
