@@ -830,7 +830,7 @@ export function RelationshipMapPage() {
     <>
       <PageHeader
         title="Relationship map"
-        description="Who and what is connected to a contact: the team, deals, proposals, projects and invoices, from stored records only."
+        description="Who and what is connected to a contact: the team, deals, proposals, projects, deliverables and invoices, from stored records only."
       />
       <div className="mt-6">
         <ContactPicker focus={focus} onPick={onPick} />

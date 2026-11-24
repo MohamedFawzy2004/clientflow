@@ -24,15 +24,15 @@ Lead → Deal → Proposal (internal approval → client decision in the portal)
      → Invoices and payments
 ```
 
-| For               | They get                                                                                                                                                                            |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sales             | Leads with follow-up queues, a pipeline board with rule-based insights, a relationship map, proposals with exact totals and numbered, frozen versions                               |
-| Sales managers    | Approval before anything reaches a client, team dashboard, CSV export and import                                                                                                    |
-| Project managers  | One-step, duplicate-proof handoff from won deal to project; task board; a portfolio timeline and per-project plan drawn only from stored dates; change requests priced and approved |
-| Team members      | Their tasks and time, encrypted file uploads, deliverables with client feedback                                                                                                     |
-| Finance           | Invoices numbered on issue, partial payments with reversals, finance report per currency                                                                                            |
-| Clients           | A portal home with pending decisions, progress and open balance, showing only their own proposals, shared projects, deliverables and invoices                                       |
-| Owners and admins | Team, roles, settings, system status and an audit trail; backup and restore commands                                                                                                |
+| For               | They get                                                                                                                                                                               |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sales             | Leads with follow-up queues, a pipeline board with rule-based insights, a relationship map, proposals with exact totals and numbered, frozen versions                                  |
+| Sales managers    | Approval before anything reaches a client, team dashboard, CSV export and import                                                                                                       |
+| Project managers  | One-step, duplicate-proof handoff from won deal to project; task board; a portfolio timeline and per-project plan drawn only from stored dates; change requests priced and approved    |
+| Team members      | Their tasks and time, encrypted file uploads, deliverables with client feedback                                                                                                        |
+| Finance           | Invoices numbered on issue, partial payments with reversals, finance report per currency; estimated project profitability (budget, accepted changes, dated time cost) for finance only |
+| Clients           | A portal home with pending decisions, progress and open balance, showing only their own proposals, shared projects, deliverables and invoices; a schedule line per project             |
+| Owners and admins | Team, roles, settings, system status and an audit trail; backup and restore commands; an executive strip with the position per role, each figure linked to its records                 |
 
 | Sales pipeline                                                | Project task board                                                |
 | ------------------------------------------------------------- | ----------------------------------------------------------------- |

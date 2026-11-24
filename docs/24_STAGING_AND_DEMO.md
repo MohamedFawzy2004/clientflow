@@ -208,18 +208,23 @@ The compose file sets everything else (production mode, origin, ClamAV, proxy co
 These screens use the same fictional workspace (`npm run demo:reset`). Sign in with the role in
 the first column from the "Explore the demo" panel.
 
-| Role    | Where                                                   | What it shows                                                                 |
-| ------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Owner   | Deals → Insights (`/app/deals?view=insights`)           | Funnel by stage, time in stage, won value per currency, lead sources          |
-| Owner   | Relationship map, or a client's "Relationship map" link | Contact, organization, deals, proposals, projects, invoices, deliverables     |
-| Sales   | Deals → Insights                                        | The same view, limited to the rep's own deals                                 |
-| PM      | Delivery portfolio (`/app/delivery`)                    | Timeline from stored dates, task health, open tasks per person by due week    |
-| PM      | A project → Plan                                        | Milestone windows, task due dates, stored task dependencies as a map and list |
-| Finance | Finance report (`/app/reports/finance`)                 | Invoiced and received per month, per currency, plus per-project totals        |
-| Client  | Portal home (`/portal`)                                 | What waits on the client, milestone progress, open balance per currency       |
+| Role    | Where                                                   | What it shows                                                                              |
+| ------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Owner   | Dashboard (`/app/dashboard`)                            | Executive strip: pipeline, won, win rate, cash, outstanding, margin, delivery              |
+| Owner   | Deals → Insights (`/app/deals?view=insights`)           | Funnel by stage, time in stage, won value per currency, lead sources                       |
+| Owner   | Relationship map, or a client's "Relationship map" link | Contact, organization, deals, proposals, projects, invoices, deliverables                  |
+| Sales   | Deals → Insights                                        | The same view, limited to the rep's own deals                                              |
+| PM      | Delivery portfolio (`/app/delivery`)                    | Timeline from stored dates, task health, open tasks per person by due week                 |
+| PM      | A project → Plan                                        | Milestone windows, task due dates, stored task dependencies as a map and list              |
+| Finance | Finance report (`/app/reports/finance`)                 | Invoiced and received per month, per currency, per-project totals, estimated profitability |
+| Client  | Portal → a project                                      | Schedule line from start to due date with milestones and today                             |
+| Client  | Portal home (`/portal`)                                 | What waits on the client, milestone progress, open balance per currency                    |
 
 The demo data is dated in November 2026, so monthly trends show mostly empty months. That is the
-data, not a rendering fault.
+data, not a rendering fault. The workflows stamp records with "now" while people enter start, due
+and payment dates, so a few demo records read out of order (a project starting before the deal
+was won; one invoice due before it was issued). The Nile Bakery plan shows 12 stored task
+dependencies, led by the blocked pickup-slot task.
 
 ## 12. Owner decisions and steps still needed
 

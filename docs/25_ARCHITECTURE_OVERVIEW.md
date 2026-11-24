@@ -132,16 +132,17 @@ erDiagram
 `apps/api/src/modules/intelligence` adds five read-only endpoints. They compute views from stored
 records and add no tables or migrations:
 
-| Endpoint                         | Permission (any of)                          | What it returns                                                  |
-| -------------------------------- | -------------------------------------------- | ---------------------------------------------------------------- |
-| `GET /api/v1/contacts/:id/graph` | `contacts.read.all`, `contacts.read.own`     | The contact's linked records per kind, each within its own scope |
-| `GET /api/v1/insights/sales`     | `dashboard.sales`                            | Stage funnel, time in stage, monthly won/lost, lead sources      |
-| `GET /api/v1/insights/finance`   | `invoices.read.all`, `invoices.read.project` | Invoiced and received per month and per project, per currency    |
-| `GET /api/v1/insights/delivery`  | `delivery.work`                              | Open projects, task health, open tasks per person by due week    |
-| `GET /api/v1/projects/:id/plan`  | `delivery.work`                              | Milestones, dated tasks and stored task dependencies             |
+| Endpoint                         | Permission (any of)                          | What it returns                                                                                                |
+| -------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/contacts/:id/graph` | `contacts.read.all`, `contacts.read.own`     | The contact's linked records per kind, each within its own scope                                               |
+| `GET /api/v1/insights/sales`     | `dashboard.sales`                            | Stage funnel, time in stage, monthly won/lost, lead sources                                                    |
+| `GET /api/v1/insights/finance`   | `invoices.read.all`, `invoices.read.project` | Invoiced and received per month and per project, per currency; estimated profitability for `finance.view` only |
+| `GET /api/v1/insights/delivery`  | `delivery.work`                              | Open projects, task health, open tasks per person by due week                                                  |
+| `GET /api/v1/projects/:id/plan`  | `delivery.work`                              | Milestones, dated tasks and stored task dependencies                                                           |
 
-The web app draws the relationship map, the Gantt timeline and the dependency map from these
-responses. It never invents dates or links. Every number is rule-based. None of it uses a model,
+The web app draws the relationship map, the Gantt timeline, the dependency map, the profitability
+waterfall and the dashboard's executive strip from these responses (the strip also reads the
+existing finance report for `finance.view`). It never invents dates or links. Every number is rule-based. None of it uses a model,
 and the product never calls it AI.
 
 ## 6. Deployment shapes

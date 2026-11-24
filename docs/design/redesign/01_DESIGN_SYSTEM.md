@@ -133,15 +133,17 @@ section headings inside scope documents, which were kept.
 
 ## Components
 
-| Component                                                  | File                           | Notes                                                                     |
-| ---------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------- |
-| `PageHeader`, `Panel`, `DocumentTitle`, `useDocumentTitle` | `components/ui/page.tsx`       | `Panel` replaces its default padding when `bodyClassName` is passed       |
-| `Button` (primary, secondary, ghost, danger; sm/md)        | `components/ui/button.tsx`     | Visible focus ring, press scale                                           |
-| `Badge`, `Banner`, `EmptyState`, `ErrorState`, `Skeleton`  | `components/ui/feedback.tsx`   | Every list has a loading, an empty and an error state                     |
-| `Field`, `Input`, `Select`, `Textarea`                     | `components/ui/form.tsx`       | Labels are always visible, errors are linked with `aria-describedby`      |
-| `Dialog`, `Drawer`                                         | `components/ui/dialog.tsx`     | Radix: focus trap, Esc to close, focus returns to the trigger             |
-| Brand mark                                                 | `components/ui/brand.tsx`      | One path joining two points: a relationship that becomes work and revenue |
-| Charts                                                     | `components/charts/charts.tsx` | See above                                                                 |
+| Component                                                  | File                                    | Notes                                                                                                                                                                                          |
+| ---------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`, `Panel`, `DocumentTitle`, `useDocumentTitle` | `components/ui/page.tsx`                | `Panel` replaces its default padding when `bodyClassName` is passed                                                                                                                            |
+| `Button` (primary, secondary, ghost, danger; sm/md)        | `components/ui/button.tsx`              | Visible focus ring, press scale                                                                                                                                                                |
+| `Badge`, `Banner`, `EmptyState`, `ErrorState`, `Skeleton`  | `components/ui/feedback.tsx`            | Every list has a loading, an empty and an error state                                                                                                                                          |
+| `Field`, `Input`, `Select`, `Textarea`                     | `components/ui/form.tsx`                | Labels are always visible, errors are linked with `aria-describedby`                                                                                                                           |
+| `Dialog`, `Drawer`                                         | `components/ui/dialog.tsx`              | Radix: focus trap, Esc to close, focus returns to the trigger                                                                                                                                  |
+| Brand mark                                                 | `components/ui/brand.tsx`               | One path joining two points: a relationship that becomes work and revenue                                                                                                                      |
+| Charts                                                     | `components/charts/charts.tsx`          | See above                                                                                                                                                                                      |
+| Executive strip                                            | `features/dashboard/ExecutiveStrip.tsx` | `dl` of tiles: label (link to the records), value per currency, comparison or note, rule. Tiles a role cannot read are not rendered; columns balance to 3 or 4                                 |
+| Portal schedule line                                       | `features/portal/PortalProjectPage.tsx` | Start to due date with milestone dots (filled done, violet in progress, hollow planned, red past date) and today; hidden from screen readers because the milestone list carries the same facts |
 
 ## Responsive layout
 
