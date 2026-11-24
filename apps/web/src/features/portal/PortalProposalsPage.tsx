@@ -8,6 +8,7 @@ import { ProposalStatusBadge } from '../../components/proposals/proposal-ui';
 import { useSession } from '../auth/session';
 import { usePortalProposals } from './api';
 import { DocumentTitle } from '../../components/ui/page';
+import { PortalOverview } from './PortalOverview';
 
 export function PortalProposalsPage() {
   const { data: user } = useSession();
@@ -72,14 +73,18 @@ export function PortalProposalsPage() {
 
   return (
     <>
-      <DocumentTitle title={'Proposals'} />
-      <h1 className="page-title">Proposals</h1>
+      <DocumentTitle title={'Home'} />
+      <h1 className="page-title">
+        {user?.clientOrg?.name ?? 'Your work'} with {user?.agency.name ?? 'the agency'}
+      </h1>
       <p className="mt-1 text-sm text-muted">
-        Proposals {user?.agency.name} shared with {user?.clientOrg?.name ?? 'you'}.
+        Decisions waiting on you, how the work is moving and what is left to pay.
       </p>
+      <PortalOverview />
+      <h2 className="mt-10 text-base font-semibold text-ink">Proposals</h2>
       <section
         aria-label="Your proposals"
-        className="mt-6 overflow-hidden rounded-lg border border-border bg-surface shadow-card"
+        className="mt-3 overflow-hidden rounded-lg border border-border bg-surface shadow-card"
       >
         {body}
       </section>
