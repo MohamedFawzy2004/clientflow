@@ -726,7 +726,29 @@ export async function seedDemo(
     }
     tasks.push(t);
   }
-  log(`tasks: ${tasks.length}`);
+  // Dependencies the project manager records, so the plan shows which work waits on which.
+  // The blocked pickup-slot task holds up checkout, as it would in a real project.
+  const DEPENDS: Array<[string, string]> = [
+    ['Checkout and order emails', 'Pickup slot rules with the shop team'],
+    ['Checkout and order emails', 'Product catalogue import'],
+    ['Admin panel: orders list', 'Checkout and order emails'],
+    ['Launch checklist and handover', 'Admin panel: orders list'],
+    ['Launch checklist and handover', 'Stamp card logic'],
+    ['Delivery status rules', 'Live map prototype'],
+    ['Weekly performance report', 'Delivery status rules'],
+    ['Load test with 40 vans', 'Live map prototype'],
+    ['Rollout training session', 'Access roles for dispatchers'],
+    ['Reminder messages copy', 'Appointment rules per branch'],
+    ['Pilot plan for one branch', 'Booking flow mockups'],
+    ['Pilot plan for one branch', 'App store accounts checklist'],
+  ];
+  const byTitle = new Map(tasks.map((t) => [t.title, t]));
+  for (const [waiting, on] of DEPENDS) {
+    await c('pm').post(`/tasks/${byTitle.get(waiting)!.id}/dependencies`, {
+      dependsOnId: byTitle.get(on)!.id,
+    });
+  }
+  log(`tasks: ${tasks.length}, dependencies: ${DEPENDS.length}`);
 
   // 10. Change requests: accepted, waiting for the client, and declined.
   async function change(

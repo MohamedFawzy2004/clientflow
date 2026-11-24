@@ -118,6 +118,8 @@ describe('demo seed (through the real API)', () => {
     // 25 planned tasks plus the one the accepted change request creates.
     expect(await db.task.count({ where: { scope: 'BASELINE' } })).toBe(25);
     expect(await db.task.count({ where: { scope: 'CHANGE' } })).toBe(1);
+    // Recorded by the project manager; the blocked pickup-slot task holds up checkout.
+    expect(await db.taskDependency.count()).toBe(12);
     expect(await db.changeRequest.count()).toBe(3);
     const deliverables = await db.deliverable.groupBy({ by: ['status'], _count: true });
     expect(deliverables.map((d) => d.status).sort()).toEqual(
