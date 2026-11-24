@@ -1,42 +1,94 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens from the master spec §7.2. Measured WCAG contrast (2026-10-24):
- * on white: text 16.4, muted 5.97, primary 4.90, info 6.79, success 5.86, warning 5.29, danger 6.50.
- * primary drops to 4.47 on surface-alt and 4.33 on primary-soft, so teal TEXT on tinted
- * backgrounds uses primary-strong (#056B61, 5.84+). subtle (3.5) is for icons/borders only.
+ * ClientFlow design tokens: "Relationship & Revenue Intelligence" (docs/design/redesign/01_DESIGN_SYSTEM.md).
+ * Warm ivory workspace, deep-forest navigation, jade for action, violet for proposals and secondary data.
+ *
+ * Measured WCAG 2.x contrast (2026-11-24; full table in the design-system doc):
+ *   text #1B2A27 on canvas 14.2 · muted #5A6763 on canvas 5.6, on sunk 5.2, on white 5.9
+ *   primary #087F70 on white 4.9, on canvas 4.7 (NOT on sunk: 4.35, use primary-strong there)
+ *   white on primary 4.9 · primary-strong #06685C on primary-soft 5.8 · violet #7464C7 on white 4.8
+ *   nav text #C9D9D2 on forest 10.0, nav muted #9DB4AC on forest 6.6, mint on forest 9.0
+ *   control border #8C8577 on white 3.7 (WCAG 1.4.11 non-text 3:1)
+ *   success 5.3 / warning 5.9 / danger 6.5 on white; each ≥ 4.5 on its own soft tint.
+ * Names kept from the earlier system (bg, surface, primary, …) so every screen picks the palette up.
  */
 @theme {
-  --color-bg: #f7f9fc;
+  /* Surfaces */
+  --color-bg: #faf9f6; /* ivory canvas */
   --color-surface: #ffffff;
-  --color-surface-alt: #f1f5f9;
-  --color-text: #122033;
-  --color-muted: #53657b;
-  --color-subtle: #7a8a9e;
-  --color-primary: #087f72;
-  --color-primary-hover: #056b61;
-  --color-primary-strong: #056b61;
-  --color-primary-soft: #e6f4f2;
-  --color-info: #2859a9;
-  --color-info-soft: #eaf1fb;
-  --color-success: #15734a;
-  --color-success-soft: #e8f5ee;
-  --color-warning: #946100;
-  --color-warning-soft: #fdf4e3;
-  --color-danger: #b42333;
-  --color-danger-soft: #fcebed;
-  --color-border: #dce4ed;
-  --color-border-strong: #c3cfdc;
+  --color-surface-alt: #f3f1ec; /* sunk: table heads, wells */
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* Ink */
+  --color-text: #1b2a27;
+  --color-ink: #142d2a; /* deep forest: headings, figures, the nav */
+  --color-muted: #5a6763;
+  --color-subtle: #8c8577; /* icons and non-text only (3.7:1) */
 
-  --shadow-card: 0 3px 14px rgba(16, 36, 60, 0.05);
-  --shadow-pop: 0 12px 40px rgba(16, 36, 60, 0.14);
+  /* Action: jade */
+  --color-primary: #087f70;
+  --color-primary-hover: #06685c;
+  --color-primary-strong: #06685c;
+  --color-primary-soft: #e3f1ec;
+  --color-mint: #a5d6b5;
+  --color-mint-soft: #eef7f1;
+
+  /* Secondary data and proposals: violet. `info` speaks violet, not template blue. */
+  --color-violet: #7464c7;
+  --color-violet-strong: #5b4bb0;
+  --color-violet-soft: #efecfa;
+  --color-info: #5b4bb0;
+  --color-info-soft: #efecfa;
+
+  /* Status (reserved: never used as chart series) */
+  --color-success: #1f7a4d;
+  --color-success-soft: #e6f3ea;
+  --color-warning: #8a5a00;
+  --color-warning-soft: #fbf1dc;
+  --color-attention: #b07a12;
+  --color-danger: #b3261e;
+  --color-danger-hover: #931f18;
+  --color-danger-soft: #fbeae8;
+
+  /* Lines */
+  --color-border: #e9e4db; /* warm neutral hairline (decorative) */
+  --color-border-strong: #d6cfc3;
+  --color-control: #8c8577; /* input and checkbox borders: 3.7:1 */
+
+  /* Navigation (forest) */
+  --color-nav: #142d2a;
+  --color-nav-raised: #1b3a36;
+  --color-nav-active: #22463f;
+  --color-nav-text: #c9d9d2;
+  --color-nav-muted: #9db4ac;
+  --color-nav-line: #2a4b45;
+
+  /* Chart categorical order, validated with the dataviz validator (all six checks pass). */
+  --color-series-1: #0b8a78;
+  --color-series-2: #7464c7;
+  --color-series-3: #b07a12;
+  --color-series-4: #b04a6e;
+  /* Sequential (ordered stages): mint → forest. */
+  --color-seq-1: #a5d6b5;
+  --color-seq-2: #6dbb9f;
+  --color-seq-3: #2f9b86;
+  --color-seq-4: #0b7a6a;
+  --color-seq-5: #145a50;
+  --color-seq-6: #142d2a;
+
+  /* Restrained geometry: not overly rounded. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-card: 0 1px 0 rgba(20, 45, 42, 0.04);
+  --shadow-pop: 0 18px 48px -12px rgba(20, 45, 42, 0.28), 0 2px 6px rgba(20, 45, 42, 0.08);
 
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* Spec §7.3 breakpoints: tablet 768, laptop 1024, wide 1440. */
   --breakpoint-wide: 90rem;
@@ -52,7 +104,15 @@
     @apply bg-bg text-text font-sans antialiased;
     font-size: 14px;
     line-height: 21px;
-    font-feature-settings: 'cv11', 'ss01';
+    /* Inter's optical-size axis: large type renders in the Display cut automatically. */
+    font-optical-sizing: auto;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 
   :focus-visible {
@@ -61,12 +121,44 @@
   }
 
   ::selection {
-    background: var(--color-primary-soft);
+    background: var(--color-mint);
+    color: var(--color-ink);
   }
 }
 
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Page titles: one scale everywhere (32/38 from 768 px, 26/32 on phones). */
+@utility page-title {
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 640;
+  letter-spacing: -0.028em;
+  color: var(--color-ink);
+  @media (width >= 48rem) {
+    font-size: 32px;
+    line-height: 38px;
+  }
+}
+
+/* Large figures: optical-size display cut, tabular digits. */
+@utility figure {
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+/* Pressable feedback (140 ms, transform only). */
+@utility press {
+  transition-property: transform, background-color, border-color, color, box-shadow;
+  transition-duration: 140ms;
+  transition-timing-function: var(--ease-out);
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -111,11 +203,30 @@
   }
 }
 
+@keyframes cf-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 @keyframes cf-shimmer {
   0% {
     background-position: -200% 0;
   }
   100% {
     background-position: 200% 0;
+  }
+}
+
+/* The one orchestrated moment: the pipeline flow line draws itself once on load. */
+@keyframes cf-grow-x {
+  from {
+    transform: scaleX(0.001);
+  }
+  to {
+    transform: scaleX(1);
   }
 }

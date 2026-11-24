@@ -187,9 +187,7 @@ export function FollowUpsPage() {
 
   return (
     <>
-      <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-        Follow-ups
-      </h1>
+      <h1 className="page-title">Follow-ups</h1>
       <p className="mt-1 text-sm text-muted">
         {user.role === 'SALES'
           ? 'Your leads and deals that need a next move.'

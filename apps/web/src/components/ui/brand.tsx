@@ -1,56 +1,82 @@
 import { cn, initials } from '../../lib/format';
 
-/** ClientFlow mark: two connected nodes on a flow line (spec §7.1). */
-export function LogoMark({ className }: { className?: string }) {
+/**
+ * ClientFlow mark: two relationship nodes joined by a flowing line, on deep forest.
+ * One path, so it stays crisp from 20 to 32 px.
+ */
+export function LogoMark({ className, inverse }: { className?: string; inverse?: boolean }) {
   return (
     <svg viewBox="0 0 32 32" aria-hidden className={cn('size-8', className)}>
-      <rect width="32" height="32" rx="9" fill="#087F72" />
+      <rect width="32" height="32" rx="7" fill={inverse ? '#A5D6B5' : '#142D2A'} />
       <path
-        d="M9 11.5a3 3 0 0 1 3-3h4.5M23 20.5a3 3 0 0 1-3 3h-4.5M9 16h14"
-        stroke="#fff"
-        strokeWidth="2.4"
+        d="M8.5 21.5c4.2 0 5.3-11 9.6-11h5.4"
+        stroke={inverse ? '#142D2A' : '#A5D6B5'}
+        strokeWidth="2.2"
         strokeLinecap="round"
         fill="none"
       />
-      <circle cx="20.5" cy="8.5" r="2.2" fill="#fff" />
-      <circle cx="11.5" cy="23.5" r="2.2" fill="#fff" />
+      <circle cx="8.5" cy="21.5" r="2.6" fill={inverse ? '#142D2A' : '#FFFFFF'} />
+      <circle cx="23.5" cy="10.5" r="2.6" fill={inverse ? '#142D2A' : '#FFFFFF'} />
     </svg>
   );
 }
 
-export function Wordmark({ className, compact }: { className?: string; compact?: boolean }) {
+export function Wordmark({
+  className,
+  compact,
+  tone = 'ink',
+}: {
+  className?: string;
+  compact?: boolean;
+  tone?: 'ink' | 'nav';
+}) {
   return (
     <span className={cn('flex items-center gap-2.5', className)}>
-      <LogoMark />
+      <LogoMark inverse={tone === 'nav'} />
       {compact ? (
         <span className="sr-only">ClientFlow</span>
       ) : (
-        <span className="text-[17px] font-semibold tracking-[-0.01em] text-text">
-          Client<span className="text-primary">Flow</span>
+        <span
+          className={cn(
+            'text-[17px] font-[650] tracking-[-0.02em]',
+            tone === 'nav' ? 'text-white' : 'text-ink',
+          )}
+        >
+          ClientFlow
         </span>
       )}
     </span>
   );
 }
 
+// Avatar tints come from the token families; each text/background pair is ≥ 4.5:1.
 const avatarColors = [
-  'bg-[#E6F4F2] text-[#056B61]',
-  'bg-[#EAF1FB] text-[#2859A9]',
-  'bg-[#FDF4E3] text-[#7A5000]',
-  'bg-[#F1ECFB] text-[#5B3BA8]',
-  'bg-[#FCEBED] text-[#9A1D2B]',
+  'bg-primary-soft text-primary-strong',
+  'bg-violet-soft text-violet-strong',
+  'bg-warning-soft text-warning',
+  'bg-mint-soft text-ink',
+  'bg-surface-alt text-ink',
 ];
 
-export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+export function Avatar({
+  name,
+  size = 'md',
+  className,
+}: {
+  name: string;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}) {
   let hash = 0;
   for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return (
     <span
       aria-hidden
       className={cn(
-        'inline-grid shrink-0 place-items-center rounded-full font-semibold',
-        size === 'sm' ? 'size-7 text-[11px]' : 'size-9 text-xs',
+        'inline-grid shrink-0 place-items-center rounded-full font-semibold tracking-[-0.01em]',
+        size === 'sm' ? 'size-7 text-[11px]' : size === 'lg' ? 'size-14 text-lg' : 'size-9 text-xs',
         avatarColors[hash % avatarColors.length],
+        className,
       )}
     >
       {initials(name)}

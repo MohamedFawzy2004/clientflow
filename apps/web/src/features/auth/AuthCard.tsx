@@ -22,9 +22,7 @@ export function AuthCard({
           <Wordmark />
         </Link>
         <div className="rounded-xl border border-border bg-surface p-5 shadow-card sm:p-8">
-          <h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] text-text">
-            {title}
-          </h1>
+          <h1 className="page-title">{title}</h1>
           {subtitle ? <div className="mt-1.5 text-sm text-muted">{subtitle}</div> : null}
           <div className="mt-6">{children}</div>
         </div>

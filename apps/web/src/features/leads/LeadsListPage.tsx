@@ -371,9 +371,7 @@ export function LeadsListPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-            Leads
-          </h1>
+          <h1 className="page-title">Leads</h1>
           <p className="mt-1 text-sm text-muted">
             {user?.role === 'SALES' ? 'Leads assigned to you.' : 'Every lead in your agency.'}
           </p>
@@ -435,7 +433,7 @@ export function LeadsListPage() {
                   className={cn(
                     'h-9 shrink-0 rounded-sm px-3.5 text-[13px] font-medium transition-colors md:h-8',
                     active
-                      ? 'bg-surface text-text shadow-[0_1px_2px_rgba(16,36,60,0.1)]'
+                      ? 'bg-surface text-text shadow-[0_1px_2px_rgba(20,45,42,0.1)]'
                       : 'text-muted hover:text-text',
                   )}
                 >

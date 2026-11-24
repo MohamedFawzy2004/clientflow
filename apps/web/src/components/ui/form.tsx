@@ -66,7 +66,7 @@ export function Field({ label, hint, error, required, className, children }: Fie
 
 const controlBase =
   'w-full min-w-0 rounded-md border bg-surface text-[15px] text-text placeholder:text-muted transition-[border-color,box-shadow] duration-150 md:text-sm ' +
-  'border-border-strong hover:border-[#a9b8c9] focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15 ' +
+  'border-control hover:border-ink focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15 ' +
   'aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/15 disabled:cursor-not-allowed disabled:bg-surface-alt disabled:text-muted';
 
 // 48px controls on touch screens, 44px from tablet up (spec §7.3).

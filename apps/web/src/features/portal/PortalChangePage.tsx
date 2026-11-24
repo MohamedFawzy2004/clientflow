@@ -138,7 +138,7 @@ export function PortalChangePage() {
       </Link>
       <header className="mt-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="min-w-0 break-words text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
+          <h1 className="min-w-0 break-words page-title">
             <span className="text-muted">{c.reference}</span> {c.title}
           </h1>
           <ChangeStatusBadge status={c.status} />

@@ -154,9 +154,7 @@ export function ProjectDetailPage() {
       <header className="mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="min-w-0 break-words text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-              {p.title}
-            </h1>
+            <h1 className="min-w-0 break-words page-title">{p.title}</h1>
             <ProjectStateBadge state={p.state} />
           </div>
           <p className="mt-1 text-sm text-muted">

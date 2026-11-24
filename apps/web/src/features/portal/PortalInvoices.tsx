@@ -90,9 +90,7 @@ export function PortalInvoicesPage() {
 
   return (
     <>
-      <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-        Invoices
-      </h1>
+      <h1 className="page-title">Invoices</h1>
       <p className="mt-1 text-sm text-muted">{PAY_NOTICE}</p>
       <section
         aria-label="Your invoices"
@@ -142,9 +140,7 @@ export function PortalInvoicePage() {
       {back}
       <header>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-            {inv.reference}
-          </h1>
+          <h1 className="page-title">{inv.reference}</h1>
           <InvoiceStatusBadge status={inv.displayStatus} />
         </div>
         <p className="mt-1 text-sm text-muted">

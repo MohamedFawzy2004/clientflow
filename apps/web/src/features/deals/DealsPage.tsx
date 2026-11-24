@@ -37,7 +37,7 @@ function DealCard({
         e.dataTransfer.setData('text/plain', deal.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
-      className="cursor-grab rounded-md border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(16,36,60,0.06)] active:cursor-grabbing"
+      className="cursor-grab rounded-md border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(20,45,42,0.06)] active:cursor-grabbing"
     >
       <Link
         to={`/app/deals/${deal.id}`}
@@ -402,7 +402,7 @@ function DealList({ timeZone }: { timeZone: string }) {
               className={cn(
                 'h-9 shrink-0 rounded-sm px-3.5 text-[13px] font-medium md:h-8',
                 status === t.value
-                  ? 'bg-surface text-text shadow-[0_1px_2px_rgba(16,36,60,0.1)]'
+                  ? 'bg-surface text-text shadow-[0_1px_2px_rgba(20,45,42,0.1)]'
                   : 'text-muted hover:text-text',
               )}
             >
@@ -467,9 +467,7 @@ export function DealsPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-            Deals
-          </h1>
+          <h1 className="page-title">Deals</h1>
           <p className="mt-1 text-sm text-muted">
             {user.role === 'SALES'
               ? 'Your opportunities by stage.'
@@ -487,7 +485,7 @@ export function DealsPage() {
                 className={cn(
                   'inline-flex h-9 items-center gap-1.5 rounded-sm px-3 text-[13px] font-medium md:h-8',
                   view === v
-                    ? 'bg-surface text-text shadow-[0_1px_2px_rgba(16,36,60,0.1)]'
+                    ? 'bg-surface text-text shadow-[0_1px_2px_rgba(20,45,42,0.1)]'
                     : 'text-muted hover:text-text',
                 )}
               >

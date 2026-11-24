@@ -256,9 +256,7 @@ export function ServicesPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-            Services
-          </h1>
+          <h1 className="page-title">Services</h1>
           <p className="mt-1 text-sm text-muted">
             What you sell, with default rates for proposals.
           </p>

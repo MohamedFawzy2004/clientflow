@@ -29,7 +29,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex h-[22px] shrink-0 items-center gap-1 whitespace-nowrap rounded-sm px-2 text-xs font-medium ring-1 ring-inset',
         badgeTones[tone],
         className,
       )}
@@ -45,7 +45,7 @@ export function Skeleton({ className }: { className?: string }) {
     <div
       aria-hidden
       className={cn(
-        'rounded-sm bg-[linear-gradient(90deg,#eef2f7_0%,#e2e8f0_50%,#eef2f7_100%)] bg-[length:200%_100%] [animation:cf-shimmer_1.4s_ease-in-out_infinite]',
+        'rounded-sm bg-[linear-gradient(90deg,#f3f1ec_0%,#e9e4db_50%,#f3f1ec_100%)] bg-[length:200%_100%] [animation:cf-shimmer_1.4s_ease-in-out_infinite]',
         className,
       )}
     />
@@ -63,10 +63,10 @@ interface StateProps {
 export function EmptyState({ icon, title, description, action, className }: StateProps) {
   return (
     <div className={cn('flex flex-col items-center px-6 py-14 text-center', className)}>
-      <div className="mb-4 grid size-12 place-items-center rounded-lg bg-primary-soft text-primary-strong ring-1 ring-primary/15">
+      <div className="mb-4 grid size-11 place-items-center rounded-full bg-mint-soft text-primary-strong ring-1 ring-mint">
         {icon}
       </div>
-      <h2 className="text-base font-semibold text-text">{title}</h2>
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
       {description ? <p className="mt-1.5 max-w-sm text-sm text-muted">{description}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
@@ -96,7 +96,7 @@ export function ErrorState({
       <div className="mb-4 grid size-12 place-items-center rounded-lg bg-danger-soft text-danger ring-1 ring-danger/15">
         <TriangleAlert aria-hidden className="size-5" />
       </div>
-      <h2 className="text-base font-semibold text-text">{title}</h2>
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
       <p className="mt-1.5 max-w-sm text-sm text-muted">{message}</p>
       {requestId ? (
         <p className="mt-2 text-xs text-muted">

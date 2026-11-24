@@ -371,9 +371,7 @@ export function TeamPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-            Team
-          </h1>
+          <h1 className="page-title">Team</h1>
           <p className="mt-1 text-sm text-muted">
             Who can sign in to {user.agency.name}, and what they can do.
           </p>

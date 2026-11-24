@@ -77,7 +77,7 @@ export function TimelineComposer({
             className={cn(
               'h-9 shrink-0 rounded-sm px-3.5 text-[13px] font-medium transition-colors md:h-8',
               kind === k
-                ? 'bg-surface text-text shadow-[0_1px_2px_rgba(16,36,60,0.1)]'
+                ? 'bg-surface text-text shadow-[0_1px_2px_rgba(20,45,42,0.1)]'
                 : 'text-muted hover:text-text',
             )}
           >

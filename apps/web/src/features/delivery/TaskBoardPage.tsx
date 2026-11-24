@@ -47,7 +47,7 @@ function TaskCard({
 }) {
   const action = useTaskAction();
   return (
-    <li className="rounded-md border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(16,36,60,0.05)]">
+    <li className="rounded-md border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(20,45,42,0.05)]">
       <button
         type="button"
         onClick={onOpen}

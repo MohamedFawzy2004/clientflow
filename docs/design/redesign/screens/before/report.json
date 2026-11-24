@@ -1,0 +1,282 @@
+[
+ {
+  "name": "owner-dashboard",
+  "width": 1440,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-dashboard",
+  "width": 360,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-deals-board",
+  "width": 1440,
+  "path": "/app/deals",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-deals-board",
+  "width": 360,
+  "path": "/app/deals",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-deals-list",
+  "width": 1440,
+  "path": "/app/deals?view=list",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-deals-list",
+  "width": 360,
+  "path": "/app/deals?view=list",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-deal-detail",
+  "width": 1440,
+  "path": "/app/deals/01a20c43-d507-762d-a77f-d795c8386458",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-deal-detail",
+  "width": 360,
+  "path": "/app/deals/01a20c43-d507-762d-a77f-d795c8386458",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-leads",
+  "width": 1440,
+  "path": "/app/leads",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-leads",
+  "width": 360,
+  "path": "/app/leads",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-client-360",
+  "width": 1440,
+  "path": "/app/leads/01a20c43-d2ff-7218-988c-9942b72b619c",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-client-360",
+  "width": 360,
+  "path": "/app/leads/01a20c43-d2ff-7218-988c-9942b72b619c",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-follow-ups",
+  "width": 1440,
+  "path": "/app/follow-ups",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-follow-ups",
+  "width": 360,
+  "path": "/app/follow-ups",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-proposals",
+  "width": 1440,
+  "path": "/app/proposals",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-proposals",
+  "width": 360,
+  "path": "/app/proposals",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-projects",
+  "width": 1440,
+  "path": "/app/projects",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-projects",
+  "width": 360,
+  "path": "/app/projects",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-project",
+  "width": 1440,
+  "path": "/app/projects/01a20c43-de55-713d-b23c-83429bc6e42b",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-project",
+  "width": 360,
+  "path": "/app/projects/01a20c43-de55-713d-b23c-83429bc6e42b",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-invoices",
+  "width": 1440,
+  "path": "/app/invoices",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-invoices",
+  "width": 360,
+  "path": "/app/invoices",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-finance-report",
+  "width": 1440,
+  "path": "/app/reports/finance",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-finance-report",
+  "width": 360,
+  "path": "/app/reports/finance",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-team",
+  "width": 1440,
+  "path": "/app/team",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-team",
+  "width": 360,
+  "path": "/app/team",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-settings",
+  "width": 1440,
+  "path": "/app/settings",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-settings",
+  "width": 360,
+  "path": "/app/settings",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-notifications",
+  "width": 1440,
+  "path": "/app/notifications",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "owner-notifications",
+  "width": 360,
+  "path": "/app/notifications",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "sales-dashboard",
+  "width": 1440,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "sales-dashboard",
+  "width": 360,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "pm-dashboard",
+  "width": 1440,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "pm-dashboard",
+  "width": 360,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "finance-dashboard",
+  "width": 1440,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "finance-dashboard",
+  "width": 360,
+  "path": "/app/dashboard",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "portal-home",
+  "width": 1440,
+  "path": "/portal",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "portal-home",
+  "width": 360,
+  "path": "/portal",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "login",
+  "width": 1440,
+  "path": "/login",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ },
+ {
+  "name": "login",
+  "width": 360,
+  "path": "/login",
+  "overflowPx": 0,
+  "title": "ClientFlow"
+ }
+]

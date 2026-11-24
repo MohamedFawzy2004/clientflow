@@ -1,14 +1,75 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight } from 'lucide-react';
+import { ArrowUpRight, Flag } from 'lucide-react';
 import { PROJECT_STATE_LABELS, TASK_STATUS_LABELS, type TaskStatus } from '@clientflow/contracts';
 import { cn, formatDate } from '../../lib/format';
-import { ErrorState, Skeleton } from '../../components/ui/feedback';
+import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback';
+import { Panel } from '../../components/ui/page';
 import { useSession } from '../auth/session';
 import { useDeliveryDashboard } from '../projects/api';
 
-const BIG = 'text-[32px] font-semibold leading-[38px] tracking-[-0.02em] tabular';
+/** One ledger cell: a labelled figure with an optional note and link (same grammar as Results). */
+function Cell({
+  label,
+  value,
+  tone = 'ink',
+  note,
+  link,
+}: {
+  label: string;
+  value: number;
+  tone?: 'ink' | 'warning' | 'danger';
+  note?: ReactNode;
+  link?: { to: string; label: string };
+}) {
+  return (
+    <section aria-label={label} className="flex min-w-0 flex-col p-5">
+      <h3 className="text-[13px] text-muted">{label}</h3>
+      <p
+        className={cn(
+          'figure mt-1 text-[32px] leading-[38px]',
+          tone === 'warning' && 'text-warning',
+          tone === 'danger' && 'text-danger',
+        )}
+      >
+        {value}
+      </p>
+      {note ? <p className="mt-1 text-xs text-muted">{note}</p> : null}
+      {link ? (
+        <Link
+          to={link.to}
+          className="mt-auto inline-flex items-center gap-1 pt-3 text-sm font-medium text-primary-strong hover:underline"
+        >
+          {link.label} <ArrowUpRight aria-hidden className="size-3.5" />
+        </Link>
+      ) : null}
+    </section>
+  );
+}
 
-/** Projects and milestones in the viewer's scope (FR-F08 project part). */
+function DueDate({
+  dueOn,
+  overdue,
+  timeZone,
+}: {
+  dueOn: string;
+  overdue: boolean;
+  timeZone: string;
+}) {
+  return (
+    <span
+      className={cn(
+        'shrink-0 whitespace-nowrap text-xs tabular',
+        overdue ? 'font-medium text-danger' : 'text-muted',
+      )}
+    >
+      {overdue ? 'Overdue, ' : ''}
+      {formatDate(`${dueOn}T12:00:00Z`, timeZone)}
+    </span>
+  );
+}
+
+/** Projects and milestones in the viewer's scope (FR-F08 project part, GET /api/v1/dashboard/delivery). */
 export function DeliveryDashboardSection() {
   const { data: user } = useSession();
   const timeZone = user?.agency.timezone ?? 'Africa/Cairo';
@@ -16,157 +77,122 @@ export function DeliveryDashboardSection() {
   if (query.isPending) return <Skeleton className="h-40 rounded-lg" />;
   if (query.isError) {
     return (
-      <div className="rounded-lg border border-border bg-surface">
+      <Panel title="Delivery">
         <ErrorState
+          className="py-8"
           message={query.error.message}
           onRetry={() => query.refetch()}
           retrying={query.isFetching}
         />
-      </div>
+      </Panel>
     );
   }
   const d = query.data.data;
   const open = d.projects.PLANNED + d.projects.ACTIVE + d.projects.ON_HOLD;
   return (
-    <section aria-label="Delivery" className="flex flex-col gap-4">
-      <h2 className="text-[17px] font-semibold text-text">Delivery</h2>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <section
-          aria-label="Open projects"
-          className="rounded-lg border border-border bg-surface p-5 shadow-card"
-        >
-          <p className="text-[13px] font-medium text-muted">Open projects</p>
-          <p className={cn('mt-2 text-text', BIG)}>{open}</p>
-          <p className="mt-1 text-xs text-muted">
-            {(['PLANNED', 'ACTIVE', 'ON_HOLD'] as const)
-              .map((s) => `${d.projects[s]} ${PROJECT_STATE_LABELS[s].toLowerCase()}`)
-              .join(' · ')}
-          </p>
-          <Link
-            to="/app/projects"
-            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary-strong hover:underline"
-          >
-            View projects <ArrowRight aria-hidden className="size-4" />
-          </Link>
-        </section>
-        <section
-          aria-label="Overdue milestones"
-          className="rounded-lg border border-border bg-surface p-5 shadow-card"
-        >
-          <p className="text-[13px] font-medium text-muted">Overdue milestones</p>
-          <p className={cn('mt-2', BIG, d.milestones.overdue > 0 ? 'text-warning' : 'text-text')}>
-            {d.milestones.overdue}
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            {d.milestones.dueIn7Days} due in the next 7 days
-          </p>
-        </section>
-        {d.handoffWaiting !== null ? (
-          <section
-            aria-label="Waiting for handoff"
-            className="rounded-lg border border-border bg-surface p-5 shadow-card"
-          >
-            <p className="text-[13px] font-medium text-muted">Won deals waiting for handoff</p>
-            <p className={cn('mt-2 text-text', BIG)}>{d.handoffWaiting}</p>
-            <Link
-              to="/app/projects"
-              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary-strong hover:underline"
-            >
-              Start projects <ArrowRight aria-hidden className="size-4" />
-            </Link>
-          </section>
-        ) : null}
-        <section
-          aria-label="Waiting for the client"
-          className="rounded-lg border border-border bg-surface p-5 shadow-card"
-        >
-          <p className="text-[13px] font-medium text-muted">Deliverables waiting for the client</p>
-          <p className={cn('mt-2 text-text', BIG)}>{d.deliverables.awaitingClient}</p>
-          <p
-            className={cn(
-              'mt-1 text-xs',
-              d.deliverables.overdue > 0 ? 'font-medium text-danger' : 'text-muted',
-            )}
-          >
-            {d.deliverables.overdue} past the review date · {d.projects.COMPLETED} projects
-            completed
-          </p>
-        </section>
+    <section aria-labelledby="delivery-title" className="flex flex-col gap-4">
+      <div>
+        <h2 id="delivery-title" className="text-xl font-[640] tracking-[-0.02em] text-ink">
+          Delivery
+        </h2>
+        <p className="text-[13px] text-muted">
+          Projects, milestones and client reviews you can see.
+        </p>
       </div>
-      {d.myTasks.length > 0 ? (
-        <section
-          aria-label="My tasks"
-          className="rounded-lg border border-border bg-surface shadow-card"
-        >
-          <h3 className="border-b border-border px-5 py-3.5 text-[15px] font-semibold text-text">
-            My open tasks
-          </h3>
-          <ul className="divide-y divide-border">
-            {d.myTasks.map((t) => (
-              <li key={t.id}>
-                <Link
-                  to={`/app/projects/${t.projectId}/board`}
-                  className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-surface-alt/50"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-text">{t.title}</span>
-                    <span className="block truncate text-xs text-muted">
-                      {t.projectTitle} · {TASK_STATUS_LABELS[t.status as TaskStatus]}
-                    </span>
-                  </span>
-                  {t.dueOn ? (
-                    <span
-                      className={cn(
-                        'shrink-0 text-xs',
-                        t.overdue ? 'font-medium text-danger' : 'text-muted',
-                      )}
-                    >
-                      {t.overdue ? 'Overdue · ' : ''}
-                      {formatDate(`${t.dueOn}T12:00:00Z`, timeZone)}
-                    </span>
-                  ) : null}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {d.upcoming.length > 0 ? (
-        <section
-          aria-label="Next milestones"
-          className="rounded-lg border border-border bg-surface shadow-card"
-        >
-          <h3 className="border-b border-border px-5 py-3.5 text-[15px] font-semibold text-text">
-            Next milestones
-          </h3>
-          <ul className="divide-y divide-border">
-            {d.upcoming.map((m) => (
-              <li key={`${m.projectId}-${m.milestone}-${m.dueOn}`}>
-                <Link
-                  to={`/app/projects/${m.projectId}`}
-                  className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-surface-alt/50"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-text">
-                      {m.milestone}
-                    </span>
-                    <span className="block truncate text-xs text-muted">{m.projectTitle}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      'shrink-0 text-xs',
-                      m.overdue ? 'font-medium text-danger' : 'text-muted',
-                    )}
+      <div className="grid grid-cols-1 overflow-hidden rounded-lg border border-border bg-surface sm:grid-cols-2 xl:grid-cols-4 max-sm:[&>section+section]:border-t sm:[&>section:nth-child(n+3)]:border-t sm:[&>section:nth-child(even)]:border-l xl:[&>section+section]:border-l xl:[&>section:nth-child(n+3)]:border-t-0 [&>section]:border-border">
+        <Cell
+          label="Open projects"
+          value={open}
+          note={(['PLANNED', 'ACTIVE', 'ON_HOLD'] as const)
+            .map((s) => `${d.projects[s]} ${PROJECT_STATE_LABELS[s].toLowerCase()}`)
+            .join(', ')}
+          link={{ to: '/app/projects', label: 'View projects' }}
+        />
+        <Cell
+          label="Overdue milestones"
+          value={d.milestones.overdue}
+          tone={d.milestones.overdue > 0 ? 'warning' : 'ink'}
+          note={`${d.milestones.dueIn7Days} due in the next 7 days`}
+        />
+        {d.handoffWaiting !== null ? (
+          <Cell
+            label="Won deals waiting for handoff"
+            value={d.handoffWaiting}
+            link={{ to: '/app/projects', label: 'Start projects' }}
+          />
+        ) : null}
+        <Cell
+          label="Deliverables waiting for the client"
+          value={d.deliverables.awaitingClient}
+          note={
+            <>
+              <span className={d.deliverables.overdue > 0 ? 'font-medium text-danger' : undefined}>
+                {d.deliverables.overdue} past the review date
+              </span>
+              , {d.projects.COMPLETED} projects completed
+            </>
+          }
+        />
+      </div>
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        {d.myTasks.length > 0 ? (
+          <Panel title="My open tasks" description="Tasks assigned to you, soonest first.">
+            <ul className="mt-2 divide-y divide-border border-t border-border">
+              {d.myTasks.map((t) => (
+                <li key={t.id}>
+                  <Link
+                    to={`/app/projects/${t.projectId}/board`}
+                    className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-surface-alt/50"
                   >
-                    {m.overdue ? 'Overdue · ' : ''}
-                    {formatDate(`${m.dueOn}T12:00:00Z`, timeZone)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-ink">{t.title}</span>
+                      <span className="block truncate text-xs text-muted">
+                        {t.projectTitle}, {TASK_STATUS_LABELS[t.status as TaskStatus]}
+                      </span>
+                    </span>
+                    {t.dueOn ? (
+                      <DueDate dueOn={t.dueOn} overdue={t.overdue} timeZone={timeZone} />
+                    ) : null}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        ) : null}
+        <Panel
+          title="Next milestones"
+          description="Open milestones by due date."
+          className={d.myTasks.length > 0 ? undefined : 'xl:col-span-2'}
+        >
+          {d.upcoming.length === 0 ? (
+            <EmptyState
+              className="py-8"
+              icon={<Flag aria-hidden className="size-5" />}
+              title="No open milestones"
+              description="Milestones appear here once a project plan has due dates."
+            />
+          ) : (
+            <ul className="mt-2 divide-y divide-border border-t border-border">
+              {d.upcoming.map((m) => (
+                <li key={`${m.projectId}-${m.milestone}-${m.dueOn}`}>
+                  <Link
+                    to={`/app/projects/${m.projectId}`}
+                    className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-surface-alt/50"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-ink">
+                        {m.milestone}
+                      </span>
+                      <span className="block truncate text-xs text-muted">{m.projectTitle}</span>
+                    </span>
+                    <DueDate dueOn={m.dueOn} overdue={m.overdue} timeZone={timeZone} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
     </section>
   );
 }

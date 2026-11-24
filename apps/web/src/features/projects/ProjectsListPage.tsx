@@ -308,9 +308,7 @@ export function ProjectsListPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-            Projects
-          </h1>
+          <h1 className="page-title">Projects</h1>
           <p className="mt-1 text-sm text-muted">Delivery work handed off from won deals.</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">

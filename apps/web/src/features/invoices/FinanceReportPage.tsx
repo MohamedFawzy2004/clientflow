@@ -91,9 +91,7 @@ export function FinanceReportPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-            Finance report
-          </h1>
+          <h1 className="page-title">Finance report</h1>
           <p className="mt-1 text-sm text-muted">{NOT_ACCOUNTING_NOTICE}</p>
         </div>
         <a

@@ -147,9 +147,7 @@ function LeadView({ lead, timeZone }: { lead: ContactWithDeals; timeZone: string
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <h1 className="min-w-0 break-words text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-                {lead.fullName}
-              </h1>
+              <h1 className="min-w-0 break-words page-title">{lead.fullName}</h1>
               {lead.lifecycle === 'CUSTOMER' ? (
                 <Badge tone="success">Customer</Badge>
               ) : (

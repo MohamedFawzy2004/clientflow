@@ -35,7 +35,7 @@ export function Dialog({
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-[#0b1726]/45 backdrop-blur-[2px] [animation:cf-fade-in_160ms_ease-out]" />
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/50 backdrop-blur-[2px] [animation:cf-fade-in_160ms_ease-out]" />
         <RadixDialog.Content
           ref={contentRef}
           onOpenAutoFocus={(event) => {

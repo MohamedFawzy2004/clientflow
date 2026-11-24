@@ -313,9 +313,7 @@ export function ImportPage() {
 
   return (
     <>
-      <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-        Import from CSV
-      </h1>
+      <h1 className="page-title">Import from CSV</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         Bring contacts or deals from a spreadsheet. You see every row before anything is saved,
         duplicates are flagged, and an import can be undone. The file itself is not kept.

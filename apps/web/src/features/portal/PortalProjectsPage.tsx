@@ -73,9 +73,7 @@ export function PortalProjectsPage() {
 
   return (
     <>
-      <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-        Projects
-      </h1>
+      <h1 className="page-title">Projects</h1>
       <p className="mt-1 text-sm text-muted">
         Work {user?.agency.name} is delivering for {user?.clientOrg?.name ?? 'you'}.
       </p>

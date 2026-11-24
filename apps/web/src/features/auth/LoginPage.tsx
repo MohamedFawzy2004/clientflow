@@ -152,9 +152,7 @@ export function LoginPage() {
       <section className="flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-[400px]">
           <Wordmark className="mb-10 lg:hidden" />
-          <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[28px] md:leading-9">
-            Sign in
-          </h1>
+          <h1 className="page-title">Sign in</h1>
           <p className="mt-1.5 text-sm text-muted">
             {codeStep
               ? 'Two-step sign-in is on for this account.'

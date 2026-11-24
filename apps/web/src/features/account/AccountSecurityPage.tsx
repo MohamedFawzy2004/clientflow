@@ -90,9 +90,7 @@ export function AccountSecurityPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[28px]">
-          Account security
-        </h1>
+        <h1 className="page-title">Account security</h1>
         <p className="mt-1 text-sm text-muted">Signed in as {user.email}.</p>
       </div>
       <Card
