@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectPlan, RelationshipGraphData } from '@clientflow/contracts';
 import { buildServerGraph } from '../src/features/relationships/graph';
 import { planRows } from '../src/features/intelligence/ProjectPlanPage';
+import { marginPercent, waterfallSteps } from '../src/features/intelligence/Profitability';
 
 const money = (minor: string, currency: string) => `${currency} ${minor}`;
 const person = (id: string) => ({ id, name: `Person ${id}` });
@@ -169,5 +170,38 @@ describe('planRows', () => {
     expect(design.find((m) => m.id === 't1')!.state).toBe('late');
     expect(design.find((m) => m.id === 'ms-m1')!.state).toBe('done');
     expect(rows[3]!.markers.map((m) => m.state)).toEqual(['done']);
+  });
+});
+
+describe('profitability maths', () => {
+  const row = {
+    id: 'p',
+    title: 'Build',
+    state: 'ACTIVE',
+    currency: 'EGP',
+    originalBudgetMinor: '800000',
+    acceptedChangesMinor: '200000',
+    budgetMinor: '1000000',
+    invoicedMinor: '0',
+    estimatedCostMinor: '1250000',
+    estimatedMarginMinor: '-250000',
+    costCompletenessPercent: 100,
+  };
+
+  it('walks from the signed budget through changes and cost to the margin', () => {
+    expect(
+      waterfallSteps(row).map((s) => [s.key, s.from.toString(), s.to.toString(), s.kind]),
+    ).toEqual([
+      ['original', '0', '800000', 'total'],
+      ['changes', '800000', '1000000', 'up'],
+      ['cost', '1000000', '-250000', 'down'],
+      ['margin', '0', '-250000', 'total'],
+    ]);
+  });
+
+  it('gives margin as a share of budget from integers, and none for a zero budget', () => {
+    expect(marginPercent(row)).toBe(-25);
+    expect(marginPercent({ budgetMinor: '300000', estimatedMarginMinor: '100000' })).toBe(33.3);
+    expect(marginPercent({ budgetMinor: '0', estimatedMarginMinor: '0' })).toBeNull();
   });
 });

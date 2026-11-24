@@ -22,7 +22,7 @@ import type { AuthUser } from '../../types/express.js';
 import { contactReadScope } from '../contacts/policy.js';
 import { UUID_PATTERN } from '../contacts/service.js';
 import { dealReadScope } from '../deals/policy.js';
-import { invoiceScope } from '../invoices/service.js';
+import { costOfEntries, invoiceScope } from '../invoices/service.js';
 import { canManage, canWork, findWorkable, projectReadScope } from '../projects/access.js';
 import { proposalReadScope } from '../proposals/service.js';
 
@@ -428,7 +428,71 @@ export async function getFinanceIntelligence(
         outstandingMinor: (p.inv - p.paid).toString(),
         invoices: p.n,
       })),
+    profitability: can(actor.role, 'finance.view') ? await profitability(db, actor) : null,
   };
+}
+
+/**
+ * Budget, accepted changes, invoiced (ex VAT), estimated time cost and estimated margin for every
+ * non-archived project. Four queries in all, whatever the number of projects: the cost arithmetic
+ * is the same as the project finance tab (`costOfEntries`).
+ */
+async function profitability(db: Db, actor: AuthUser) {
+  const projects = await db.project.findMany({
+    where: { agencyId: actor.agencyId, state: { not: 'ARCHIVED' } },
+    select: { id: true, title: true, state: true, currency: true, budgetMinor: true },
+    orderBy: { title: 'asc' },
+  });
+  const ids = projects.map((p) => p.id);
+  const [entries, changes, invoiced] = await Promise.all([
+    db.timeEntry.findMany({
+      where: { projectId: { in: ids } },
+      select: {
+        projectId: true,
+        userId: true,
+        minutes: true,
+        workedOn: true,
+        user: { select: { name: true } },
+      },
+    }),
+    db.changeRequest.findMany({
+      where: { projectId: { in: ids }, status: 'ACCEPTED' },
+      select: { projectId: true, acceptedVersion: { select: { priceMinor: true } } },
+    }),
+    db.invoice.groupBy({
+      by: ['projectId'],
+      where: { projectId: { in: ids }, status: { notIn: ['DRAFT', 'VOID'] } },
+      _sum: { subtotalMinor: true },
+    }),
+  ]);
+  const rates = await db.costRate.findMany({
+    where: { userId: { in: [...new Set(entries.map((e) => e.userId))] } },
+    orderBy: { effectiveFrom: 'desc' },
+  });
+  return projects.map((p) => {
+    const cost = costOfEntries(
+      entries.filter((e) => e.projectId === p.id),
+      rates,
+      p.currency,
+    );
+    const added = changes
+      .filter((c) => c.projectId === p.id)
+      .reduce((n, c) => n + (c.acceptedVersion?.priceMinor ?? 0n), 0n);
+    const inv = invoiced.find((i) => i.projectId === p.id)?._sum.subtotalMinor ?? 0n;
+    return {
+      id: p.id,
+      title: p.title,
+      state: p.state,
+      currency: p.currency,
+      originalBudgetMinor: (p.budgetMinor - added).toString(),
+      acceptedChangesMinor: added.toString(),
+      budgetMinor: p.budgetMinor.toString(),
+      invoicedMinor: inv.toString(),
+      estimatedCostMinor: cost.estimatedMinor.toString(),
+      estimatedMarginMinor: (p.budgetMinor - cost.estimatedMinor).toString(),
+      costCompletenessPercent: cost.completenessPercent,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

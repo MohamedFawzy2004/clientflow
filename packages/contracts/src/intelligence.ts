@@ -137,6 +137,25 @@ export interface FinanceIntelligence {
     outstandingMinor: string;
     invoices: number;
   }>;
+  /**
+   * Finance and admins only (`finance.view`); null for anyone else. One row per non-archived
+   * project, in the project's own currency. Budget already includes accepted change requests;
+   * cost is logged time at each person's dated rate (rates in another currency are left out and
+   * lower `costCompletenessPercent`). Margin is budget minus that cost: an estimate, not profit.
+   */
+  profitability: Array<{
+    id: string;
+    title: string;
+    state: string;
+    currency: string;
+    originalBudgetMinor: string;
+    acceptedChangesMinor: string;
+    budgetMinor: string;
+    invoicedMinor: string;
+    estimatedCostMinor: string;
+    estimatedMarginMinor: string;
+    costCompletenessPercent: number;
+  }> | null;
 }
 
 /** GET /insights/delivery: open projects and people's load, inside the project scope. */

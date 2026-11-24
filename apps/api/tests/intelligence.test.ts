@@ -279,6 +279,78 @@ describe('GET /insights/finance', () => {
     expect(fin.monthly[0]!.points.at(-1)!.receivedMinor).toBe('0');
   });
 
+  it('profitability: budget, accepted changes, dated time cost and margin, for finance only', async () => {
+    const w = await clientWorld();
+    await db.project.update({
+      where: { id: w.linked.projectId },
+      data: { budgetMinor: 1_000_000n },
+    });
+    const task = await db.task.create({
+      data: {
+        agencyId: seeded.agencyId,
+        projectId: w.linked.projectId,
+        title: 'Build',
+        createdById: id('pm'),
+      },
+    });
+    // 90 minutes at EGP 200.00/h = EGP 300.00; a USD rate on the same project is left out.
+    await db.costRate.createMany({
+      data: [
+        {
+          agencyId: seeded.agencyId,
+          userId: id('member'),
+          hourlyMinor: 20_000n,
+          currency: 'EGP',
+          effectiveFrom: new Date('2020-01-01'),
+          setById: id('owner'),
+        },
+        {
+          agencyId: seeded.agencyId,
+          userId: id('pm'),
+          hourlyMinor: 5_000n,
+          currency: 'USD',
+          effectiveFrom: new Date('2020-01-01'),
+          setById: id('owner'),
+        },
+      ],
+    });
+    const entry = (userId: string, minutes: number) => ({
+      agencyId: seeded.agencyId,
+      projectId: w.linked.projectId,
+      taskId: task.id,
+      userId,
+      workedOn: new Date(`${today}T00:00:00Z`),
+      minutes,
+    });
+    await db.timeEntry.createMany({ data: [entry(id('member'), 90), entry(id('pm'), 30)] });
+
+    const fin = (await (await as('finance')).get('/api/v1/insights/finance')).body
+      .data as FinanceIntelligence;
+    const row = fin.profitability!.find((r) => r.id === w.linked.projectId)!;
+    expect(row).toMatchObject({
+      currency: 'EGP',
+      budgetMinor: '1000000',
+      acceptedChangesMinor: '0',
+      originalBudgetMinor: '1000000',
+      invoicedMinor: '500000',
+      estimatedCostMinor: '30000',
+      estimatedMarginMinor: '970000',
+      costCompletenessPercent: 75,
+    });
+    // Each project stays in its own currency; nothing is converted or summed.
+    const hidden = await db.project.findUniqueOrThrow({ where: { id: w.hidden.projectId } });
+    expect(fin.profitability!.find((r) => r.id === w.hidden.projectId)).toMatchObject({
+      currency: hidden.currency,
+      estimatedCostMinor: '0',
+      costCompletenessPercent: 100,
+    });
+
+    const pm = (await (await as('pm')).get('/api/v1/insights/finance')).body
+      .data as FinanceIntelligence;
+    expect(pm.profitability).toBeNull();
+    expect(JSON.stringify(pm)).not.toContain('estimatedCostMinor');
+  });
+
   it('sales and members get a 403', async () => {
     for (const role of ['salesA', 'manager', 'member']) {
       expect((await (await as(role)).get('/api/v1/insights/finance')).status, role).toBe(403);

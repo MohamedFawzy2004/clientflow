@@ -5,6 +5,7 @@ import { ErrorState, Skeleton } from '../../components/ui/feedback';
 import { Panel, Segmented } from '../../components/ui/page';
 import { useFinanceIntelligence } from './api';
 import { monthLabels, PairedColumns } from './charts';
+import { Profitability } from './Profitability';
 
 /**
  * Invoiced and received money per month, and money per project, from
@@ -141,6 +142,9 @@ export function FinanceTrends() {
               </table>
             </div>
           </Panel>
+          {q.data.profitability && q.data.profitability.length > 0 ? (
+            <Profitability rows={q.data.profitability} />
+          ) : null}
         </>
       )}
     </section>
