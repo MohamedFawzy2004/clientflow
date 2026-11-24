@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { Link } from 'react-router';
 import { ArrowUpRight, X } from 'lucide-react';
@@ -39,11 +40,29 @@ export function DealDrawer({
   onMove: (deal: DealSummary, stageId: string) => void;
   moving: boolean;
 }) {
+  // The URL clears `deal` before the close animation ends, so remember which deal was open.
+  const lastId = useRef(dealId);
+  useEffect(() => {
+    if (dealId) lastId.current = dealId;
+  }, [dealId]);
   return (
     <RadixDialog.Root open={!!dealId} onOpenChange={(o) => (o ? undefined : onClose())}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/40 [animation:cf-fade-in_200ms_var(--ease-out)]" />
-        <RadixDialog.Content className="fixed inset-y-0 right-0 z-50 flex w-[min(440px,100vw)] flex-col bg-surface shadow-pop [animation:cf-slide-in-right_260ms_var(--ease-drawer)] focus:outline-none">
+        <RadixDialog.Content
+          // Opened from the URL, so Radix has no trigger to return to: focus the card's quick
+          // view button instead, if it is on the page.
+          onCloseAutoFocus={(e) => {
+            const back = document.querySelector<HTMLElement>(
+              `[data-deal-preview="${CSS.escape(lastId.current ?? '')}"]`,
+            );
+            if (back) {
+              e.preventDefault();
+              back.focus();
+            }
+          }}
+          className="fixed inset-y-0 right-0 z-50 flex w-[min(440px,100vw)] flex-col bg-surface shadow-pop [animation:cf-slide-in-right_260ms_var(--ease-drawer)] focus:outline-none"
+        >
           {dealId ? (
             <DrawerBody
               id={dealId}
@@ -136,7 +155,12 @@ function DrawerBody({
         </div>
         {close}
       </header>
-      <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-5">
+      <div
+        // A scrolling area must take focus so keyboard users can scroll it (axe scrollable-region-focusable).
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={0}
+        className="flex-1 overflow-y-auto overscroll-contain px-6 py-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+      >
         <p className="figure text-[28px] leading-9">
           <Money minor={deal.amountMinor} currency={deal.currency} />
         </p>

@@ -92,6 +92,7 @@ function DealCard({
         <button
           type="button"
           aria-label={`Quick view ${deal.title}`}
+          data-deal-preview={deal.id}
           onClick={() => onPreview(deal.id)}
           className="press -mr-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-md text-subtle hover:bg-surface-alt hover:text-ink"
         >

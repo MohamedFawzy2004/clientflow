@@ -76,16 +76,16 @@ function Totals({ t }: { t: FinanceTotals }) {
       )}
       <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-2 text-sm min-[420px]:grid-cols-2 sm:grid-cols-5">
         {buckets.map(([label, v], i) => (
-          <div key={label} className="flex min-w-0 items-start gap-2">
-            <span
-              aria-hidden
-              className="mt-1 size-2.5 shrink-0 rounded-[2px]"
-              style={{ background: AGING_STEPS[i] }}
-            />
-            <div className="min-w-0">
-              <dt className="text-xs text-muted">{label}</dt>
-              <dd className="truncate text-ink tabular">{m(v)}</dd>
-            </div>
+          <div key={label} className="min-w-0">
+            <dt className="flex items-center gap-2 text-xs text-muted">
+              <span
+                aria-hidden
+                className="size-2.5 shrink-0 rounded-[2px]"
+                style={{ background: AGING_STEPS[i] }}
+              />
+              {label}
+            </dt>
+            <dd className="truncate pl-[18px] text-ink tabular">{m(v)}</dd>
           </div>
         ))}
       </dl>
