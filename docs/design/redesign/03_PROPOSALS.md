@@ -50,7 +50,7 @@ so a deal can sit in "Proposal" for two months and still look fresh.
 - **Stories.** As a manager, I save "Stalled, Karim's deals, EGP" and open it from the
   navigation.
 - **Data model.** `SavedView(id, agencyId, userId, page, name, query jsonb, shared boolean,
-  createdAt)`. The query holds only whitelisted filter keys.
+createdAt)`. The query holds only whitelisted filter keys.
 - **API.** `GET`, `POST`, `PATCH` and `DELETE` on `/api/v1/saved-views?page=deals`. Shared views
   are visible to the agency; private views to their owner only.
 - **Permissions.** Anyone with `deals.read.*` can create private views. Shared views need
@@ -71,6 +71,7 @@ so a deal can sit in "Proposal" for two months and still look fresh.
   - an open deal.
 
   The owner sets the weights in settings.
+
 - **Data model.** `AgencyScoringRule(agencyId, factor, points)`. The score is computed on read; it
   is not stored.
 - **API.** `ContactSummary.fit: { score, reasons[] }`.

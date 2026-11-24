@@ -29,42 +29,42 @@ The one bold element is the forest navigation against the ivory page. Everything
 
 The brief's base palette, adjusted where it failed WCAG AA:
 
-| Token | Hex | Role |
-| --- | --- | --- |
-| `bg` | `#FAF9F6` | Ivory canvas |
-| `surface` / `surface-alt` | `#FFFFFF` / `#F3F1EC` | Panels, and sunk wells (table heads) |
-| `ink` | `#142D2A` | Forest: headings, figures, navigation background |
-| `text` | `#1B2A27` | Body text |
-| `muted` | `#5A6763` | Secondary text (darkened from the brief's neutral to pass AA) |
-| `subtle` / `control` | `#8C8577` | Icons and control borders only, never text |
-| `primary` | `#087F70` | Jade: primary buttons and links |
-| `primary-strong` | `#06685C` | Jade text on tinted backgrounds |
-| `mint` | `#A5D6B5` | Accents on forest: the active-count pill and the start of the sequential ramp |
-| `violet` / `violet-strong` | `#7464C7` / `#5B4BB0` | Second data series, proposals, info notes (`info` is violet) |
-| `border` | `#E9E4DB` | The warm neutral from the brief, used for decorative hairlines only |
-| `success`, `warning`, `attention`, `danger` | `#1F7A4D`, `#8A5A00`, `#B07A12`, `#B3261E` | Reserved for status. Never used as chart series |
+| Token                                       | Hex                                        | Role                                                                          |
+| ------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `bg`                                        | `#FAF9F6`                                  | Ivory canvas                                                                  |
+| `surface` / `surface-alt`                   | `#FFFFFF` / `#F3F1EC`                      | Panels, and sunk wells (table heads)                                          |
+| `ink`                                       | `#142D2A`                                  | Forest: headings, figures, navigation background                              |
+| `text`                                      | `#1B2A27`                                  | Body text                                                                     |
+| `muted`                                     | `#5A6763`                                  | Secondary text (darkened from the brief's neutral to pass AA)                 |
+| `subtle` / `control`                        | `#8C8577`                                  | Icons and control borders only, never text                                    |
+| `primary`                                   | `#087F70`                                  | Jade: primary buttons and links                                               |
+| `primary-strong`                            | `#06685C`                                  | Jade text on tinted backgrounds                                               |
+| `mint`                                      | `#A5D6B5`                                  | Accents on forest: the active-count pill and the start of the sequential ramp |
+| `violet` / `violet-strong`                  | `#7464C7` / `#5B4BB0`                      | Second data series, proposals, info notes (`info` is violet)                  |
+| `border`                                    | `#E9E4DB`                                  | The warm neutral from the brief, used for decorative hairlines only           |
+| `success`, `warning`, `attention`, `danger` | `#1F7A4D`, `#8A5A00`, `#B07A12`, `#B3261E` | Reserved for status. Never used as chart series                               |
 
 ### Measured contrast (WCAG 2.1 relative luminance)
 
 The ratios were computed with the session's contrast script.
 
-| Pair | Ratio | Need |
-| --- | --- | --- |
-| text on ivory | 14.18 | 4.5 |
-| ink on ivory | 13.87 | 4.5 |
-| muted on ivory / white / surface-alt | 5.61 / 5.91 / 5.23 | 4.5 |
-| jade link on ivory | 4.66 | 4.5 |
-| white on jade button | 4.91 | 4.5 |
-| primary-strong on primary-soft | 5.75 | 4.5 |
-| violet-strong on violet-soft | 5.86 | 4.5 |
-| success on success-soft | 4.65 | 4.5 |
-| warning on warning-soft | 5.28 | 4.5 |
-| danger on danger-soft / white | 5.61 / 6.54 | 4.5 |
-| nav text / nav muted on forest | 9.97 / 6.64 | 4.5 |
-| white on active nav item | 10.42 | 4.5 |
-| mint on forest | 8.96 | 4.5 |
-| control border on white | 3.66 | 3 (non-text) |
-| series 1–4 marks on white | 4.27, 4.78, 3.72, 5.18 | 3 (graphics) |
+| Pair                                 | Ratio                  | Need         |
+| ------------------------------------ | ---------------------- | ------------ |
+| text on ivory                        | 14.18                  | 4.5          |
+| ink on ivory                         | 13.87                  | 4.5          |
+| muted on ivory / white / surface-alt | 5.61 / 5.91 / 5.23     | 4.5          |
+| jade link on ivory                   | 4.66                   | 4.5          |
+| white on jade button                 | 4.91                   | 4.5          |
+| primary-strong on primary-soft       | 5.75                   | 4.5          |
+| violet-strong on violet-soft         | 5.86                   | 4.5          |
+| success on success-soft              | 4.65                   | 4.5          |
+| warning on warning-soft              | 5.28                   | 4.5          |
+| danger on danger-soft / white        | 5.61 / 6.54            | 4.5          |
+| nav text / nav muted on forest       | 9.97 / 6.64            | 4.5          |
+| white on active nav item             | 10.42                  | 4.5          |
+| mint on forest                       | 8.96                   | 4.5          |
+| control border on white              | 3.66                   | 3 (non-text) |
+| series 1–4 marks on white            | 4.27, 4.78, 3.72, 5.18 | 3 (graphics) |
 
 Changes from the brief:
 
@@ -90,14 +90,14 @@ Changes from the brief:
 
 Inter Variable (optical-size axis) is self-hosted through `@fontsource-variable/inter`, which was already a dependency on `main`.
 
-| Use | Size / line height | Weight and tracking |
-| --- | --- | --- |
-| Page title (`.page-title`) | 26 / 32 on phones, larger from 768 px | 640, −0.028em, ink |
-| Section title | 20 / 28 | 640, −0.02em |
-| Panel title | 15 / 22 | 600 |
-| Figure (`.figure`) | 22–40, set per use | 560, tabular numbers, −0.03em, ink |
-| Body | 14 / 20 | 400 |
-| Meta | 12–13 / 18 | 400, `muted` |
+| Use                        | Size / line height                    | Weight and tracking                |
+| -------------------------- | ------------------------------------- | ---------------------------------- |
+| Page title (`.page-title`) | 26 / 32 on phones, larger from 768 px | 640, −0.028em, ink                 |
+| Section title              | 20 / 28                               | 640, −0.02em                       |
+| Panel title                | 15 / 22                               | 600                                |
+| Figure (`.figure`)         | 22–40, set per use                    | 560, tabular numbers, −0.03em, ink |
+| Body                       | 14 / 20                               | 400                                |
+| Meta                       | 12–13 / 18                            | 400, `muted`                       |
 
 Labels are in sentence case. There are no tracked all-caps eyebrows, except the existing small
 section headings inside scope documents, which were kept.
@@ -123,15 +123,15 @@ section headings inside scope documents, which were kept.
 
 ## Components
 
-| Component | File | Notes |
-| --- | --- | --- |
-| `PageHeader`, `Panel`, `DocumentTitle`, `useDocumentTitle` | `components/ui/page.tsx` | `Panel` replaces its default padding when `bodyClassName` is passed |
-| `Button` (primary, secondary, ghost, danger; sm/md) | `components/ui/button.tsx` | Visible focus ring, press scale |
-| `Badge`, `Banner`, `EmptyState`, `ErrorState`, `Skeleton` | `components/ui/feedback.tsx` | Every list has a loading, an empty and an error state |
-| `Field`, `Input`, `Select`, `Textarea` | `components/ui/form.tsx` | Labels are always visible, errors are linked with `aria-describedby` |
-| `Dialog`, `Drawer` | `components/ui/dialog.tsx` | Radix: focus trap, Esc to close, focus returns to the trigger |
-| Brand mark | `components/ui/brand.tsx` | One path joining two points: a relationship that becomes work and revenue |
-| Charts | `components/charts/charts.tsx` | See above |
+| Component                                                  | File                           | Notes                                                                     |
+| ---------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------- |
+| `PageHeader`, `Panel`, `DocumentTitle`, `useDocumentTitle` | `components/ui/page.tsx`       | `Panel` replaces its default padding when `bodyClassName` is passed       |
+| `Button` (primary, secondary, ghost, danger; sm/md)        | `components/ui/button.tsx`     | Visible focus ring, press scale                                           |
+| `Badge`, `Banner`, `EmptyState`, `ErrorState`, `Skeleton`  | `components/ui/feedback.tsx`   | Every list has a loading, an empty and an error state                     |
+| `Field`, `Input`, `Select`, `Textarea`                     | `components/ui/form.tsx`       | Labels are always visible, errors are linked with `aria-describedby`      |
+| `Dialog`, `Drawer`                                         | `components/ui/dialog.tsx`     | Radix: focus trap, Esc to close, focus returns to the trigger             |
+| Brand mark                                                 | `components/ui/brand.tsx`      | One path joining two points: a relationship that becomes work and revenue |
+| Charts                                                     | `components/charts/charts.tsx` | See above                                                                 |
 
 ## Responsive layout
 
