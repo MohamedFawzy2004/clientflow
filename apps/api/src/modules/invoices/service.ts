@@ -54,7 +54,7 @@ const OPEN: Array<'ISSUED' | 'PARTIALLY_PAID'> = ['ISSUED', 'PARTIALLY_PAID'];
 // Access (spec §1.1 "Manage invoice state": A for Owner/Admin/Finance, Read P for PM)
 // ---------------------------------------------------------------------------
 
-function invoiceScope(actor: AuthUser): Prisma.InvoiceWhereInput {
+export function invoiceScope(actor: AuthUser): Prisma.InvoiceWhereInput {
   if (can(actor.role, 'invoices.read.all')) return { agencyId: actor.agencyId };
   if (can(actor.role, 'invoices.read.project')) {
     return { agencyId: actor.agencyId, project: projectReadScope(actor) };

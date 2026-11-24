@@ -598,3 +598,20 @@ The owner set a budget of no paid subscriptions and no payment method for now. N
   - Render Free Postgres expires after 30 days.
   - A GitHub Actions reset would put the seeded files on the runner, not on the app.
   - A public reset endpoint was ruled out by the requirements.
+
+## ADR-072 — Read-only intelligence endpoints inside existing scopes (ACCEPTED, final signature release)
+
+The redesigned screens need a relationship graph, sales and finance trends, a delivery portfolio and a project plan. The browser previously joined capped lists, which hid records past the caps and needed many requests. Five read-only routes now do this on the server (`modules/intelligence`). There is no migration and no new permission.
+
+| Route                           | Capability gate   | Record scope                                                                                                                                                                                                                   |
+| ------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /contacts/:id/graph`       | `contacts.read.*` | the contact through `contactReadScope`, then deals through `dealReadScope`, proposals through `proposalReadScope`, projects through `projectReadScope`, invoices through `invoiceScope`, deliverables only for `delivery.work` |
+| `GET /insights/sales?months=`   | `dashboard.sales` | `dealReadScope`                                                                                                                                                                                                                |
+| `GET /insights/finance?months=` | `invoices.read.*` | `invoiceScope` (a PM sees only invoices of projects they can read)                                                                                                                                                             |
+| `GET /insights/delivery`        | `delivery.work`   | `projectReadScope`, open projects only; logged time follows the time-entry rule (the manager sees everyone's, others their own)                                                                                                |
+| `GET /projects/:id/plan`        | `delivery.work`   | `findWorkable` (403 for a role that cannot work, 404 outside the scope)                                                                                                                                                        |
+
+- **No leaks through the graph.** A kind the role cannot read is returned empty with `readable.<kind> = false`, never as a count. Each kind is capped at 50 records, and `truncated.<kind>` says when more exist. A contact out of scope is a 404, like the contact page.
+- **No combined currencies.** Every total is a map keyed by currency, in integer minor units as strings. Nothing is converted.
+- **Stated rules, not predictions.** Stage age uses the last `deal.stage_changed` activity, or the creation time for a deal that never moved (until P1 adds a stored stage-entry time). Workload is counts and estimates only: there is no capacity model, so the API never says "overloaded". Milestones have due dates only, so the timeline draws each milestone as the window from the previous due date.
+- **Tests:** `intelligence.test.ts` (rep vs manager vs owner, PM vs finance, member vs manager, other agency, invalid IDs and query keys) and five new rows in the permission matrix, which the route inventory checks.

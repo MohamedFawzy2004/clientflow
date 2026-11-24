@@ -12,3 +12,4 @@ export * from './delivery.js';
 export * from './changes.js';
 export * from './finance.js';
 export * from './automation.js';
+export * from './intelligence.js';

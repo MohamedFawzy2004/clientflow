@@ -546,6 +546,37 @@ const ENDPOINTS: Endpoint[] = [
     allowed: SALES_SIDE,
   },
   { name: 'GET /reminders', method: 'get', path: () => '/api/v1/reminders', allowed: SALES_SIDE },
+  // Final signature release (ADR-072): read-only intelligence, each inside the existing scopes.
+  {
+    name: 'GET /contacts/:id/graph',
+    method: 'get',
+    path: (f) => `/api/v1/contacts/${f.contactRead}/graph`,
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'GET /insights/sales',
+    method: 'get',
+    path: () => '/api/v1/insights/sales',
+    allowed: SALES_SIDE,
+  },
+  {
+    name: 'GET /insights/finance',
+    method: 'get',
+    path: () => '/api/v1/insights/finance',
+    allowed: INVOICE_READERS,
+  },
+  {
+    name: 'GET /insights/delivery',
+    method: 'get',
+    path: () => '/api/v1/insights/delivery',
+    allowed: DELIVERY,
+  },
+  {
+    name: 'GET /projects/:id/plan',
+    method: 'get',
+    path: (f) => `/api/v1/projects/${f.d.project}/plan`,
+    allowed: DELIVERY,
+  },
   {
     name: 'GET /exports/deals.csv',
     method: 'get',

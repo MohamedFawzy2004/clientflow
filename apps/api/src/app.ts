@@ -33,6 +33,7 @@ import { portalRouter } from './modules/portal/routes.js';
 import { proposalsRouter } from './modules/proposals/routes.js';
 import { servicesRouter } from './modules/services/routes.js';
 import { insightsRouter } from './modules/insights/routes.js';
+import { intelligenceRouter } from './modules/intelligence/routes.js';
 import { projectsRouter } from './modules/projects/routes.js';
 import { tasksRouter } from './modules/tasks/routes.js';
 import { filesRouter } from './modules/files/routes.js';
@@ -139,6 +140,7 @@ export function createApp(deps: AppDeps): Express {
   api.use(salesRouter(deps));
   api.use(clientOrgsRouter(deps));
   api.use(insightsRouter(deps));
+  api.use(intelligenceRouter(deps));
   api.use(projectsRouter(deps));
   api.use(tasksRouter(deps));
   api.use(filesRouter(deps));
