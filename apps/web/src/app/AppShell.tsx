@@ -204,19 +204,11 @@ function UserBlock({
         className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1.5 transition-colors hover:bg-nav-raised"
       >
         <Avatar name={user.name} className="ring-2 ring-nav-line" />
-        <span className={cn('min-w-0 flex-1', rail && 'hidden lg:block')}>
+        <span className={cn('min-w-0 flex-1', rail && 'max-lg:sr-only')}>
           <span className="block truncate text-sm font-medium text-white">{user.name}</span>
           <span className="block truncate text-xs text-nav-muted">{ROLE_LABELS[user.role]}</span>
         </span>
-        <span className="sr-only">
-          {/* The rail hides the visible name below 1024px, so say it here instead. */}
-          {rail ? (
-            <span className="lg:hidden">
-              {user.name}, {ROLE_LABELS[user.role]}
-            </span>
-          ) : null}
-          , account security
-        </span>
+        <span className="sr-only">, account security</span>
       </Link>
       <button
         type="button"
