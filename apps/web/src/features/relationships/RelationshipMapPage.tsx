@@ -11,6 +11,7 @@ import {
   Search,
   ShieldAlert,
   Users,
+  X,
 } from 'lucide-react';
 import {
   formatMoney,
@@ -568,6 +569,54 @@ function GraphList({
   );
 }
 
+/**
+ * Below 1280 px the "Selected" panel sits under the map, out of sight. This non-modal sheet names
+ * the selection at the bottom of the screen; "Details" moves to the full panel, and the map stays
+ * usable behind it.
+ */
+function SelectionSheet({
+  node,
+  onDetails,
+  onClear,
+}: {
+  node: GraphNode;
+  onDetails: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div
+      role="region"
+      aria-label="Selected record"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface px-4 pt-3 shadow-pop pb-[max(12px,env(safe-area-inset-bottom))] xl:hidden print:hidden"
+    >
+      <div className="mx-auto flex max-w-3xl items-center gap-3">
+        <div className="min-w-0 flex-1" aria-live="polite">
+          <p className="flex items-center gap-2 text-xs text-muted">
+            <LegendShape kind={node.kind} />
+            {KIND_LABELS[node.kind]}, {node.degree} link{node.degree === 1 ? '' : 's'}
+          </p>
+          <p className="truncate text-sm font-semibold text-ink">{node.label}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onDetails}
+          className="press inline-flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover"
+        >
+          Details
+        </button>
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label="Clear selection"
+          className="press grid size-10 shrink-0 place-items-center rounded-md text-muted hover:bg-surface-alt hover:text-ink"
+        >
+          <X aria-hidden className="size-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SelectionPanel({
   graph,
   node,
@@ -817,6 +866,23 @@ function MapBody({ lead }: { lead: ContactWithDeals }) {
               }
             />
           </Panel>
+          {selNode ? (
+            <>
+              <SelectionSheet
+                node={selNode}
+                onDetails={() => {
+                  const panel = document.getElementById('map-selection-title')?.closest('section');
+                  panel?.scrollIntoView({ block: 'start' });
+                  panel
+                    ?.querySelector<HTMLElement>('a[href], button')
+                    ?.focus({ preventScroll: true });
+                }}
+                onClear={() => setSelected(null)}
+              />
+              {/* Room for the sheet, so it never covers the end of the page. */}
+              <div aria-hidden className="h-20 xl:hidden" />
+            </>
+          ) : null}
           <Panel bodyClassName="p-0" title="How this map is built" tone="sunk">
             <ul className="flex flex-col gap-1.5 px-5 pb-5 pt-2 text-[13px] text-muted">
               <li>

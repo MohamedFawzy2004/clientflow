@@ -1,8 +1,9 @@
 // Final closure: mobile behaviour changed in this release. The project plan opens on an agenda
 // on a phone (no sideways scrolling) and keeps the timeline one tap away; desktop keeps the
-// timeline. Same-day tasks are drawn once with a count. The relationship map pinch-zooms and
-// still lets a one-finger swipe scroll the page. The dashboard's lower sections load as
-// they scroll into view. Setup uses the API; the checks use the UI.
+// timeline. Same-day tasks are drawn once with a count. The relationship map pinch-zooms, still
+// lets a one-finger swipe scroll the page, and opens a details sheet for a selection on a phone.
+// The dashboard's lower sections load as they scroll into view. Setup uses the API; the checks
+// use the UI.
 import { expect, test } from '@playwright/test';
 import { api, asUser, creds, noOverflow, noSeriousA11y, signIn } from './support';
 
@@ -124,6 +125,24 @@ test.describe.serial('Final closure mobile behaviour', () => {
     });
     await expect(zoomOut).toBeEnabled();
     await expect(canvas).toHaveCSS('touch-action', 'none');
+    await noOverflow(page);
+  });
+
+  test('on a phone, selecting a map record opens a details sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page, creds().owner);
+    await page.goto('/app/relationships');
+    await page.getByRole('button', { name: 'Map', exact: true }).click();
+    const node = page.locator('svg g[role="button"]').first();
+    const name = (await node.getAttribute('aria-label'))!.split(': ')[1]!.split(',')[0]!;
+    await node.click();
+    const sheet = page.getByRole('region', { name: 'Selected record' });
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText(name);
+    await sheet.getByRole('button', { name: 'Details' }).click();
+    await expect(page.getByRole('heading', { name: 'Selected', exact: true })).toBeInViewport();
+    await sheet.getByRole('button', { name: 'Clear selection' }).click();
+    await expect(sheet).toBeHidden();
     await noOverflow(page);
   });
 
