@@ -9,6 +9,7 @@ import type {
   SessionUser,
 } from '@clientflow/contracts';
 import { api, ApiError, setCsrfToken } from '../../lib/api';
+import { demoModeFromPage } from '../../lib/deployment';
 
 export const SESSION_KEY = ['session'] as const;
 
@@ -53,9 +54,11 @@ export function useLogin() {
 /**
  * The public demo's "Explore as …" accounts (ADR-071). The endpoint only exists on a demo
  * deployment, so anywhere else this is an empty list and the login page shows nothing extra.
+ * When the served page says this is not a demo, nothing is asked at all.
  */
-export function useDemoAccounts() {
+export function useDemoAccounts(demoMode: boolean | undefined = demoModeFromPage()) {
   return useQuery({
+    enabled: demoMode !== false,
     queryKey: ['demo-accounts'],
     queryFn: async (): Promise<DemoAccount[]> => {
       try {

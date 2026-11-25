@@ -1,6 +1,6 @@
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import express, { type Express, type Request, type RequestHandler, type Response } from 'express';
 import type { Role } from '@clientflow/contracts';
@@ -153,7 +153,8 @@ export function createApp(deps: AppDeps): Express {
   api.use(notFoundHandler);
 
   app.use('/api/v1', apiHeaders, api);
-  if (config.webDistDir) app.use(webApp(config.webDistDir, config.isProduction));
+  if (config.webDistDir)
+    app.use(webApp(config.webDistDir, config.isProduction, Boolean(config.demo)));
   app.use(apiHeaders, notFoundHandler);
   app.use(errorHandler);
   return app;
@@ -164,10 +165,11 @@ export function createApp(deps: AppDeps): Express {
  * index.html is never cached so a deploy takes effect at once. Unknown non-API paths get
  * index.html and the client router decides; /api and /health keep their JSON 404s.
  */
-function webApp(dir: string, isProduction: boolean): RequestHandler {
+function webApp(dir: string, isProduction: boolean, demoMode: boolean): RequestHandler {
   const root = resolve(dir);
   const index = join(root, 'index.html');
   if (!existsSync(index)) throw new Error(`WEB_DIST_DIR has no index.html: ${root}`);
+  const page = withDemoModeFlag(readFileSync(index, 'utf8'), demoMode);
   const router = express.Router();
   router.use(securityHeaders(isProduction, 'web'));
   // Gzip/Brotli for the app's own files only (NFR-03). API JSON is never compressed here: it can
@@ -181,10 +183,26 @@ function webApp(dir: string, isProduction: boolean): RequestHandler {
       res.status(404).type('text/plain').send('Not found');
     },
   );
-  router.use(express.static(root, { index: false, maxAge: 0 }));
-  router.get(/^\/(?!api\/|health\/).*/, (_req, res) => {
+  const sendPage: RequestHandler = (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
-    res.sendFile(index);
-  });
+    res.type('html').send(page);
+  };
+  // Never the file as built: every copy of the page carries the demo-mode flag.
+  router.get('/index.html', sendPage);
+  router.use(express.static(root, { index: false, maxAge: 0 }));
+  router.get(/^\/(?!api\/|health\/).*/, sendPage);
   return router;
+}
+
+/**
+ * Tells the web app before its first paint whether this is a public demo (ADR-071), so the
+ * sign-in page can lay out the "Explore as …" block at once instead of moving the form when the
+ * demo accounts arrive, and a normal deployment does not ask for them at all. A meta tag, not an
+ * inline script: the web CSP allows no inline scripts. Read by apps/web/src/lib/deployment.ts.
+ */
+export function withDemoModeFlag(html: string, demoMode: boolean): string {
+  const meta = `<meta name="clientflow-demo-mode" content="${demoMode ? 'on' : 'off'}" />`;
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${meta}</head>`);
+  const doctype = /^\s*<!doctype html>/i.exec(html);
+  return doctype ? `${doctype[0]}${meta}${html.slice(doctype[0].length)}` : `${meta}${html}`;
 }

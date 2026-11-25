@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { withDemoModeFlag } from '../src/app.js';
 import { pruneExpiredAuth, pruneIdempotencyRecords } from '../src/lib/retention.js';
 import { PostgresRateLimitStore, pruneRateLimits } from '../src/middleware/rate-limit-store.js';
 import { getPreCsrf, login, makeApp, ORIGIN, resetDb, seedAgency, testDb } from './helpers.js';
@@ -128,6 +129,39 @@ describe('compression (ADR-065, NFR-03)', () => {
     expect(page.headers['content-encoding']).toBe('gzip');
     const api = await request(app).get('/api/v1/auth/csrf').set('Accept-Encoding', 'gzip');
     expect(api.headers['content-encoding']).toBeUndefined();
+  });
+});
+
+describe('demo-mode flag in the served page (ADR-071, sign-in CLS)', () => {
+  const page = `<!doctype html><html><head><title>ClientFlow</title></head><body></body></html>`;
+  function webDir() {
+    const dir = mkdtempSync(join(tmpdir(), 'clientflow-web-'));
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(join(dir, 'index.html'), page);
+    return dir;
+  }
+  const FLAG = /<meta name="clientflow-demo-mode" content="(on|off)" \/>/;
+
+  it('says "off" on a normal deployment and "on" on a demo, on every copy of the page', async () => {
+    const dir = webDir();
+    const normal = makeApp({ webDistDir: dir }).app;
+    const demo = makeApp({ webDistDir: dir, demo: { writesPerWindow: 100 } }).app;
+    for (const path of ['/', '/login', '/index.html']) {
+      const off = await request(normal).get(path).expect(200).expect('Content-Type', /html/);
+      expect(off.text.match(FLAG)?.[1]).toBe('off');
+      expect(off.headers['cache-control']).toBe('no-cache');
+      const on = await request(demo).get(path).expect(200);
+      expect(on.text.match(FLAG)?.[1]).toBe('on');
+    }
+  });
+
+  it('puts the flag in <head>, or at the start of a page without one', () => {
+    expect(withDemoModeFlag(page, true)).toContain(
+      '<title>ClientFlow</title><meta name="clientflow-demo-mode" content="on" /></head>',
+    );
+    expect(withDemoModeFlag('<!doctype html><div id="root"></div>', false)).toBe(
+      '<!doctype html><meta name="clientflow-demo-mode" content="off" /><div id="root"></div>',
+    );
   });
 });
 
