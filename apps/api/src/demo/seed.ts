@@ -24,6 +24,7 @@ import type {
 } from '@clientflow/contracts';
 import type { Db } from '../db/client.js';
 import { bootstrapOwner } from '../modules/auth/bootstrap.js';
+import { addDays, agencyToday } from '../lib/agency-time.js';
 import { generateToken } from '../lib/tokens.js';
 import { DemoClient } from './client.js';
 
@@ -45,6 +46,14 @@ const at = (n: number, hour = 10) => {
   return d.toISOString();
 };
 const idem = () => ({ 'Idempotency-Key': crypto.randomUUID() });
+/** The demo agency's time zone (set below); issue dates and payment limits follow it. */
+const DEMO_TZ = 'Africa/Cairo';
+/**
+ * A calendar date `n` days from today in the agency time zone: the day the API stamps on an
+ * invoice it issues now. Invoice and payment dates use it, so nothing is due or paid before
+ * the invoice exists (demo chronology, docs/milestones/FINAL_CLOSURE_REPORT.md §6).
+ */
+const agencyDay = (n = 0) => addDays(agencyToday(new Date(), DEMO_TZ), n);
 
 /** The seeder's mailer never delivers, so the API always hands the link back (F4). */
 function inviteToken(acceptUrl: string | null): string {
@@ -243,7 +252,7 @@ export async function seedDemo(
     version: 1,
     name: 'Lumen Digital Studio (demo)',
     defaultCurrency: 'EGP',
-    timeZone: 'Africa/Cairo',
+    timeZone: DEMO_TZ,
     workingDays: [0, 1, 2, 3, 4],
     contactEmail: `hello@${DEMO_DOMAIN}`,
     phone: '+20 2 5550 1000',
@@ -726,7 +735,29 @@ export async function seedDemo(
     }
     tasks.push(t);
   }
-  log(`tasks: ${tasks.length}`);
+  // Dependencies the project manager records, so the plan shows which work waits on which.
+  // The blocked pickup-slot task holds up checkout, as it would in a real project.
+  const DEPENDS: Array<[string, string]> = [
+    ['Checkout and order emails', 'Pickup slot rules with the shop team'],
+    ['Checkout and order emails', 'Product catalogue import'],
+    ['Admin panel: orders list', 'Checkout and order emails'],
+    ['Launch checklist and handover', 'Admin panel: orders list'],
+    ['Launch checklist and handover', 'Stamp card logic'],
+    ['Delivery status rules', 'Live map prototype'],
+    ['Weekly performance report', 'Delivery status rules'],
+    ['Load test with 40 vans', 'Live map prototype'],
+    ['Rollout training session', 'Access roles for dispatchers'],
+    ['Reminder messages copy', 'Appointment rules per branch'],
+    ['Pilot plan for one branch', 'Booking flow mockups'],
+    ['Pilot plan for one branch', 'App store accounts checklist'],
+  ];
+  const byTitle = new Map(tasks.map((t) => [t.title, t]));
+  for (const [waiting, on] of DEPENDS) {
+    await c('pm').post(`/tasks/${byTitle.get(waiting)!.id}/dependencies`, {
+      dependsOnId: byTitle.get(on)!.id,
+    });
+  }
+  log(`tasks: ${tasks.length}, dependencies: ${DEPENDS.length}`);
 
   // 10. Change requests: accepted, waiting for the client, and declined.
   async function change(
@@ -899,7 +930,7 @@ export async function seedDemo(
     });
   }
 
-  // 13. Invoices (5): paid, partly paid, overdue, issued and a draft.
+  // 13. Invoices (5): paid, partly paid, two issued and a draft.
   async function invoice(
     pi: number,
     lines: Array<[string, string, string]>,
@@ -935,7 +966,7 @@ export async function seedDemo(
         `/invoices/${inv.id}/payments`,
         {
           amount: opts.pay,
-          receivedOn: opts.receivedOn ?? day(-1),
+          receivedOn: opts.receivedOn ?? agencyDay(0),
           method: 'BANK_TRANSFER',
           reference: `DEMO-TRF-${inv.number ?? ''}`.slice(0, 40),
         },
@@ -944,24 +975,29 @@ export async function seedDemo(
     }
     return inv;
   }
+  // Invoices are issued today (the API stamps the issue date), so every due date is on or after
+  // today and every payment is received today: never due or paid before the invoice existed.
   await invoice(0, [['Deposit — 30% of the accepted proposal', '1', '62738.40']], {
-    dueOn: day(-10),
+    dueOn: agencyDay(14),
     issue: true,
     pay: '71521.78',
-    receivedOn: day(-12),
+    receivedOn: agencyDay(0),
   });
   await invoice(0, [['Design approval — 40%', '1', '83651.20']], {
-    dueOn: day(4),
+    dueOn: agencyDay(4),
     issue: true,
     pay: '50000.00',
-    receivedOn: day(-1),
+    receivedOn: agencyDay(0),
   });
-  await invoice(1, [['Deposit — 30%', '1', '10980.00']], { dueOn: day(-6), issue: true });
-  await invoice(2, [['Deposit — 30%', '1', '149400.00']], { dueOn: day(10), issue: true });
-  await invoice(2, [['Design phase — 40%', '1', '199200.00']], { dueOn: day(40), issue: false });
+  await invoice(1, [['Deposit — 30%', '1', '10980.00']], { dueOn: agencyDay(7), issue: true });
+  await invoice(2, [['Deposit — 30%', '1', '149400.00']], { dueOn: agencyDay(10), issue: true });
+  await invoice(2, [['Design phase — 40%', '1', '199200.00']], {
+    dueOn: agencyDay(40),
+    issue: false,
+  });
   log('invoices: 5');
 
-  // 14. Delta's project waits on the overdue deposit.
+  // 14. Delta's project waits on its unpaid deposit.
   const delta = await c('pm').get<ProjectDetail>(`/projects/${projects[1]!.id}`);
   await c('pm').post(`/projects/${delta.id}/state`, { version: delta.version, state: 'ON_HOLD' });
 

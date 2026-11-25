@@ -1,0 +1,1714 @@
+[
+  {
+    "set": "width",
+    "name": "owner-dashboard",
+    "width": 360,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-dashboard",
+    "width": 390,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-dashboard",
+    "width": 768,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-dashboard",
+    "width": 1024,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-dashboard",
+    "width": 1280,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-dashboard",
+    "width": 1440,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-dashboard",
+    "width": 1920,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-board",
+    "width": 360,
+    "path": "/app/deals",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-board",
+    "width": 390,
+    "path": "/app/deals",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-board",
+    "width": 768,
+    "path": "/app/deals",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-board",
+    "width": 1024,
+    "path": "/app/deals",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-board",
+    "width": 1280,
+    "path": "/app/deals",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-board",
+    "width": 1440,
+    "path": "/app/deals",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-board",
+    "width": 1920,
+    "path": "/app/deals",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-list",
+    "width": 360,
+    "path": "/app/deals?view=list",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-list",
+    "width": 390,
+    "path": "/app/deals?view=list",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-list",
+    "width": 768,
+    "path": "/app/deals?view=list",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-list",
+    "width": 1024,
+    "path": "/app/deals?view=list",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-list",
+    "width": 1280,
+    "path": "/app/deals?view=list",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-list",
+    "width": 1440,
+    "path": "/app/deals?view=list",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-list",
+    "width": 1920,
+    "path": "/app/deals?view=list",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-insights",
+    "width": 360,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-insights",
+    "width": 390,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-insights",
+    "width": 768,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-insights",
+    "width": 1024,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-insights",
+    "width": 1280,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-insights",
+    "width": 1440,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deals-insights",
+    "width": 1920,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-delivery",
+    "width": 360,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-delivery",
+    "width": 390,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-delivery",
+    "width": 768,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-delivery",
+    "width": 1024,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-delivery",
+    "width": 1280,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-delivery",
+    "width": 1440,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-delivery",
+    "width": 1920,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project-plan",
+    "width": 360,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project-plan",
+    "width": 390,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project-plan",
+    "width": 768,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project-plan",
+    "width": 1024,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project-plan",
+    "width": 1280,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project-plan",
+    "width": 1440,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project-plan",
+    "width": 1920,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-drawer",
+    "width": 360,
+    "path": "/app/deals?deal=01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-drawer",
+    "width": 390,
+    "path": "/app/deals?deal=01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-drawer",
+    "width": 768,
+    "path": "/app/deals?deal=01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-drawer",
+    "width": 1024,
+    "path": "/app/deals?deal=01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-drawer",
+    "width": 1280,
+    "path": "/app/deals?deal=01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-drawer",
+    "width": 1440,
+    "path": "/app/deals?deal=01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-drawer",
+    "width": 1920,
+    "path": "/app/deals?deal=01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-detail",
+    "width": 360,
+    "path": "/app/deals/01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Clinic booking app · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-detail",
+    "width": 390,
+    "path": "/app/deals/01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Clinic booking app · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-detail",
+    "width": 768,
+    "path": "/app/deals/01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Clinic booking app · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-detail",
+    "width": 1024,
+    "path": "/app/deals/01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Clinic booking app · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-detail",
+    "width": 1280,
+    "path": "/app/deals/01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Clinic booking app · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-detail",
+    "width": 1440,
+    "path": "/app/deals/01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Clinic booking app · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-deal-detail",
+    "width": 1920,
+    "path": "/app/deals/01a20f92-91c0-7477-92cd-79f723fef071",
+    "overflowPx": 0,
+    "title": "Clinic booking app · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-leads",
+    "width": 360,
+    "path": "/app/leads",
+    "overflowPx": 0,
+    "title": "Leads · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-leads",
+    "width": 390,
+    "path": "/app/leads",
+    "overflowPx": 0,
+    "title": "Leads · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-leads",
+    "width": 768,
+    "path": "/app/leads",
+    "overflowPx": 0,
+    "title": "Leads · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-leads",
+    "width": 1024,
+    "path": "/app/leads",
+    "overflowPx": 0,
+    "title": "Leads · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-leads",
+    "width": 1280,
+    "path": "/app/leads",
+    "overflowPx": 0,
+    "title": "Leads · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-leads",
+    "width": 1440,
+    "path": "/app/leads",
+    "overflowPx": 0,
+    "title": "Leads · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-leads",
+    "width": 1920,
+    "path": "/app/leads",
+    "overflowPx": 0,
+    "title": "Leads · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-client-360",
+    "width": 360,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-client-360",
+    "width": 390,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-client-360",
+    "width": 768,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-client-360",
+    "width": 1024,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-client-360",
+    "width": 1280,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-client-360",
+    "width": 1440,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-client-360",
+    "width": 1920,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-follow-ups",
+    "width": 360,
+    "path": "/app/follow-ups",
+    "overflowPx": 0,
+    "title": "Follow-ups · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-follow-ups",
+    "width": 390,
+    "path": "/app/follow-ups",
+    "overflowPx": 0,
+    "title": "Follow-ups · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-follow-ups",
+    "width": 768,
+    "path": "/app/follow-ups",
+    "overflowPx": 0,
+    "title": "Follow-ups · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-follow-ups",
+    "width": 1024,
+    "path": "/app/follow-ups",
+    "overflowPx": 0,
+    "title": "Follow-ups · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-follow-ups",
+    "width": 1280,
+    "path": "/app/follow-ups",
+    "overflowPx": 0,
+    "title": "Follow-ups · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-follow-ups",
+    "width": 1440,
+    "path": "/app/follow-ups",
+    "overflowPx": 0,
+    "title": "Follow-ups · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-follow-ups",
+    "width": 1920,
+    "path": "/app/follow-ups",
+    "overflowPx": 0,
+    "title": "Follow-ups · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-proposals",
+    "width": 360,
+    "path": "/app/proposals",
+    "overflowPx": 0,
+    "title": "Proposals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-proposals",
+    "width": 390,
+    "path": "/app/proposals",
+    "overflowPx": 0,
+    "title": "Proposals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-proposals",
+    "width": 768,
+    "path": "/app/proposals",
+    "overflowPx": 0,
+    "title": "Proposals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-proposals",
+    "width": 1024,
+    "path": "/app/proposals",
+    "overflowPx": 0,
+    "title": "Proposals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-proposals",
+    "width": 1280,
+    "path": "/app/proposals",
+    "overflowPx": 0,
+    "title": "Proposals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-proposals",
+    "width": 1440,
+    "path": "/app/proposals",
+    "overflowPx": 0,
+    "title": "Proposals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-proposals",
+    "width": 1920,
+    "path": "/app/proposals",
+    "overflowPx": 0,
+    "title": "Proposals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-projects",
+    "width": 360,
+    "path": "/app/projects",
+    "overflowPx": 0,
+    "title": "Projects · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-projects",
+    "width": 390,
+    "path": "/app/projects",
+    "overflowPx": 0,
+    "title": "Projects · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-projects",
+    "width": 768,
+    "path": "/app/projects",
+    "overflowPx": 0,
+    "title": "Projects · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-projects",
+    "width": 1024,
+    "path": "/app/projects",
+    "overflowPx": 0,
+    "title": "Projects · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-projects",
+    "width": 1280,
+    "path": "/app/projects",
+    "overflowPx": 0,
+    "title": "Projects · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-projects",
+    "width": 1440,
+    "path": "/app/projects",
+    "overflowPx": 0,
+    "title": "Projects · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-projects",
+    "width": 1920,
+    "path": "/app/projects",
+    "overflowPx": 0,
+    "title": "Projects · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project",
+    "width": 360,
+    "path": "/app/projects/01a20f92-9d3b-7640-bfc2-a9e53f11c595",
+    "overflowPx": 0,
+    "title": "Delta Logistics — fleet dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project",
+    "width": 390,
+    "path": "/app/projects/01a20f92-9d3b-7640-bfc2-a9e53f11c595",
+    "overflowPx": 0,
+    "title": "Delta Logistics — fleet dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project",
+    "width": 768,
+    "path": "/app/projects/01a20f92-9d3b-7640-bfc2-a9e53f11c595",
+    "overflowPx": 0,
+    "title": "Delta Logistics — fleet dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project",
+    "width": 1024,
+    "path": "/app/projects/01a20f92-9d3b-7640-bfc2-a9e53f11c595",
+    "overflowPx": 0,
+    "title": "Delta Logistics — fleet dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project",
+    "width": 1280,
+    "path": "/app/projects/01a20f92-9d3b-7640-bfc2-a9e53f11c595",
+    "overflowPx": 0,
+    "title": "Delta Logistics — fleet dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project",
+    "width": 1440,
+    "path": "/app/projects/01a20f92-9d3b-7640-bfc2-a9e53f11c595",
+    "overflowPx": 0,
+    "title": "Delta Logistics — fleet dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-project",
+    "width": 1920,
+    "path": "/app/projects/01a20f92-9d3b-7640-bfc2-a9e53f11c595",
+    "overflowPx": 0,
+    "title": "Delta Logistics — fleet dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-invoices",
+    "width": 360,
+    "path": "/app/invoices",
+    "overflowPx": 0,
+    "title": "Invoices · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-invoices",
+    "width": 390,
+    "path": "/app/invoices",
+    "overflowPx": 0,
+    "title": "Invoices · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-invoices",
+    "width": 768,
+    "path": "/app/invoices",
+    "overflowPx": 0,
+    "title": "Invoices · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-invoices",
+    "width": 1024,
+    "path": "/app/invoices",
+    "overflowPx": 0,
+    "title": "Invoices · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-invoices",
+    "width": 1280,
+    "path": "/app/invoices",
+    "overflowPx": 0,
+    "title": "Invoices · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-invoices",
+    "width": 1440,
+    "path": "/app/invoices",
+    "overflowPx": 0,
+    "title": "Invoices · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-invoices",
+    "width": 1920,
+    "path": "/app/invoices",
+    "overflowPx": 0,
+    "title": "Invoices · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-finance-report",
+    "width": 360,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-finance-report",
+    "width": 390,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-finance-report",
+    "width": 768,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-finance-report",
+    "width": 1024,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-finance-report",
+    "width": 1280,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-finance-report",
+    "width": 1440,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-finance-report",
+    "width": 1920,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-team",
+    "width": 360,
+    "path": "/app/team",
+    "overflowPx": 0,
+    "title": "Team · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-team",
+    "width": 390,
+    "path": "/app/team",
+    "overflowPx": 0,
+    "title": "Team · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-team",
+    "width": 768,
+    "path": "/app/team",
+    "overflowPx": 0,
+    "title": "Team · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-team",
+    "width": 1024,
+    "path": "/app/team",
+    "overflowPx": 0,
+    "title": "Team · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-team",
+    "width": 1280,
+    "path": "/app/team",
+    "overflowPx": 0,
+    "title": "Team · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-team",
+    "width": 1440,
+    "path": "/app/team",
+    "overflowPx": 0,
+    "title": "Team · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-team",
+    "width": 1920,
+    "path": "/app/team",
+    "overflowPx": 0,
+    "title": "Team · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-settings",
+    "width": 360,
+    "path": "/app/settings",
+    "overflowPx": 0,
+    "title": "Agency settings · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-settings",
+    "width": 390,
+    "path": "/app/settings",
+    "overflowPx": 0,
+    "title": "Agency settings · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-settings",
+    "width": 768,
+    "path": "/app/settings",
+    "overflowPx": 0,
+    "title": "Agency settings · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-settings",
+    "width": 1024,
+    "path": "/app/settings",
+    "overflowPx": 0,
+    "title": "Agency settings · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-settings",
+    "width": 1280,
+    "path": "/app/settings",
+    "overflowPx": 0,
+    "title": "Agency settings · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-settings",
+    "width": 1440,
+    "path": "/app/settings",
+    "overflowPx": 0,
+    "title": "Agency settings · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-settings",
+    "width": 1920,
+    "path": "/app/settings",
+    "overflowPx": 0,
+    "title": "Agency settings · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-notifications",
+    "width": 360,
+    "path": "/app/notifications",
+    "overflowPx": 0,
+    "title": "Notifications · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-notifications",
+    "width": 390,
+    "path": "/app/notifications",
+    "overflowPx": 0,
+    "title": "Notifications · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-notifications",
+    "width": 768,
+    "path": "/app/notifications",
+    "overflowPx": 0,
+    "title": "Notifications · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-notifications",
+    "width": 1024,
+    "path": "/app/notifications",
+    "overflowPx": 0,
+    "title": "Notifications · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-notifications",
+    "width": 1280,
+    "path": "/app/notifications",
+    "overflowPx": 0,
+    "title": "Notifications · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-notifications",
+    "width": 1440,
+    "path": "/app/notifications",
+    "overflowPx": 0,
+    "title": "Notifications · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-notifications",
+    "width": 1920,
+    "path": "/app/notifications",
+    "overflowPx": 0,
+    "title": "Notifications · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-relationships",
+    "width": 360,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-relationships",
+    "width": 390,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-relationships",
+    "width": 768,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-relationships",
+    "width": 1024,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-relationships",
+    "width": 1280,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-relationships",
+    "width": 1440,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "owner-relationships",
+    "width": 1920,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-dashboard",
+    "width": 360,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-dashboard",
+    "width": 390,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-dashboard",
+    "width": 768,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-dashboard",
+    "width": 1024,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-dashboard",
+    "width": 1280,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-dashboard",
+    "width": 1440,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-dashboard",
+    "width": 1920,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-deals-insights",
+    "width": 360,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-deals-insights",
+    "width": 390,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-deals-insights",
+    "width": 768,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-deals-insights",
+    "width": 1024,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-deals-insights",
+    "width": 1280,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-deals-insights",
+    "width": 1440,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "sales-deals-insights",
+    "width": 1920,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-dashboard",
+    "width": 360,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-dashboard",
+    "width": 390,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-dashboard",
+    "width": 768,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-dashboard",
+    "width": 1024,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-dashboard",
+    "width": 1280,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-dashboard",
+    "width": 1440,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-dashboard",
+    "width": 1920,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-delivery",
+    "width": 360,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-delivery",
+    "width": 390,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-delivery",
+    "width": 768,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-delivery",
+    "width": 1024,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-delivery",
+    "width": 1280,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-delivery",
+    "width": 1440,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "pm-delivery",
+    "width": 1920,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-dashboard",
+    "width": 360,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-dashboard",
+    "width": 390,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-dashboard",
+    "width": 768,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-dashboard",
+    "width": 1024,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-dashboard",
+    "width": 1280,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-dashboard",
+    "width": 1440,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-dashboard",
+    "width": 1920,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-finance-report",
+    "width": 360,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-finance-report",
+    "width": 390,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-finance-report",
+    "width": 768,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-finance-report",
+    "width": 1024,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-finance-report",
+    "width": 1280,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-finance-report",
+    "width": 1440,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "finance-finance-report",
+    "width": 1920,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "portal-home",
+    "width": 360,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "portal-home",
+    "width": 390,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "portal-home",
+    "width": 768,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "portal-home",
+    "width": 1024,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "portal-home",
+    "width": 1280,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "portal-home",
+    "width": 1440,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "portal-home",
+    "width": 1920,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "login",
+    "width": 360,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "login",
+    "width": 390,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "login",
+    "width": 768,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "login",
+    "width": 1024,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "login",
+    "width": 1280,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "login",
+    "width": 1440,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "width",
+    "name": "login",
+    "width": 1920,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "owner-dashboard",
+    "width": 640,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "owner-deals-insights",
+    "width": 640,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "owner-delivery",
+    "width": 640,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "owner-project-plan",
+    "width": 640,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "owner-client-360",
+    "width": 640,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "owner-finance-report",
+    "width": 640,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "owner-relationships",
+    "width": 640,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "portal-home",
+    "width": 640,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "zoom200",
+    "name": "login",
+    "width": 640,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "owner-dashboard",
+    "width": 320,
+    "path": "/app/dashboard",
+    "overflowPx": 0,
+    "title": "Dashboard · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "owner-deals-insights",
+    "width": 320,
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0,
+    "title": "Deals · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "owner-delivery",
+    "width": 320,
+    "path": "/app/delivery",
+    "overflowPx": 0,
+    "title": "Delivery portfolio · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "owner-project-plan",
+    "width": 320,
+    "path": "/app/projects/01a20f92-9b76-735d-a4cc-d46b7db80c1f/plan",
+    "overflowPx": 0,
+    "title": "Plan: Nile Bakery — ordering website · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "owner-client-360",
+    "width": 320,
+    "path": "/app/leads/01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Laila Haddad · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "owner-finance-report",
+    "width": 320,
+    "path": "/app/reports/finance",
+    "overflowPx": 0,
+    "title": "Finance report · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "owner-relationships",
+    "width": 320,
+    "path": "/app/relationships?focus=01a20f92-8f37-7287-8a28-4e99c31d32c7",
+    "overflowPx": 0,
+    "title": "Relationship map · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "portal-home",
+    "width": 320,
+    "path": "/portal",
+    "overflowPx": 0,
+    "title": "Home · ClientFlow"
+  },
+  {
+    "set": "zoom400",
+    "name": "login",
+    "width": 320,
+    "path": "/login",
+    "overflowPx": 0,
+    "title": "Sign in · ClientFlow"
+  }
+]

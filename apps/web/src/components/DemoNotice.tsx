@@ -9,11 +9,11 @@ export function DemoNotice({ user, className }: { user: SessionUser; className?:
     <p
       role="note"
       className={cn(
-        'flex items-start gap-2 rounded-md border border-info/25 bg-info-soft px-3 py-2 text-[13px] leading-5 text-text print:hidden',
+        'flex items-start gap-2 rounded-md border border-violet/25 bg-violet-soft/70 px-3 py-2 text-[13px] leading-5 text-text print:hidden',
         className,
       )}
     >
-      <FlaskConical aria-hidden className="mt-0.5 size-4 shrink-0 text-info" />
+      <FlaskConical aria-hidden className="mt-0.5 size-4 shrink-0 text-violet-strong" />
       <span>
         <span className="font-semibold">Demo workspace.</span> Every person, company and amount here
         is fictional, and the demo is reset regularly.

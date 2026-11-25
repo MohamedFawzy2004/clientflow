@@ -24,6 +24,7 @@ import {
 import { useSession } from '../auth/session';
 import { useProposal, useProposalAction, useProposalPermissions, useProposalVersion } from './api';
 import { ProposalEditor } from './ProposalEditor';
+import { DocumentTitle } from '../../components/ui/page';
 
 const DECISION_LABEL: Record<ProposalReviewEntry['decision'], string> = {
   SUBMITTED: 'Submitted for review',
@@ -358,9 +359,8 @@ export function ProposalDetailPage() {
       <header className="mt-4 flex flex-col gap-3 print:hidden md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="min-w-0 break-words text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-              {proposal.title}
-            </h1>
+            <DocumentTitle title={proposal.title} />
+            <h1 className="min-w-0 break-words page-title">{proposal.title}</h1>
             <ProposalStatusBadge status={proposal.displayStatus} />
           </div>
           <p className="mt-1 text-sm text-muted">

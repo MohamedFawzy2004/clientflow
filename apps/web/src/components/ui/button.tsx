@@ -15,11 +15,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-primary text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,0_1px_2px_rgba(16,36,60,0.12)] hover:bg-primary-hover active:bg-primary-hover',
+    'bg-primary text-white shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_1px_rgba(20,45,42,0.18)] hover:bg-primary-hover',
   secondary:
-    'bg-surface text-text border border-border-strong shadow-[0_1px_2px_rgba(16,36,60,0.06)] hover:bg-surface-alt',
-  ghost: 'text-muted hover:bg-surface-alt hover:text-text',
-  danger: 'bg-danger text-white hover:bg-[#9a1d2b]',
+    'bg-surface text-ink border border-border-strong shadow-[0_1px_1px_rgba(20,45,42,0.05)] hover:border-subtle hover:bg-surface-alt',
+  ghost: 'text-muted hover:bg-surface-alt hover:text-ink',
+  danger: 'bg-danger text-white hover:bg-danger-hover',
 };
 
 // Heights follow spec §7.3: 40px desktop, 44px for touch-first actions.
@@ -50,7 +50,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap font-medium transition-[background-color,border-color,color,box-shadow] duration-150',
+        'press inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap font-medium',
         'disabled:cursor-not-allowed disabled:opacity-55',
         variants[variant],
         sizes[size],

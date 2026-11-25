@@ -24,15 +24,15 @@ Lead → Deal → Proposal (internal approval → client decision in the portal)
      → Invoices and payments
 ```
 
-| For               | They get                                                                                                    |
-| ----------------- | ----------------------------------------------------------------------------------------------------------- |
-| Sales             | Leads with follow-up queues, a pipeline board, proposals with exact totals and numbered, frozen versions    |
-| Sales managers    | Approval before anything reaches a client, team dashboard, CSV export and import                            |
-| Project managers  | One-step, duplicate-proof handoff from won deal to project; task board; change requests priced and approved |
-| Team members      | Their tasks and time, encrypted file uploads, deliverables with client feedback                             |
-| Finance           | Invoices numbered on issue, partial payments with reversals, finance report per currency                    |
-| Clients           | A portal with only their own proposals, shared projects, deliverables and invoices                          |
-| Owners and admins | Team, roles, settings, system status and an audit trail; backup and restore commands                        |
+| For               | They get                                                                                                                                                                               |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sales             | Leads with follow-up queues, a pipeline board with rule-based insights, a relationship map, proposals with exact totals and numbered, frozen versions                                  |
+| Sales managers    | Approval before anything reaches a client, team dashboard, CSV export and import                                                                                                       |
+| Project managers  | One-step, duplicate-proof handoff from won deal to project; task board; a portfolio timeline and per-project plan drawn only from stored dates; change requests priced and approved    |
+| Team members      | Their tasks and time, encrypted file uploads, deliverables with client feedback                                                                                                        |
+| Finance           | Invoices numbered on issue, partial payments with reversals, finance report per currency; estimated project profitability (budget, accepted changes, dated time cost) for finance only |
+| Clients           | A portal home with pending decisions, progress and open balance, showing only their own proposals, shared projects, deliverables and invoices; a schedule line per project             |
+| Owners and admins | Team, roles, settings, system status and an audit trail; backup and restore commands; an executive strip with the position per role, each figure linked to its records                 |
 
 | Sales pipeline                                                | Project task board                                                |
 | ------------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -63,22 +63,23 @@ was ever used.
 
 ## Engineering decisions worth a closer look
 
-71 decisions are recorded in [`07_ARCHITECTURE_ADRS.md`](07_ARCHITECTURE_ADRS.md). A few that shaped
+72 decisions are recorded in [`07_ARCHITECTURE_ADRS.md`](07_ARCHITECTURE_ADRS.md). A few that shaped
 the product:
 
-| Decision                                                                                             | Why                                                                           |
-| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Server sessions (hashed opaque tokens) instead of JWTs                                               | Instant revocation on sign-out or deactivation; nothing secret in the browser |
-| A record outside your scope answers **404**, not 403                                                 | Users cannot discover what exists elsewhere                                   |
-| Sent proposal versions, change versions, issued invoices and payments are frozen **in the database** | Approvals stay provable even if the API had a bug                             |
-| A client decision carries the hash of the exact version shown                                        | "Which version did they accept?" always has one answer                        |
-| Money as integer minor units with a currency, never summed across currencies                         | No rounding drift; no meaningless EGP + USD totals                            |
-| Idempotency keys on project conversion, invoices and payments                                        | A double-click or retry never creates a second project or payment             |
-| Transactional outbox for email and reminders                                                         | No email for a change that rolled back; retries without duplicates            |
-| Extra work must point to an accepted change request, or carry a written reason                       | Scope creep becomes visible instead of silent                                 |
-| Files encrypted per file (AES-256-GCM), downloaded via 5-minute links bound to the user              | A leaked folder or link is not enough to read client work                     |
-| Compress static files only, never API JSON                                                           | Avoids the BREACH side channel                                                |
-| Public demo: password-less "Explore as" per role, server-side demo guard, rebuilt on every start     | A free, safe public demo with no published passwords and no lasting changes   |
+| Decision                                                                                                                               | Why                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Server sessions (hashed opaque tokens) instead of JWTs                                                                                 | Instant revocation on sign-out or deactivation; nothing secret in the browser                                             |
+| A record outside your scope answers **404**, not 403                                                                                   | Users cannot discover what exists elsewhere                                                                               |
+| Sent proposal versions, change versions, issued invoices and payments are frozen **in the database**                                   | Approvals stay provable even if the API had a bug                                                                         |
+| A client decision carries the hash of the exact version shown                                                                          | "Which version did they accept?" always has one answer                                                                    |
+| Money as integer minor units with a currency, never summed across currencies                                                           | No rounding drift; no meaningless EGP + USD totals                                                                        |
+| Insights, the relationship map and the Gantt reuse each record type's read scope; unreadable kinds return empty with `readable: false` | A rep's map or chart never hints at records they cannot open; no invented dates, no "overloaded" without a capacity model |
+| Idempotency keys on project conversion, invoices and payments                                                                          | A double-click or retry never creates a second project or payment                                                         |
+| Transactional outbox for email and reminders                                                                                           | No email for a change that rolled back; retries without duplicates                                                        |
+| Extra work must point to an accepted change request, or carry a written reason                                                         | Scope creep becomes visible instead of silent                                                                             |
+| Files encrypted per file (AES-256-GCM), downloaded via 5-minute links bound to the user                                                | A leaked folder or link is not enough to read client work                                                                 |
+| Compress static files only, never API JSON                                                                                             | Avoids the BREACH side channel                                                                                            |
+| Public demo: password-less "Explore as" per role, server-side demo guard, rebuilt on every start                                       | A free, safe public demo with no published passwords and no lasting changes                                               |
 
 ## Results
 
@@ -96,6 +97,11 @@ failed and what was not run, is the [Release Quality Passport](27_RELEASE_QUALIT
 | API speed (local, 10 users)   | p95 33–147 ms for reads, 64 ms for writes                                                                                                                                                                |
 | Lighthouse (lab, mobile)      | Sign-in 91; dashboard 86, below the 90 target (desktop 99)                                                                                                                                               |
 | What the audit caught         | A demo-guard bypass by letter case or trailing slash (found by an automated PR security review), a WebKit-only race in a test helper, and a route missing from the route inventory: all fixed with tests |
+
+**v0.14.0 candidate (2026-11-25, local, not yet merged):** API 474 passed (1 skipped), web 124,
+end-to-end 82 · 82 · 83 in Edge, Firefox and WebKit, demo tour 27 passed. Lighthouse (lab,
+median of 5): dashboard 78 on mobile, still below the 90 target, and 99 on desktop. The full
+record is the [closure report](milestones/FINAL_CLOSURE_REPORT.md).
 
 ## Limits, stated plainly
 

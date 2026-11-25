@@ -45,6 +45,51 @@ The route inventory test passed, so no new route is missing from the permission 
 
 **What this does not cover:** #127–#131 were reviewed by their own PRs and tests, not by an independent audit in this passport. This section shows that they pass every existing gate together with the demo and portfolio work. It does not show they are free of defects.
 
+## 0a. Final signature branch (proposed `v0.14.0`, not merged)
+
+`feature/final-signature-release`, from `main` at `e84f959` (v0.13.0), checked on 2026-11-24/25 on
+the same machine. Pushed as PR #151 at `1f18bfc`; not merged and not tagged. The full record is
+[FINAL_SIGNATURE_REPORT.md](milestones/FINAL_SIGNATURE_REPORT.md). The closure work on top of it
+is in §0b.
+
+| #   | Check                           | Result on the branch                                                                                                                                                                                                                                                   |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Clean install                   | `npm ci`: **pass** (second attempt; the first hit EPERM because the running demo servers held `esbuild.exe`)                                                                                                                                                           |
+| 2   | Lint · types · format · build   | **pass · pass · pass · pass**                                                                                                                                                                                                                                          |
+| 3   | Dependencies                    | No change to the lockfile. `npm audit`: 3 high, 7 moderate, all already on `main` (prisma → effect; typescript-eslint → minimatch)                                                                                                                                     |
+| 4   | API integration (real Postgres) | **468 passed, 1 skipped** (38 files). The skip is the real-ClamAV test                                                                                                                                                                                                 |
+| 5   | Web components                  | **113 passed** (17 files)                                                                                                                                                                                                                                              |
+| 6   | E2E, Edge · Firefox · WebKit    | **77 / 77 / 77** passed (7.1 · 14.3 · 9.1 min), none skipped; Edge again after the layout-shift fix: **77 passed**                                                                                                                                                     |
+| 7   | Demo tour                       | **27 passed** (2.9 min)                                                                                                                                                                                                                                                |
+| 8   | Accessibility                   | axe (WCAG 2.2 AA rules): **0 violations** on 30 runs (15 screens × 1440 and 360). Keyboard paths 8/8. Reduced motion honoured                                                                                                                                          |
+| 9   | Overflow                        | **0 px** on 214 checks: 196 widths 360–1920 px plus 9 pages each at 200% and 400% zoom                                                                                                                                                                                 |
+| 10  | Backup → isolated restore       | **RECONCILED**: 18 migrations, 46 tables, 817 rows, 4/4 files verified, into an empty database dropped afterwards                                                                                                                                                      |
+| 11  | Secret scan                     | gitleaks v8.28.0 on `main..HEAD` (24 commits): **no leaks**                                                                                                                                                                                                            |
+| 12  | Migrations                      | None new. 18 applied, "No pending migrations"                                                                                                                                                                                                                          |
+| 13  | Lighthouse (lab)                | A/B against `main` on the same machine and data (3 alternating runs). Dashboard mobile **78** (main 86), desktop **98** (main 92). Dashboard CLS fixed on the branch (0.000 / 0.018). Sign-in in demo mode CLS ~0.45 on both (pre-existing). Details in the report §11 |
+| 14  | CI                              | On #151 at `1f18bfc`: 6 of 7 jobs passed. "Lint, typecheck, audit, build" failed on the new `effect` advisory (GHSA-7589-6fvf-x4pw), fixed by #152 (§0b)                                                                                                               |
+
+## 0b. Closure candidate (proposed `v0.14.0`, local, not pushed)
+
+The optimisation and release-closure work on `feature/final-signature-release` after `1f18bfc`,
+checked on 2026-11-25 on the same machine. It contains `main` at `94f7022` (#152, `effect`
+3.22.1) and the #153 sign-in fix. **Local only:** not pushed, not merged, not tagged. The full
+record, with every figure, the verdicts and the approvals still needed, is
+[FINAL_CLOSURE_REPORT.md](milestones/FINAL_CLOSURE_REPORT.md) (§4 Lighthouse, §5 gates).
+
+| #   | Check                           | Result on the candidate                                                                                                           |
+| --- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | API integration (real Postgres) | **474 passed, 1 skipped** (real-ClamAV test)                                                                                      |
+| 2   | Web components                  | **124 passed** (20 files)                                                                                                         |
+| 3   | E2E, Edge · Firefox · WebKit    | **82 · 82 · 83** passed, including `closure.spec.ts`                                                                              |
+| 4   | Demo tour                       | **27 passed** in three engines, after the finance step was updated for the corrected invoice chronology (report §6)               |
+| 5   | `npm audit --omit=dev`          | **0 vulnerabilities**                                                                                                             |
+| 6   | gitleaks                        | **No leaks**                                                                                                                      |
+| 7   | Accessibility and layout        | axe **0 violations** (34 runs); keyboard 8/8; **0 px** overflow on 108 mobile and 18 zoom checks                                  |
+| 8   | Backup → isolated restore       | **RECONCILED** (803 rows, 4/4 files)                                                                                              |
+| 9   | Lighthouse (lab, median of 5)   | Dashboard mobile **78** (signature 72, v0.13.0 85), desktop **99**; sign-in CLS **0**. Mobile target of 90 **missed** (report §4) |
+| 10  | CI and CodeQL                   | **NOT RUN** on the candidate. They run on #151 after the owner approves the push                                                  |
+
 ## 1. Scope reviewed
 
 - **Product:** all of M1–M12.1 (lead to invoice, client portal, automation, operations), the security hardening (PR #126), the demo hosting changes and the QA regression suites.

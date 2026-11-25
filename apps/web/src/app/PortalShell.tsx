@@ -58,7 +58,7 @@ export function PortalShell() {
         <nav aria-label="Portal" className="mx-auto w-full max-w-[1100px] px-4 md:px-6">
           <ul className="-mb-px flex gap-1">
             {[
-              { to: '/portal', label: 'Proposals', end: true },
+              { to: '/portal', label: 'Home', end: true },
               { to: '/portal/projects', label: 'Projects', end: false },
               { to: '/portal/invoices', label: 'Invoices', end: false },
             ].map((l) => (

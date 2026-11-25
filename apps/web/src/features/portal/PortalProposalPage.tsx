@@ -21,6 +21,7 @@ import {
 } from '../../components/proposals/proposal-ui';
 import { useSession } from '../auth/session';
 import { usePortalDecision, usePortalProposal } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 const DECIDED: Record<'ACCEPTED' | 'REJECTED' | 'CHANGES_REQUESTED', string> = {
   ACCEPTED: 'You accepted this version',
@@ -210,9 +211,8 @@ export function PortalProposalPage() {
       {back}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[28px]">
-            Proposal {p.reference}
-          </h1>
+          <DocumentTitle title={`Proposal ${p.reference}`} />
+          <h1 className="page-title">Proposal {p.reference}</h1>
           <ProposalStatusBadge status={p.current.displayStatus} />
         </div>
         <div className="flex gap-2">

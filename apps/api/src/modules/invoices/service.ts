@@ -54,7 +54,7 @@ const OPEN: Array<'ISSUED' | 'PARTIALLY_PAID'> = ['ISSUED', 'PARTIALLY_PAID'];
 // Access (spec §1.1 "Manage invoice state": A for Owner/Admin/Finance, Read P for PM)
 // ---------------------------------------------------------------------------
 
-function invoiceScope(actor: AuthUser): Prisma.InvoiceWhereInput {
+export function invoiceScope(actor: AuthUser): Prisma.InvoiceWhereInput {
   if (can(actor.role, 'invoices.read.all')) return { agencyId: actor.agencyId };
   if (can(actor.role, 'invoices.read.project')) {
     return { agencyId: actor.agencyId, project: projectReadScope(actor) };
@@ -820,6 +820,18 @@ async function timeCost(db: Db | Tx, projectId: string, currency: string) {
     where: { userId: { in: userIds } },
     orderBy: { effectiveFrom: 'desc' },
   });
+  return costOfEntries(entries, rates, currency);
+}
+
+/**
+ * The arithmetic of {@link timeCost} on rows already loaded, so a report over many projects can
+ * load every entry and rate in two queries. `rates` must be ordered newest `effectiveFrom` first.
+ */
+export function costOfEntries(
+  entries: Array<{ userId: string; minutes: number; workedOn: Date; user: { name: string } }>,
+  rates: Array<{ userId: string; effectiveFrom: Date; currency: string; hourlyMinor: bigint }>,
+  currency: string,
+) {
   let minuteMinor = 0n; // Σ minutes × hourly, divided by 60 at the end
   let costed = 0;
   let total = 0;

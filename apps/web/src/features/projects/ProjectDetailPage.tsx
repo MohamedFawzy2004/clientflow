@@ -18,6 +18,7 @@ import { ProjectStateBadge } from '../../components/projects/project-ui';
 import { useSession } from '../auth/session';
 import { useProject, useProjectAction } from './api';
 import { EditProjectDialog, projectMessage as message } from './ProjectOverview';
+import { DocumentTitle } from '../../components/ui/page';
 
 /** Tabs of a project (spec §6.3). Delivery tabs are for the project team only. */
 function ProjectTabs({ id, work }: { id: string; work: boolean }) {
@@ -26,6 +27,7 @@ function ProjectTabs({ id, work }: { id: string; work: boolean }) {
     { to: 'changes', label: 'Changes', end: false },
     ...(work
       ? [
+          { to: 'plan', label: 'Plan', end: false },
           { to: 'board', label: 'Tasks', end: false },
           { to: 'deliverables', label: 'Deliverables', end: false },
           { to: 'files', label: 'Files', end: false },
@@ -154,9 +156,8 @@ export function ProjectDetailPage() {
       <header className="mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="min-w-0 break-words text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-              {p.title}
-            </h1>
+            <DocumentTitle title={p.title} />
+            <h1 className="min-w-0 break-words page-title">{p.title}</h1>
             <ProjectStateBadge state={p.state} />
           </div>
           <p className="mt-1 text-sm text-muted">

@@ -116,16 +116,34 @@ erDiagram
 
 ## 5. Code layout
 
-| Path                      | What lives there                                                                                                                                                        |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/contracts`      | Zod schemas, roles, error codes, shared by API and web                                                                                                                  |
-| `apps/api/src/modules/*`  | One folder per area (auth, contacts, deals, proposals, projects, tasks, files, deliverables, changes, invoices, portal, imports, ops, demo, …): routes, service, policy |
-| `apps/api/src/middleware` | Sessions, CSRF, Origin, rate limits, MFA gate, demo guard, security headers                                                                                             |
-| `apps/api/src/jobs`       | Outbox worker and reminder scans                                                                                                                                        |
-| `apps/api/src/demo`       | Demo builder: creates the fictional workspace through the real API                                                                                                      |
-| `apps/web/src/features/*` | Screens per area, TanStack Query hooks, role-aware navigation                                                                                                           |
-| `prisma/`                 | Schema, SQL migrations with `CHECK` constraints and freeze triggers                                                                                                     |
-| `e2e/`                    | Playwright suites per milestone, plus the demo tour                                                                                                                     |
+| Path                      | What lives there                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/contracts`      | Zod schemas, roles, error codes, shared by API and web                                                                                                                                |
+| `apps/api/src/modules/*`  | One folder per area (auth, contacts, deals, proposals, projects, tasks, files, deliverables, changes, invoices, portal, imports, intelligence, ops, demo, …): routes, service, policy |
+| `apps/api/src/middleware` | Sessions, CSRF, Origin, rate limits, MFA gate, demo guard, security headers                                                                                                           |
+| `apps/api/src/jobs`       | Outbox worker and reminder scans                                                                                                                                                      |
+| `apps/api/src/demo`       | Demo builder: creates the fictional workspace through the real API                                                                                                                    |
+| `apps/web/src/features/*` | Screens per area, TanStack Query hooks, role-aware navigation                                                                                                                         |
+| `prisma/`                 | Schema, SQL migrations with `CHECK` constraints and freeze triggers                                                                                                                   |
+| `e2e/`                    | Playwright suites per milestone, plus the demo tour                                                                                                                                   |
+
+### Intelligence read models (final signature release, ADR-072)
+
+`apps/api/src/modules/intelligence` adds five read-only endpoints. They compute views from stored
+records and add no tables or migrations:
+
+| Endpoint                         | Permission (any of)                          | What it returns                                                                                                |
+| -------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/contacts/:id/graph` | `contacts.read.all`, `contacts.read.own`     | The contact's linked records per kind, each within its own scope                                               |
+| `GET /api/v1/insights/sales`     | `dashboard.sales`                            | Stage funnel, time in stage, monthly won/lost value and count, lead sources (contact scope, ADR-073)           |
+| `GET /api/v1/insights/finance`   | `invoices.read.all`, `invoices.read.project` | Invoiced and received per month and per project, per currency; estimated profitability for `finance.view` only |
+| `GET /api/v1/insights/delivery`  | `delivery.work`                              | Open projects, task health, open tasks per person by due week                                                  |
+| `GET /api/v1/projects/:id/plan`  | `delivery.work`                              | Milestones, dated tasks and stored task dependencies                                                           |
+
+The web app draws the relationship map, the Gantt timeline, the dependency map, the profitability
+waterfall and the dashboard's executive strip from these responses (the strip also reads the
+existing finance report for `finance.view`). It never invents dates or links. Every number is rule-based. None of it uses a model,
+and the product never calls it AI.
 
 ## 6. Deployment shapes
 

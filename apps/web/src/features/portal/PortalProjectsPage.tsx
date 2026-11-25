@@ -6,6 +6,7 @@ import { Badge, EmptyState, ErrorState, Skeleton } from '../../components/ui/fee
 import { ProjectStateBadge } from '../../components/projects/project-ui';
 import { useSession } from '../auth/session';
 import { usePortalProjects } from './api';
+import { DocumentTitle } from '../../components/ui/page';
 
 /** Projects the agency shared with this client user (FR-X01, FR-X03). */
 export function PortalProjectsPage() {
@@ -73,9 +74,8 @@ export function PortalProjectsPage() {
 
   return (
     <>
-      <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-        Projects
-      </h1>
+      <DocumentTitle title={'Projects'} />
+      <h1 className="page-title">Projects</h1>
       <p className="mt-1 text-sm text-muted">
         Work {user?.agency.name} is delivering for {user?.clientOrg?.name ?? 'you'}.
       </p>

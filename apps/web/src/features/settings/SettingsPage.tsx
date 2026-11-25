@@ -11,6 +11,7 @@ import { Card } from '../../components/proposals/proposal-ui';
 import { useAgencySettings, useUpdateAgency } from '../dashboard/api';
 import { JobsCard } from './JobsCard';
 import { SystemStatusCard } from './SystemStatusCard';
+import { DocumentTitle } from '../../components/ui/page';
 
 interface FormValues {
   name: string;
@@ -97,9 +98,8 @@ export function SettingsPage() {
 
   return (
     <>
-      <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-text md:text-[32px] md:leading-[38px]">
-        Agency settings
-      </h1>
+      <DocumentTitle title={'Agency settings'} />
+      <h1 className="page-title">Agency settings</h1>
       <p className="mt-1 text-sm text-muted">Shown on proposals, PDFs and in the client portal.</p>
       <form onSubmit={onSubmit} noValidate className="mt-6 flex max-w-3xl flex-col gap-6">
         {saveError ? (

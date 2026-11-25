@@ -164,6 +164,13 @@ export const router = createBrowserRouter([
         path: 'leads/:id',
         lazy: screen(() => import('../features/leads/LeadDetailPage'), 'LeadDetailPage'),
       },
+      {
+        path: 'relationships',
+        lazy: screen(
+          () => import('../features/relationships/RelationshipMapPage'),
+          'RelationshipMapPage',
+        ),
+      },
       { path: 'team', lazy: screen(() => import('../features/team/TeamPage'), 'TeamPage') },
       { path: 'deals', lazy: screen(() => import('../features/deals/DealsPage'), 'DealsPage') },
       {
@@ -202,6 +209,13 @@ export const router = createBrowserRouter([
             lazy: screen(() => import('../features/delivery/TaskBoardPage'), 'TaskBoardPage'),
           },
           {
+            path: 'plan',
+            lazy: screen(
+              () => import('../features/intelligence/ProjectPlanPage'),
+              'ProjectPlanPage',
+            ),
+          },
+          {
             path: 'deliverables',
             lazy: screen(() => import('../features/delivery/DeliverablesPage'), 'DeliverablesPage'),
           },
@@ -226,6 +240,13 @@ export const router = createBrowserRouter([
             lazy: screen(() => import('../features/delivery/TimePage'), 'TimePage'),
           },
         ],
+      },
+      {
+        path: 'delivery',
+        lazy: screen(
+          () => import('../features/intelligence/DeliveryPortfolioPage'),
+          'DeliveryPortfolioPage',
+        ),
       },
       {
         path: 'invoices',

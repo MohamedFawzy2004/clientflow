@@ -149,10 +149,11 @@ export function useInvoiceAction() {
   });
 }
 
-export function useFinanceReport(q: FinanceReportQuery) {
+export function useFinanceReport(q: FinanceReportQuery, enabled = true) {
   const key = useUserKey();
   return useQuery({
     queryKey: [...key, 'finance-report', q],
+    enabled,
     queryFn: ({ signal }) =>
       api.get<ApiSuccess<FinanceReport>>(
         `/api/v1/reports/finance${query(q as Record<string, string | undefined>)}`,

@@ -36,7 +36,7 @@ Ready-to-use kit: [session checklist](pilot/session-checklist.md) and [feedback 
 | 5   | PM       | "What is blocking the Nile Bakery project?"                                               | Finds the blocked task about pickup slots                          |
 | 6   | PM       | "The client wants push alerts. Where is that change, and what is its status?"             | Finds CR on Delta, waiting for the client                          |
 | 7   | Member   | "Log 1.5 hours on the catalogue import task for yesterday."                               | Time entry saved on the right task                                 |
-| 8   | Finance  | "Which client owes money that is overdue? Record a payment of 5,000 USD."                 | Finds Delta's invoice; records a partial payment                   |
+| 8   | Finance  | "Which client has not paid its deposit yet? Record a payment of 5,000 USD."               | Finds Delta's unpaid deposit; records a partial payment            |
 | 9   | Client 2 | "Look at the dashboard wireframes the agency sent you. Approve them or ask for a change." | Opens the deliverable and decides; gives a reason if not approving |
 | 10  | Client 1 | "How much do you still owe, and when is it due?"                                          | Reads the open balance on the partly paid invoice                  |
 

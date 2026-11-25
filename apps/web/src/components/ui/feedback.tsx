@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CircleCheck, Info, RefreshCw, TriangleAlert } from 'lucide-react';
 import { cn } from '../../lib/format';
 import { Button } from './button';
@@ -29,7 +29,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex h-[22px] shrink-0 items-center gap-1 whitespace-nowrap rounded-sm px-2 text-xs font-medium ring-1 ring-inset',
         badgeTones[tone],
         className,
       )}
@@ -45,7 +45,7 @@ export function Skeleton({ className }: { className?: string }) {
     <div
       aria-hidden
       className={cn(
-        'rounded-sm bg-[linear-gradient(90deg,#eef2f7_0%,#e2e8f0_50%,#eef2f7_100%)] bg-[length:200%_100%] [animation:cf-shimmer_1.4s_ease-in-out_infinite]',
+        'rounded-sm bg-[linear-gradient(90deg,#f3f1ec_0%,#e9e4db_50%,#f3f1ec_100%)] bg-[length:200%_100%] [animation:cf-shimmer_1.4s_ease-in-out_infinite]',
         className,
       )}
     />
@@ -63,10 +63,10 @@ interface StateProps {
 export function EmptyState({ icon, title, description, action, className }: StateProps) {
   return (
     <div className={cn('flex flex-col items-center px-6 py-14 text-center', className)}>
-      <div className="mb-4 grid size-12 place-items-center rounded-lg bg-primary-soft text-primary-strong ring-1 ring-primary/15">
+      <div className="mb-4 grid size-11 place-items-center rounded-full bg-mint-soft text-primary-strong ring-1 ring-mint">
         {icon}
       </div>
-      <h2 className="text-base font-semibold text-text">{title}</h2>
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
       {description ? <p className="mt-1.5 max-w-sm text-sm text-muted">{description}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
@@ -96,7 +96,7 @@ export function ErrorState({
       <div className="mb-4 grid size-12 place-items-center rounded-lg bg-danger-soft text-danger ring-1 ring-danger/15">
         <TriangleAlert aria-hidden className="size-5" />
       </div>
-      <h2 className="text-base font-semibold text-text">{title}</h2>
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
       <p className="mt-1.5 max-w-sm text-sm text-muted">{message}</p>
       {requestId ? (
         <p className="mt-2 text-xs text-muted">
@@ -156,6 +156,50 @@ export function Banner({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Mounts `children` once the placeholder comes within 200 px of the viewport, or once the
+ * browser is idle after the first screen, whichever comes first. Below-the-fold dashboard sections
+ * use it so their requests and chunks do not compete with the first screen on a phone; nothing is
+ * removed, it only arrives a moment later. Without IntersectionObserver it renders at once.
+ */
+export function DeferredSection({
+  children,
+  placeholderClassName = 'h-80',
+}: {
+  children: ReactNode;
+  placeholderClassName?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(() => typeof IntersectionObserver === 'undefined');
+  useEffect(() => {
+    if (shown || !ref.current) return;
+    const show = () => setShown(true);
+    const io = new IntersectionObserver(
+      (entries) => entries.some((e) => e.isIntersecting) && show(),
+      // Start a little before it scrolls into view, so it is usually ready on arrival.
+      { rootMargin: '0px 0px 200px 0px' },
+    );
+    io.observe(ref.current);
+    // Fallback: once the browser is idle after the first screen, load it anyway, so it is ready
+    // before the person scrolls and anything that reads the page (tests, assistive tech) finds it.
+    const idle =
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(show, { timeout: 2000 })
+        : window.setTimeout(show, 1200);
+    return () => {
+      io.disconnect();
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
+  }, [shown]);
+  if (shown) return <>{children}</>;
+  return (
+    <div ref={ref}>
+      <Skeleton className={cn('w-full rounded-lg', placeholderClassName)} />
     </div>
   );
 }
