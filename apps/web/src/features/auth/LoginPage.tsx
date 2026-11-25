@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/button';
 import { Banner } from '../../components/ui/feedback';
 import { Field, Input, PasswordInput } from '../../components/ui/form';
 import { Wordmark } from '../../components/ui/brand';
+import { demoModeFromPage } from '../../lib/deployment';
 import { DemoSignIn } from './DemoSignIn';
 import { MfaStep } from './MfaStep';
 import { useDemoAccounts, useLogin, useSession } from './session';
@@ -75,8 +76,12 @@ export function LoginPage() {
   const navigate = useNavigate();
   const session = useSession();
   const login = useLogin();
-  const demo = useDemoAccounts();
+  // Known before the first paint on a built deployment, so the demo block is laid out at once
+  // rather than pushing the form down when the accounts arrive (CLS).
+  const [demoMode] = useState(demoModeFromPage);
+  const demo = useDemoAccounts(demoMode);
   const demoAccounts = demo.data ?? [];
+  const demoLoading = demoMode === true && demo.isPending;
   const requested = params.get('next');
   const expired = params.get('expired') === '1';
   const [codeStep, setCodeStep] = useState(false);
@@ -184,10 +189,10 @@ export function LoginPage() {
                 ) : null}
               </div>
 
-              {demoAccounts.length > 0 ? (
+              {demoAccounts.length > 0 || demoLoading ? (
                 <>
                   <DemoSignIn
-                    accounts={demoAccounts}
+                    accounts={demoLoading ? undefined : demoAccounts}
                     onSignedIn={(role) =>
                       navigate(safeNextPath(requested, role), { replace: true })
                     }

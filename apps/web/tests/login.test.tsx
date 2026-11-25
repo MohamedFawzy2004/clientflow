@@ -132,3 +132,47 @@ describe('LoginPage on a public demo (ADR-071)', () => {
     expect(await screen.findByText(/Too many demo sign-ins from your address/)).toBeInTheDocument();
   });
 });
+
+describe('LoginPage with the deployment flag in the page (CLS)', () => {
+  function flag(content: 'on' | 'off') {
+    const meta = document.createElement('meta');
+    meta.name = 'clientflow-demo-mode';
+    meta.content = content;
+    document.head.append(meta);
+    return () => meta.remove();
+  }
+  let unflag: (() => void) | undefined;
+  afterEach(() => unflag?.());
+
+  it('asks nothing and shows no demo block when the page says this is not a demo', async () => {
+    unflag = flag('off');
+    const calls = mockFetch(() => ({ status: 500 }));
+    renderRoute(<LoginPage />, { path: '/login', url: '/login', user: null });
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByText('Enter an email address.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Explore the demo' })).not.toBeInTheDocument();
+    expect(calls).toEqual([]);
+  });
+
+  it('lays out the demo block at once on a demo, before the accounts arrive', async () => {
+    unflag = flag('on');
+    let release!: () => void;
+    const arrived = new Promise<void>((r) => (release = r));
+    mockFetch(async () => {
+      await arrived;
+      return {
+        status: 200,
+        body: { data: [{ role: 'OWNER', name: 'Layla Hassan' }], meta: { requestId: 'r' } },
+      };
+    });
+    renderRoute(<LoginPage />, { path: '/login', url: '/login', user: null });
+    // First render: the block and one placeholder per role, none of them a usable button.
+    expect(screen.getByRole('heading', { name: 'Explore the demo' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading the demo accounts');
+    expect(screen.queryByRole('button', { name: /^Explore as / })).not.toBeInTheDocument();
+    expect(screen.getByText('Or sign in with an email and password')).toBeInTheDocument();
+    release();
+    expect(await screen.findByRole('button', { name: /^Explore as Owner/ })).toBeEnabled();
+    expect(screen.queryByText('Loading the demo accounts…')).not.toBeInTheDocument();
+  });
+});
