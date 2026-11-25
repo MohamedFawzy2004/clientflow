@@ -1,11 +1,14 @@
 import type { ProjectPlan } from '@clientflow/contracts';
+import { CalendarDays, ChartGantt } from 'lucide-react';
+import { useSearchParams } from 'react-router';
 import { ErrorState, Skeleton } from '../../components/ui/feedback';
-import { DocumentTitle, Panel } from '../../components/ui/page';
+import { DocumentTitle, Panel, Segmented } from '../../components/ui/page';
 import { todayIn } from '../../lib/format';
 import { useSession } from '../auth/session';
 import { useProjectContext } from '../projects/ProjectOverview';
 import { useProjectPlan } from './api';
 import {
+  Agenda,
   DependencyMap,
   shortDay,
   Timeline,
@@ -85,8 +88,19 @@ export function planRows(plan: ProjectPlan, today: string): TimelineRow[] {
   return rows;
 }
 
+type PlanView = 'timeline' | 'agenda';
+
+/** Phones open on the agenda (no sideways scrolling); the timeline is one tap away. */
+const defaultView = (): PlanView =>
+  typeof window !== 'undefined' && window.matchMedia?.('(max-width: 639px)').matches
+    ? 'agenda'
+    : 'timeline';
+
 export function ProjectPlanPage() {
   const project = useProjectContext();
+  const [params, setParams] = useSearchParams();
+  const raw = params.get('view');
+  const view: PlanView = raw === 'agenda' || raw === 'timeline' ? raw : defaultView();
   const { data: user } = useSession();
   const q = useProjectPlan(project.id);
   const today = todayIn(user?.agency.timezone);
@@ -113,6 +127,35 @@ export function ProjectPlanPage() {
       <DocumentTitle title={`Plan: ${plan.project.title}`} />
       <Panel
         title="Timeline"
+        action={
+          rows.length > 0 ? (
+            <Segmented
+              label="Plan view"
+              value={view}
+              onChange={(v) =>
+                setParams(
+                  (p) => {
+                    p.set('view', v);
+                    return p;
+                  },
+                  { replace: true },
+                )
+              }
+              options={[
+                {
+                  value: 'timeline',
+                  label: 'Timeline',
+                  icon: <ChartGantt aria-hidden className="size-4" />,
+                },
+                {
+                  value: 'agenda',
+                  label: 'Agenda',
+                  icon: <CalendarDays aria-hidden className="size-4" />,
+                },
+              ]}
+            />
+          ) : null
+        }
         description={
           plan.project.startOn && plan.project.dueOn
             ? `Project runs ${shortDay(plan.project.startOn)} to ${shortDay(plan.project.dueOn)}. Bars are milestone windows; dots are task due dates.`
@@ -121,6 +164,8 @@ export function ProjectPlanPage() {
       >
         {rows.length === 0 ? (
           <p className="text-sm text-muted">This project has no milestones or dated tasks yet.</p>
+        ) : view === 'agenda' ? (
+          <Agenda rows={rows} today={today} />
         ) : (
           <Timeline
             rows={rows}

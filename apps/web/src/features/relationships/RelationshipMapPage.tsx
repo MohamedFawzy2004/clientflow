@@ -216,19 +216,26 @@ function ContactPicker({ focus, onPick }: { focus: string | null; onPick: (id: s
 // ---------------------------------------------------------------------------
 
 /**
- * Zoom with the buttons (or + and - while the map has focus) and pan by dragging. The view is
- * only a viewBox change: every node stays a focusable button, and the list view is the
- * text equivalent.
+ * Zoom with the buttons, + and - while the map has focus, or a two-finger pinch; pan by dragging.
+ * The view is only a viewBox change: every node stays a focusable button, and the list view is
+ * the text equivalent. Unzoomed, a one-finger swipe still scrolls the page.
  */
 function ZoomableGraph(props: Omit<Parameters<typeof GraphSvg>[0], 'viewBox'>) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<[number, number]>([0, 0]);
   const drag = useRef<{ x: number; y: number; pan: [number, number]; w: number } | null>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; zoom: number } | null>(null);
+  const spread = () => {
+    const [a, b] = [...pointers.current.values()];
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  };
   const [x, y, w, h] = bounds(props.placed);
   const vw = w / zoom;
   const vh = h / zoom;
   const viewBox = [x + (w - vw) / 2 + pan[0], y + (h - vh) / 2 + pan[1], vw, vh].join(' ');
-  const step = (f: number) => setZoom((z) => Math.min(4, Math.max(1, +(z * f).toFixed(2))));
+  const clampZoom = (z: number) => Math.min(4, Math.max(1, +z.toFixed(2)));
+  const step = (f: number) => setZoom((z) => clampZoom(z * f));
   const reset = () => {
     setZoom(1);
     setPan([0, 0]);
@@ -274,24 +281,52 @@ function ZoomableGraph(props: Omit<Parameters<typeof GraphSvg>[0], 'viewBox'>) {
       <div
         role="group"
         aria-label="Map canvas. With a record focused, plus and minus zoom and 0 resets."
-        className={cn('touch-none', zoom > 1 ? 'cursor-grab active:cursor-grabbing' : undefined)}
+        className={cn(zoom > 1 ? 'touch-none cursor-grab active:cursor-grabbing' : 'touch-pan-y')}
         onKeyDown={(e) => {
           if (e.key === '+' || e.key === '=') step(1.4);
           else if (e.key === '-') step(1 / 1.4);
           else if (e.key === '0') reset();
         }}
         onPointerDown={(e) => {
+          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (pointers.current.size === 2) {
+            // Second finger down: pinch zoom takes over from any drag.
+            drag.current = null;
+            pinch.current = { dist: spread(), zoom };
+            for (const id of pointers.current.keys())
+              if (e.currentTarget.hasPointerCapture?.(id) === false)
+                try {
+                  e.currentTarget.setPointerCapture(id);
+                } catch {
+                  // The pointer already ended; nothing to capture.
+                }
+            return;
+          }
           if (zoom === 1 || (e.target as Element).closest('[role="button"]')) return;
           drag.current = { x: e.clientX, y: e.clientY, pan, w: e.currentTarget.clientWidth };
           e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
+          if (pointers.current.has(e.pointerId))
+            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          const p = pinch.current;
+          if (p && pointers.current.size === 2) {
+            if (p.dist > 0) setZoom(clampZoom((p.zoom * spread()) / p.dist));
+            return;
+          }
           const d = drag.current;
           if (!d) return;
           const scale = vw / d.w;
           setPan([d.pan[0] - (e.clientX - d.x) * scale, d.pan[1] - (e.clientY - d.y) * scale]);
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
+          pointers.current.delete(e.pointerId);
+          if (pointers.current.size < 2) pinch.current = null;
+          drag.current = null;
+        }}
+        onPointerCancel={(e) => {
+          pointers.current.delete(e.pointerId);
+          pinch.current = null;
           drag.current = null;
         }}
       >

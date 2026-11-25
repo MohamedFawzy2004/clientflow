@@ -4,6 +4,7 @@
  */
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
+import { Badge } from '../../components/ui/feedback';
 import { cn } from '../../lib/format';
 
 const DAY = 86_400_000;
@@ -475,5 +476,102 @@ export function DependencyMap({
           })}
       </ul>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Agenda: the same stored dates as the timeline, read top to bottom by date. On a phone this
+// replaces sideways scrolling; the timeline stays one tap away.
+
+export interface AgendaItem extends TimelineMarker {
+  /** The milestone (or "No milestone") the item belongs to. */
+  group: string;
+}
+
+export interface AgendaDay {
+  date: string;
+  items: AgendaItem[];
+}
+
+/** Every marker of every row, grouped by due date, earliest first. Nothing is added or dropped. */
+export function agendaDays(rows: TimelineRow[]): AgendaDay[] {
+  const items = rows
+    .flatMap((r) => r.markers.map((m) => ({ ...m, group: r.name })))
+    .sort(
+      (a, b) =>
+        ms(a.date) - ms(b.date) ||
+        (a.kind === b.kind ? 0 : a.kind === 'milestone' ? -1 : 1) ||
+        a.label.localeCompare(b.label),
+    );
+  const days: AgendaDay[] = [];
+  for (const it of items) {
+    const last = days.at(-1);
+    if (last && last.date === it.date) last.items.push(it);
+    else days.push({ date: it.date, items: [it] });
+  }
+  return days;
+}
+
+const STATE_TEXT: Record<TimelineMarker['state'], string> = {
+  done: 'Done',
+  open: 'Open',
+  late: 'Past due',
+  blocked: 'Blocked',
+};
+const STATE_TONE = {
+  done: 'success',
+  open: 'neutral',
+  late: 'danger',
+  blocked: 'warning',
+} as const;
+
+const longDay = (d: string) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+
+export function Agenda({ rows, today }: { rows: TimelineRow[]; today: string }) {
+  const days = agendaDays(rows);
+  if (days.length === 0)
+    return <p className="text-sm text-muted">Nothing on this plan has a due date yet.</p>;
+  return (
+    <ol className="flex flex-col gap-4">
+      {days.map((d) => (
+        <li key={d.date}>
+          <h3 className="mb-1.5 flex items-baseline gap-2 text-[13px] font-semibold text-ink">
+            <time dateTime={d.date}>{longDay(d.date)}</time>
+            {d.date === today ? (
+              <span className="text-xs font-medium text-primary">Today</span>
+            ) : null}
+          </h3>
+          <ul className="flex flex-col divide-y divide-border rounded-md border border-border bg-bg">
+            {d.items.map((it) => (
+              <li key={it.id} className="flex min-h-11 items-center gap-3 px-3 py-2">
+                <span
+                  aria-hidden
+                  className={cn(
+                    'size-2.5 shrink-0 border-2 border-ink/70',
+                    it.kind === 'milestone' ? 'rotate-45' : 'rounded-full',
+                  )}
+                  style={{ background: MARKER_FILL[it.state] }}
+                />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="break-words text-sm text-text">
+                    {it.kind === 'milestone' ? <span className="sr-only">Milestone: </span> : null}
+                    {it.label}
+                  </span>
+                  <span className="break-words text-xs text-muted">{it.group}</span>
+                </span>
+                <Badge tone={STATE_TONE[it.state]}>{STATE_TEXT[it.state]}</Badge>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
   );
 }
