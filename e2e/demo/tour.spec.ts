@@ -126,7 +126,9 @@ test.describe('demo tour', () => {
     await zoomed(page);
   });
 
-  test('finance: invoices, the overdue one and the finance report', async ({
+  // The demo issues every invoice on the reset day, so none can be past due without back-dating
+  // an issue date (closure report §6). Delta's deposit is issued and unpaid instead.
+  test('finance: invoices, the unpaid deposit and the finance report', async ({
     page,
     browserName,
   }) => {
@@ -134,9 +136,14 @@ test.describe('demo tour', () => {
     await page.goto('/app/invoices');
     await expect(page.getByText('Delta Logistics').first()).toBeVisible();
     await expect(page.getByRole('link', { name: /INV-\d+ · Delta Logistics/ })).toBeVisible();
-    await expect(
-      page.getByText('Overdue', { exact: true }).filter({ visible: true }).first(),
-    ).toBeVisible();
+    for (const status of ['Paid', 'Partly paid', 'Issued', 'Draft']) {
+      await expect(
+        page.getByText(status, { exact: true }).filter({ visible: true }).first(),
+      ).toBeVisible();
+    }
+    await expect(page.getByText('Overdue', { exact: true }).filter({ visible: true })).toHaveCount(
+      0,
+    );
     await noSeriousA11y(page);
     await widths(page, 'invoices', browserName);
     await zoomed(page);

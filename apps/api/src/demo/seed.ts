@@ -930,7 +930,7 @@ export async function seedDemo(
     });
   }
 
-  // 13. Invoices (5): paid, partly paid, overdue, issued and a draft.
+  // 13. Invoices (5): paid, partly paid, two issued and a draft.
   async function invoice(
     pi: number,
     lines: Array<[string, string, string]>,
