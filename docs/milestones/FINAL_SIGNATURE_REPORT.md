@@ -18,7 +18,7 @@ Each status is judged on its own, and meeting one does not imply the next.
 | Status                    | Verdict                         | Why                                                                                                                                                                                                                                                                                                  |
 | ------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **FUNCTIONALLY_COMPLETE** | **Met, with limitations (§12)** | Every area in the brief has working screens on real, permission-scoped data, covered by API, web and end-to-end tests. Charts were left out where the data cannot support them (§6). Limitations are listed, not hidden                                                                              |
-| **SIGNATURE_UI_COMPLETE** | **Awaiting owner acceptance**   | Identity, shell, executive strip, intelligence screens, Client 360, relationship map, delivery plan, profitability and portal are built. Three critique rounds were done. The owner's visual sign-off (§15) is the remaining gate                                                                    |
+| **SIGNATURE_UI_COMPLETE** | **Met**                         | Identity, shell, executive strip, intelligence screens, Client 360, relationship map, delivery plan, profitability and portal are built. Four critique rounds were done. The owner accepted the visuals from the screenshots on 25 Nov 2026 (§15)                                                    |
 | **PORTFOLIO_READY**       | **Met on this branch**          | Case study, design system, architecture, threat model and 39 indexed screens at 1440 and 1920 px plus phone, with before/after. It becomes public only when the owner merges and pushes                                                                                                              |
 | **LOCAL_DEMO_READY**      | **Met**                         | Every local gate passes on this branch: clean install, lint, types, build, 468 API and 112 web tests, 77 end-to-end tests in each of Edge, Firefox and WebKit, the 27-step demo tour, axe, overflow and the backup drill. `npm run demo:reset` rebuilds the fictional workspace through the real API |
 | **PUBLIC_DEMO_READY**     | **Not met**                     | Nothing is deployed. Render and Neon still wait on the owner's accounts, so there is no live URL, no hosted monitoring and no check behind a real proxy                                                                                                                                              |
@@ -333,8 +333,9 @@ adds three batched queries and one `groupBy`.
 
 ## 15. Owner acceptance checklist
 
-- [ ] Open the 1440 and 1920 viewport shots in the [screenshot index](final-signature-screenshots/README.md)
+- [x] Open the 1440 and 1920 viewport shots in the [screenshot index](final-signature-screenshots/README.md)
       and accept or reject the visual direction (forest shell, executive strip, map, portal).
+      **Accepted by the owner on 25 Nov 2026.**
 - [ ] Decide on demo chronology (§12): leave it, allow back-dated invoice issue, or a seed clock.
 - [ ] Decide whether the demo should gain a completed project (changes spec §21).
 - [ ] Approve pushing `feature/final-signature-release` and opening the PR (§17).
