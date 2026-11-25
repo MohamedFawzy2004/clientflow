@@ -13,6 +13,7 @@ import { DemoClient } from '../src/demo/client.js';
 import { DEMO_DOMAIN, type DemoCredential } from '../src/demo/seed.js';
 import { wipeDemo } from '../src/demo/wipe.js';
 import { loadEnv } from '../src/config/env.js';
+import { agencyToday, formatDateOnly } from '../src/lib/agency-time.js';
 import {
   CSRF_SECRET,
   makeApp,
@@ -138,6 +139,45 @@ describe('demo seed (through the real API)', () => {
     ).toBeGreaterThan(0);
     const agencies = await db.agency.findMany();
     expect(agencies.map((a) => [a.slug === 'old-demo', a.isDemo])).toEqual([[false, true]]);
+  });
+
+  it('keeps invoice chronology possible: nothing due or paid before it was issued', async () => {
+    const agency = await db.agency.findFirstOrThrow({ where: { isDemo: true } });
+    const tz = agency.timezone;
+    const today = agencyToday(new Date(), tz);
+    const issued = await db.invoice.findMany({
+      where: { issuedOn: { not: null } },
+      include: { payments: true },
+    });
+    expect(issued.length).toBe(4);
+    for (const inv of issued) {
+      const issuedOn = formatDateOnly(inv.issuedOn!);
+      expect(issuedOn).toBe(agencyToday(inv.issuedAt!, tz));
+      expect(formatDateOnly(inv.dueOn) >= issuedOn, `${inv.number} due before issue`).toBe(true);
+      for (const p of inv.payments) {
+        const on = formatDateOnly(p.receivedOn);
+        expect(on >= issuedOn, `${inv.number} paid before issue`).toBe(true);
+        expect(on <= today, `${inv.number} paid in the future`).toBe(true);
+      }
+    }
+  });
+
+  it('keeps invoice money consistent: paid amounts and status follow the payments', async () => {
+    const invoices = await db.invoice.findMany({ include: { payments: true } });
+    for (const inv of invoices) {
+      const paid = inv.payments.reduce(
+        (n, p) => (p.kind === 'REVERSAL' ? n - p.amountMinor : n + p.amountMinor),
+        0n,
+      );
+      expect(inv.paidMinor, String(inv.number ?? inv.id)).toBe(paid);
+      // One currency per invoice: every payment is in the invoice's currency.
+      expect(inv.payments.every((p) => p.currency === inv.currency)).toBe(true);
+      if (inv.status === 'PAID') expect(paid).toBe(inv.totalMinor);
+      if (inv.status === 'PARTIALLY_PAID') {
+        expect(paid > 0n && paid < inv.totalMinor).toBe(true);
+      }
+      if (inv.status === 'ISSUED' || inv.status === 'DRAFT') expect(paid).toBe(0n);
+    }
   });
 
   it('uses only fictional .test addresses and strong, unique passwords', async () => {

@@ -220,11 +220,14 @@ the first column from the "Explore the demo" panel.
 | Client  | Portal → a project                                      | Schedule line from start to due date with milestones and today                             |
 | Client  | Portal home (`/portal`)                                 | What waits on the client, milestone progress, open balance per currency                    |
 
-The demo data is dated in November 2026, so monthly trends show mostly empty months. That is the
-data, not a rendering fault. The workflows stamp records with "now" while people enter start, due
-and payment dates, so a few demo records read out of order (a project starting before the deal
-was won; one invoice due before it was issued). The Nile Bakery plan shows 12 stored task
-dependencies, led by the blocked pickup-slot task.
+The demo is built on the day of each reset, so monthly trends show mostly empty earlier months.
+That is the data, not a rendering fault. Invoices are issued on the reset day: every due date is
+on or after that day and every payment is received that day, so nothing is due or paid before it
+was issued (`demo.test.ts` checks this, and that paid amounts and statuses match the payments).
+Projects still start three weeks before the reset day while their deals are won and converted on
+it, because the API stamps those events with "now"; see `docs/milestones/FINAL_CLOSURE_REPORT.md`
+§6 for why that and a completed project need a demo clock. The Nile Bakery plan shows 12 stored
+task dependencies, led by the blocked pickup-slot task.
 
 ## 12. Owner decisions and steps still needed
 
