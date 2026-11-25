@@ -8,8 +8,10 @@
 - **Candidate commit:** application code at `9c45661`; the documentation commit that adds this
   report sits on top of it and changes no code.
 - **Date:** 2026-11-25. Every check below ran on one Windows 11 laptop.
-- **State:** the closure commits are **local only**. #151 on GitHub still points at `1f18bfc`.
-  #153 is open and green. Nothing was merged, pushed, tagged or released by this work (§12).
+- **State:** **released as `v0.14.0`** on 2026-11-25, after the owner approved the steps in §12.
+  #153 merged as `1700dad`, #151 merged as `261c4f2`, post-merge CI on `main` passed all 6 jobs,
+  and the tag `v0.14.0` points at `261c4f2` ([release](https://github.com/MohamedFawzy2004/clientflow/releases/tag/v0.14.0)). The figures below were measured on the
+  candidate before the push; CI then re-ran on #151 and on `main`.
 
 Every figure and screenshot comes from the **fictional demo workspace**, rebuilt through the real
 API. No real client data was used. Every performance figure is **local lab data**, not field data.
@@ -18,25 +20,25 @@ API. No real client data was used. Every performance figure is **local lab data*
 
 Each verdict stands on its own evidence. Meeting one does not imply the next.
 
-| Status      | Verdict               | Evidence                                                                                                                                                           |
-| ----------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **YES**     | FUNCTIONALLY_COMPLETE | Every feature of the signature release is present at every width; API 474, web 124, E2E 82 · 82 · 83 and the demo tour 27 passed (§5)                              |
-| **YES**     | SIGNATURE_UI_COMPLETE | Forest/Ivory tokens and the accepted signature visuals unchanged; closure changes are fixes and phone defaults only; real captures in `final-closure-screenshots/` |
-| **YES**     | DESKTOP_OPTIMIZED     | Desktop dashboard 99 (98–99), LCP 0.91 s, CLS 0.018 (§4); Gantt overlaps, dependency tooltips and list targets fixed (§8)                                          |
-| **PARTIAL** | MOBILE_OPTIMIZED      | Mobile UX: every brief item done, 0 px overflow on 108 checks (§7). Mobile performance: score 78, LCP 4.01 s, TBT 174 ms, 46 requests, **below the targets** (§4)  |
-| **YES**     | PORTFOLIO_READY       | Case study, closure report, handoff with a demo script and honest limits, real before/after screenshots                                                            |
-| **YES**     | LOCAL_DEMO_READY      | `npm run demo:reset` rebuilds the workspace through the real API; `npm run demo:tour` 27 passed in three engines                                                   |
-| **NO**      | PUBLIC_DEMO_READY     | Not deployed. Render and Neon wait on the owner's accounts; no live URL, uptime or hosted monitoring                                                               |
-| **NO**      | PRODUCTION_READY      | No pilot with real users, no external penetration test, no human screen-reader session, no field data                                                              |
-| **NO**      | RELEASE_PUBLISHED     | v0.14.0 is not tagged or published. It waits on the owner's approvals in §12                                                                                       |
+| Status      | Verdict               | Evidence                                                                                                                                                                               |
+| ----------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **YES**     | FUNCTIONALLY_COMPLETE | Every feature of the signature release is present at every width; API 474, web 124, E2E 82 · 82 · 83 and the demo tour 27 passed (§5)                                                  |
+| **YES**     | SIGNATURE_UI_COMPLETE | Forest/Ivory tokens and the accepted signature visuals unchanged; closure changes are fixes and phone defaults only; real captures in `final-closure-screenshots/`                     |
+| **YES**     | DESKTOP_OPTIMIZED     | Desktop dashboard 99 (98–99), LCP 0.91 s, CLS 0.018 (§4); Gantt overlaps, dependency tooltips and list targets fixed (§8)                                                              |
+| **PARTIAL** | MOBILE_OPTIMIZED      | Mobile UX: every brief item done, 0 px overflow on 108 checks (§7). Mobile performance: score 78, LCP 4.01 s, TBT 174 ms, 46 requests, **below the targets** (§4)                      |
+| **YES**     | PORTFOLIO_READY       | Case study, closure report, handoff with a demo script and honest limits, real before/after screenshots                                                                                |
+| **YES**     | LOCAL_DEMO_READY      | `npm run demo:reset` rebuilds the workspace through the real API; `npm run demo:tour` 27 passed in three engines                                                                       |
+| **NO**      | PUBLIC_DEMO_READY     | Not deployed. Render and Neon wait on the owner's accounts; no live URL, uptime or hosted monitoring                                                                                   |
+| **NO**      | PRODUCTION_READY      | No pilot with real users, no external penetration test, no human screen-reader session, no field data                                                                                  |
+| **YES**     | RELEASE_PUBLISHED     | Tag `v0.14.0` on `261c4f2` and the GitHub [release](https://github.com/MohamedFawzy2004/clientflow/releases/tag/v0.14.0), published after #151's CI and post-merge CI on `main` passed |
 
 ## 2. PR reconciliation
 
-| PR   | What                                           | State on 2026-11-25                                                                               |
-| ---- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| #152 | `effect` 3.22.1 override (GHSA-7589-6fvf-x4pw) | **Merged** into `main` as `94f7022` (by the sign-in session, at the orchestrator's request)       |
-| #153 | Sign-in layout shift in demo mode              | **Open.** Updated from `main` (`7a2ed74`); all 7 CI checks green; not merged                      |
-| #151 | Final signature release                        | **Open** at `1f18bfc`. The closure work (§11) is local on the same branch and has not been pushed |
+| PR   | What                                           | State on 2026-11-25                                                                                                    |
+| ---- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| #152 | `effect` 3.22.1 override (GHSA-7589-6fvf-x4pw) | **Merged** into `main` as `94f7022` (by the sign-in session, at the orchestrator's request)                            |
+| #153 | Sign-in layout shift in demo mode              | **Merged** as `1700dad` after all 7 CI checks passed; CI on `main` passed                                              |
+| #151 | Final signature release                        | **Merged** as `261c4f2`. Pushed at `5f97f11` (fast-forward, after a content-free merge of `main`); all 7 checks passed |
 
 The preferred order from the brief is unchanged. The local branch already contains both fixes
 (`5b158b4` merges the updated #153 branch, which carries `main` at `94f7022`), so the candidate
@@ -159,7 +161,7 @@ Run on the candidate unless a row says otherwise. Commands are the repository's 
 | 8   | `npm audit --omit=dev --audit-level=high`                     | **0 vulnerabilities**                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | 9   | gitleaks v8.28.0, `origin/main..HEAD`                         | **No leaks** (29 commits scanned)                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 10  | Security review of the closure diff (`security-review` skill) | **No high or medium findings.** Lead sources run under `contactReadScope` and only for roles with contact access; won counts sit inside `dealReadScope`; query keys are per user; no `dangerouslySetInnerHTML`; the seed changes no production rule                                                                                                                                                                                                                 |
-| 11  | CodeQL                                                        | **NOT RUN locally**; runs in CI after the push                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 11  | CodeQL                                                        | **Not run locally. Passed in CI** on #151 (`5f97f11`) and on `main` (`261c4f2`)                                                                                                                                                                                                                                                                                                                                                                                     |
 | 12  | axe (WCAG 2.2 AA rules)                                       | **0 violations** on 34 runs: 17 screens at 1440 and 360 px, including both plan views and the deferred dashboard sections                                                                                                                                                                                                                                                                                                                                           |
 | 13  | Keyboard · reduced motion · chart tables                      | **8/8** keyboard paths; reduced motion honoured (transition 0.14 s → 0.00001 s); every chart has a table, 0 unnamed SVGs                                                                                                                                                                                                                                                                                                                                            |
 | 14  | Overflow and touch                                            | **0 px** on 108 page-width checks at 320–768 px; 0 elements escaping; 1 small-target report, a false positive (§7)                                                                                                                                                                                                                                                                                                                                                  |
@@ -310,7 +312,10 @@ from #152 and #153.
 
 ## 12. Approvals needed from the owner
 
-Nothing below has been done. Each step needs the owner's explicit approval, in this order:
+**Done.** The owner approved every step ("Approve all steps") and they ran in this order on
+2026-11-25. Results: #153 → `1700dad`; branch pushed `1f18bfc..5f97f11`; #151 → `261c4f2` after
+all 7 checks passed; post-merge CI on `main` passed all 6 jobs; tag `v0.14.0` on `261c4f2` and
+the GitHub [release](https://github.com/MohamedFawzy2004/clientflow/releases/tag/v0.14.0); records updated in this commit. The steps as approved:
 
 1. **Merge #153** (`fix/login-demo-cls`) into `main`. It is already updated from `main` and all
    7 CI checks are green.
@@ -331,7 +336,7 @@ the open Dependabot majors, which must not be merged automatically.
 - **Android Chrome on a real device: NOT RUN.** Phones were emulated in Edge and Playwright.
 - **A human screen-reader session: NOT RUN.** axe, keyboard paths and the table and list
   equivalents are automated checks, not a substitute.
-- **CodeQL: NOT RUN locally.** It runs in CI only, so it runs on #151 after the push (§12 step 2).
+- **CodeQL: not run locally.** It ran in CI after the push and passed on #151 and on `main`.
 - **Field Core Web Vitals: none.** Nothing is deployed, so every performance figure is lab data.
 - **Real-ClamAV upload test:** skipped in the API suite without `CLAMAV_TEST_HOST`, as on `main`.
 - **Hosted deployment, real email, load tests, external penetration test: NOT RUN.**
