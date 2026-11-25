@@ -616,3 +616,17 @@ The redesigned screens need a relationship graph, sales and finance trends, a de
 - **Stated rules, not predictions.** Stage age uses the last `deal.stage_changed` activity, or the creation time for a deal that never moved (until P1 adds a stored stage-entry time). Workload is counts and estimates only: there is no capacity model, so the API never says "overloaded". Milestones have due dates only, so the timeline draws each milestone as the window from the previous due date.
 - **Profitability (added later in the release).** `GET /insights/finance` also returns `profitability` for `finance.view` only (`null` otherwise). For each non-archived project it gives the budget (which already includes accepted change requests), the original budget, logged time costed at each person's dated rate (`costOfEntries`, shared with the project finance view), and the estimated margin. Everything stays in the project's currency, and rates in another currency are left out and lower `costCompletenessPercent`. It is labelled an estimate, not profit.
 - **Tests:** `intelligence.test.ts` (rep vs manager vs owner, PM vs finance, member vs manager, other agency, invalid IDs and query keys) and five new rows in the permission matrix, which the route inventory checks.
+
+## ADR-073 — The dashboard reads its sales series from `/insights/sales` (ACCEPTED, final closure)
+
+On a phone the signed-in dashboard made about 28 API calls. The won-by-month panel paged through `GET /deals?status=WON`, and the lead-sources panel ran one count query per source (`useQueries`). The executive strip already loaded `GET /insights/sales?months=12`. The final closure brief allowed one consolidated, permission-scoped read only if the gain was material, it reused the existing service and authorization logic, and it came with tests and docs.
+
+- **Two additive fields on the existing route**, with no new route, permission or migration:
+  - `monthly[].wonCounts`: the number of won deals per currency, next to `wonTotals`. It is counted from the same deal set, which is already limited by `dealReadScope`.
+  - `leadSources[]`: `{ source, leads, clients }` per contact source. This is one `groupBy` under `contactReadScope` (agency, unarchived, and own contacts for `contacts.read.own`). It runs only when the role has `contacts.read.all` or `contacts.read.own`; otherwise the field is `[]`. Only source names and integer counts are returned: no contact names, IDs or money.
+- **One cached query.** The strip and both panels use `useSalesIntelligence(12)`. Its query key starts with the user ID, so users never share a cache entry. The browser no longer pages through won deals, so the old "first 500 deals" note is gone with the cap.
+- **Measured gain:** about 28 API calls on the mobile dashboard before this change, 13 after (local Lighthouse, same data). The full table is in `docs/milestones/FINAL_CLOSURE_REPORT.md` §4.
+- **Tests:** `intelligence.test.ts` covers won counts per currency, and lead sources for a manager vs a rep, archived and sourceless contacts, and another agency. `dashboard-insights.test.tsx` covers the client-side series.
+- **Rejected:**
+  - A new `/dashboard` bundle endpoint: it would duplicate scope logic that `/insights/sales` already has.
+  - Keeping the client-side joins: they were the request cost being removed, and they hid deals past the page cap.

@@ -1,0 +1,506 @@
+[
+  {
+    "viewport": "1440x900",
+    "name": "02-dashboard",
+    "path": "/app/dashboard",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "03-relationship-map",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "04-relationship-selected-node",
+    "path": "(same page)",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "05-client-360",
+    "path": "/app/leads/01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "06-pipeline",
+    "path": "/app/deals",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "07-sales-insights",
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "08-project-portfolio",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "09-gantt",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "10-dependency-map",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "11-workload",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "12-financial-intelligence",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "13-profitability-waterfall",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "14-invoices",
+    "path": "/app/invoices",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "15-portal",
+    "path": "/portal",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "01-login",
+    "path": "/login",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "02-dashboard",
+    "path": "/app/dashboard",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "03-relationship-map",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "04-relationship-selected-node",
+    "path": "(same page)",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "05-client-360",
+    "path": "/app/leads/01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "06-pipeline",
+    "path": "/app/deals",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "07-sales-insights",
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "08-project-portfolio",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "09-gantt",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "10-dependency-map",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "11-workload",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "12-financial-intelligence",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "13-profitability-waterfall",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "14-invoices",
+    "path": "/app/invoices",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "15-portal",
+    "path": "/portal",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "1920x1080",
+    "name": "01-login",
+    "path": "/login",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "02-dashboard",
+    "path": "/app/dashboard",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "03-relationship-map",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "04-relationship-selected-node",
+    "path": "(same page)",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "04b-relationship-list",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "05-client-360",
+    "path": "/app/leads/01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "06-pipeline",
+    "path": "/app/deals",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "06b-pipeline-list",
+    "path": "/app/deals?view=list",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "07-sales-insights",
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "08-project-portfolio",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "09-gantt",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "09b-plan-agenda",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "10-dependency-map",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "11-workload",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "12-financial-intelligence",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "13-profitability-waterfall",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "14-invoices",
+    "path": "/app/invoices",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "15-portal",
+    "path": "/portal",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "360x800",
+    "name": "01-login",
+    "path": "/login",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "02-dashboard",
+    "path": "/app/dashboard",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "03-relationship-map",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "04-relationship-selected-node",
+    "path": "(same page)",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "04b-relationship-list",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "05-client-360",
+    "path": "/app/leads/01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "06-pipeline",
+    "path": "/app/deals",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "06b-pipeline-list",
+    "path": "/app/deals?view=list",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "07-sales-insights",
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "08-project-portfolio",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "09-gantt",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "09b-plan-agenda",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "10-dependency-map",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "11-workload",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "12-financial-intelligence",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "13-profitability-waterfall",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "14-invoices",
+    "path": "/app/invoices",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "15-portal",
+    "path": "/portal",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "01-login",
+    "path": "/login",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "02-dashboard",
+    "path": "/app/dashboard",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "03-relationship-map",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "04-relationship-selected-node",
+    "path": "(same page)",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "04b-relationship-list",
+    "path": "/app/relationships?focus=01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "05-client-360",
+    "path": "/app/leads/01a21286-b15c-777f-9209-e55bf1df70a6",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "06-pipeline",
+    "path": "/app/deals",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "06b-pipeline-list",
+    "path": "/app/deals?view=list",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "07-sales-insights",
+    "path": "/app/deals?view=insights",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "08-project-portfolio",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "09-gantt",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "09b-plan-agenda",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "10-dependency-map",
+    "path": "/app/projects/01a21286-bb45-716f-9b2d-22456579684e/plan?view=timeline",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "11-workload",
+    "path": "/app/delivery",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "12-financial-intelligence",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "13-profitability-waterfall",
+    "path": "/app/reports/finance",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "14-invoices",
+    "path": "/app/invoices",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "15-portal",
+    "path": "/portal",
+    "overflowPx": 0
+  },
+  {
+    "viewport": "430x932",
+    "name": "01-login",
+    "path": "/login",
+    "overflowPx": 0
+  }
+]

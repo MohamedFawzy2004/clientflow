@@ -98,6 +98,11 @@ failed and what was not run, is the [Release Quality Passport](27_RELEASE_QUALIT
 | Lighthouse (lab, mobile)      | Sign-in 91; dashboard 86, below the 90 target (desktop 99)                                                                                                                                               |
 | What the audit caught         | A demo-guard bypass by letter case or trailing slash (found by an automated PR security review), a WebKit-only race in a test helper, and a route missing from the route inventory: all fixed with tests |
 
+**v0.14.0 candidate (2026-11-25, local, not yet merged):** API 474 passed (1 skipped), web 124,
+end-to-end 82 · 82 · 83 in Edge, Firefox and WebKit, demo tour 27 passed. Lighthouse (lab,
+median of 5): dashboard 78 on mobile, still below the 90 target, and 99 on desktop. The full
+record is the [closure report](milestones/FINAL_CLOSURE_REPORT.md).
+
 ## Limits, stated plainly
 
 - **Not in customer use and not deployed.** Local production-like staging (HTTPS, Postgres, ClamAV) is

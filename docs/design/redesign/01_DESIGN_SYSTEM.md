@@ -144,6 +144,8 @@ section headings inside scope documents, which were kept.
 | Charts                                                     | `components/charts/charts.tsx`          | See above                                                                                                                                                                                      |
 | Executive strip                                            | `features/dashboard/ExecutiveStrip.tsx` | `dl` of tiles: label (link to the records), value per currency, comparison or note, rule. Tiles a role cannot read are not rendered; columns balance to 3 or 4                                 |
 | Portal schedule line                                       | `features/portal/PortalProjectPage.tsx` | Start to due date with milestone dots (filled done, violet in progress, hollow planned, red past date) and today; hidden from screen readers because the milestone list carries the same facts |
+| `DeferredSection`                                          | `components/ui/feedback.tsx`            | Holds a sized skeleton until the section is about 200 px from view (IntersectionObserver), or on idle as a fallback. Used for the dashboard's lower sections, so the strip paints first        |
+| Timeline, `Agenda`                                         | `features/intelligence/timeline.tsx`    | Markers closer than about a day or two are drawn once as a count chip whose tooltip lists each item. `Agenda` lists the same dated items by day, with state in words; phones open on it        |
 
 ## Responsive layout
 
@@ -152,3 +154,10 @@ section headings inside scope documents, which were kept.
   icon rail. From 1024 px the full labelled navigation shows.
 - **360 px.** Every screen was captured at 360 px with zero page-level horizontal overflow. Wide
   tables and the kanban scroll inside their own containers.
+- **Phone defaults (final closure).** Below 640 px the relationship map opens on its list and the
+  project plan on its agenda. The map and the timeline are one tap away, so no feature is removed.
+  The map zooms with its buttons or a two-finger pinch, and pans by dragging once zoomed.
+  Unzoomed, a one-finger swipe scrolls the page. Below 1280 px, where the "Selected" panel
+  stacks under the map, a non-modal bottom sheet names the selection, with Details and Clear.
+- **Touch targets.** Controls are at least 40 px tall below 768 px (`h-10 md:h-8` and similar).
+  Inline list links on the map are at least 24 px (WCAG 2.2 target size).

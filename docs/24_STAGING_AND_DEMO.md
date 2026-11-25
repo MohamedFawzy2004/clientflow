@@ -208,22 +208,24 @@ The compose file sets everything else (production mode, origin, ClamAV, proxy co
 These screens use the same fictional workspace (`npm run demo:reset`). Sign in with the role in
 the first column from the "Explore the demo" panel.
 
-| Role    | Where                                                   | What it shows                                                                              |
-| ------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Owner   | Dashboard (`/app/dashboard`)                            | Executive strip: pipeline, won, win rate, cash, outstanding, margin, delivery              |
-| Owner   | Deals → Insights (`/app/deals?view=insights`)           | Funnel by stage, time in stage, won value per currency, lead sources                       |
-| Owner   | Relationship map, or a client's "Relationship map" link | Contact, organization, deals, proposals, projects, invoices, deliverables                  |
-| Sales   | Deals → Insights                                        | The same view, limited to the rep's own deals                                              |
-| PM      | Delivery portfolio (`/app/delivery`)                    | Timeline from stored dates, task health, open tasks per person by due week                 |
-| PM      | A project → Plan                                        | Milestone windows, task due dates, stored task dependencies as a map and list              |
-| Finance | Finance report (`/app/reports/finance`)                 | Invoiced and received per month, per currency, per-project totals, estimated profitability |
-| Client  | Portal → a project                                      | Schedule line from start to due date with milestones and today                             |
-| Client  | Portal home (`/portal`)                                 | What waits on the client, milestone progress, open balance per currency                    |
+| Role    | Where                                                   | What it shows                                                                                                                    |
+| ------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Owner   | Dashboard (`/app/dashboard`)                            | Executive strip: pipeline, won, win rate, cash, outstanding, margin, delivery                                                    |
+| Owner   | Deals → Insights (`/app/deals?view=insights`)           | Funnel by stage, time in stage, won value per currency, lead sources                                                             |
+| Owner   | Relationship map, or a client's "Relationship map" link | Contact, organization, deals, proposals, projects, invoices, deliverables; list view, pinch zoom on a phone                      |
+| Sales   | Deals → Insights                                        | The same view, limited to the rep's own deals                                                                                    |
+| PM      | Delivery portfolio (`/app/delivery`)                    | Timeline from stored dates, task health, open tasks per person by due week                                                       |
+| PM      | A project → Plan                                        | Milestone windows and task due dates (same-day tasks as one count), an agenda by day, stored task dependencies as a map and list |
+| Finance | Finance report (`/app/reports/finance`)                 | Invoiced and received per month, per currency, per-project totals, estimated profitability                                       |
+| Client  | Portal → a project                                      | Schedule line from start to due date with milestones and today                                                                   |
+| Client  | Portal home (`/portal`)                                 | What waits on the client, milestone progress, open balance per currency                                                          |
 
 The demo is built on the day of each reset, so monthly trends show mostly empty earlier months.
 That is the data, not a rendering fault. Invoices are issued on the reset day: every due date is
 on or after that day and every payment is received that day, so nothing is due or paid before it
 was issued (`demo.test.ts` checks this, and that paid amounts and statuses match the payments).
+For the same reason no demo invoice is overdue: that would need a back-dated issue date. Delta's
+deposit is issued and unpaid instead, and its project is on hold waiting for it.
 Projects still start three weeks before the reset day while their deals are won and converted on
 it, because the API stamps those events with "now"; see `docs/milestones/FINAL_CLOSURE_REPORT.md`
 §6 for why that and a completed project need a demo clock. The Nile Bakery plan shows 12 stored

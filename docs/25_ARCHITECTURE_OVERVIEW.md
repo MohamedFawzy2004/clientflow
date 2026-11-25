@@ -135,7 +135,7 @@ records and add no tables or migrations:
 | Endpoint                         | Permission (any of)                          | What it returns                                                                                                |
 | -------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/contacts/:id/graph` | `contacts.read.all`, `contacts.read.own`     | The contact's linked records per kind, each within its own scope                                               |
-| `GET /api/v1/insights/sales`     | `dashboard.sales`                            | Stage funnel, time in stage, monthly won/lost, lead sources                                                    |
+| `GET /api/v1/insights/sales`     | `dashboard.sales`                            | Stage funnel, time in stage, monthly won/lost value and count, lead sources (contact scope, ADR-073)           |
 | `GET /api/v1/insights/finance`   | `invoices.read.all`, `invoices.read.project` | Invoiced and received per month and per project, per currency; estimated profitability for `finance.view` only |
 | `GET /api/v1/insights/delivery`  | `delivery.work`                              | Open projects, task health, open tasks per person by due week                                                  |
 | `GET /api/v1/projects/:id/plan`  | `delivery.work`                              | Milestones, dated tasks and stored task dependencies                                                           |
