@@ -45,6 +45,46 @@ const MARKER_FILL: Record<TimelineMarker['state'], string> = {
   blocked: 'var(--color-violet)',
 };
 
+const STATE_RANK: Record<TimelineMarker['state'], number> = {
+  late: 3,
+  blocked: 2,
+  open: 1,
+  done: 0,
+};
+
+export interface MarkerCluster {
+  id: string;
+  /** Date the cluster is drawn at (the earliest of its markers). */
+  date: string;
+  markers: TimelineMarker[];
+}
+
+/**
+ * Markers that would be drawn on top of each other (same day, or closer than `gap` of the range)
+ * become one cluster, drawn once with a count; its tooltip and the table list every item.
+ */
+export function clusterMarkers(
+  markers: TimelineMarker[],
+  span: number,
+  gap = 0.015,
+): MarkerCluster[] {
+  const sorted = [...markers].sort((a, b) => ms(a.date) - ms(b.date) || a.id.localeCompare(b.id));
+  const out: MarkerCluster[] = [];
+  for (const m of sorted) {
+    const last = out.at(-1);
+    if (last && (ms(m.date) - ms(last.markers.at(-1)!.date)) / span < gap) last.markers.push(m);
+    else out.push({ id: m.id, date: m.date, markers: [m] });
+  }
+  return out;
+}
+
+/** The cluster takes the most urgent state of its items: past due, then blocked, open, done. */
+export const clusterState = (c: MarkerCluster) =>
+  c.markers.reduce(
+    (w, m) => (STATE_RANK[m.state] > STATE_RANK[w] ? m.state : w),
+    'done' as TimelineMarker['state'],
+  );
+
 export function Timeline({
   rows,
   today,
@@ -136,19 +176,43 @@ export function Timeline({
                       }}
                     />
                   ) : null}
-                  {r.markers.map((m) => (
-                    <span
-                      key={m.id}
-                      title={`${m.label}, ${shortDay(m.date)}`}
-                      className={cn(
-                        'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 border-2',
-                        m.kind === 'milestone'
-                          ? 'size-3.5 rotate-45 rounded-[2px] border-ink'
-                          : 'size-2.5 rounded-full border-ink/80',
-                      )}
-                      style={{ left: x(m.date), background: MARKER_FILL[m.state] }}
-                    />
-                  ))}
+                  {clusterMarkers(r.markers, span).map((c) => {
+                    const m = c.markers[0]!;
+                    if (c.markers.length === 1) {
+                      return (
+                        <span
+                          key={c.id}
+                          title={`${m.label}, ${shortDay(m.date)}`}
+                          className={cn(
+                            'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 border-2',
+                            m.kind === 'milestone'
+                              ? 'size-3.5 rotate-45 rounded-[2px] border-ink'
+                              : 'size-2.5 rounded-full border-ink/80',
+                          )}
+                          style={{ left: x(m.date), background: MARKER_FILL[m.state] }}
+                        />
+                      );
+                    }
+                    // Several items due on (nearly) the same day: one counted marker, not a pile.
+                    const state = clusterState(c);
+                    return (
+                      <span
+                        key={c.id}
+                        data-cluster={c.markers.length}
+                        title={c.markers.map((i) => `${i.label}, ${shortDay(i.date)}`).join('; ')}
+                        className={cn(
+                          'absolute top-1/2 grid h-[18px] min-w-[18px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 px-1 text-[10px] font-semibold leading-none tabular-nums',
+                          c.markers.some((i) => i.kind === 'milestone')
+                            ? 'border-ink'
+                            : 'border-ink/80',
+                          state === 'open' ? 'text-ink' : 'text-white',
+                        )}
+                        style={{ left: x(c.date), background: MARKER_FILL[state] }}
+                      >
+                        {c.markers.length}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -172,6 +236,12 @@ export function Timeline({
             style={{ background: MARKER_FILL.late }}
           />
           Past due, not done
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <span className="grid h-3.5 min-w-3.5 place-items-center rounded-full border-2 border-ink/80 bg-white text-[8px] font-semibold leading-none text-ink">
+            2
+          </span>
+          Several due within a day or two (hover for each)
         </li>
         <li className="inline-flex items-center gap-1.5">
           <span className="h-3 w-0.5 bg-ink/70" /> Today
@@ -342,6 +412,8 @@ export function DependencyMap({
             const st = STATUS_STYLE[t.status] ?? STATUS_STYLE.TODO!;
             return (
               <g key={id} transform={`translate(${p.x} ${p.y})`}>
+                {/* Names are clipped to fit the box; hovering shows the whole name. */}
+                <title>{`${t.title} (${st.label})`}</title>
                 <rect
                   width={W}
                   height={H}

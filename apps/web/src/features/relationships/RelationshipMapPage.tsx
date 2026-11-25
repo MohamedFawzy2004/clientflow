@@ -480,14 +480,18 @@ function GraphList({
     <span className="flex flex-wrap items-baseline gap-x-2">
       <span className="text-xs text-muted">{linkLabel(via, n.id)}</span>
       {n.href ? (
-        <Link to={n.href} className="font-medium text-primary-strong hover:underline">
+        // min-h-6: a 24 px touch target in the stacked list (WCAG 2.5.8; rows sat 20 px tall).
+        <Link
+          to={n.href}
+          className="inline-flex min-h-6 items-center font-medium text-primary-strong hover:underline"
+        >
           {n.label}
         </Link>
       ) : (
         <button
           type="button"
           onClick={() => onSelect(n.id)}
-          className="font-medium text-ink hover:underline"
+          className="inline-flex min-h-6 items-center font-medium text-ink hover:underline"
         >
           {n.label}
         </button>
