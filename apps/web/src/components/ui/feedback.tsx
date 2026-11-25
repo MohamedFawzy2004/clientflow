@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CircleCheck, Info, RefreshCw, TriangleAlert } from 'lucide-react';
 import { cn } from '../../lib/format';
 import { Button } from './button';
@@ -156,6 +156,50 @@ export function Banner({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Mounts `children` once the placeholder comes within 200 px of the viewport, or once the
+ * browser is idle after the first screen, whichever comes first. Below-the-fold dashboard sections
+ * use it so their requests and chunks do not compete with the first screen on a phone; nothing is
+ * removed, it only arrives a moment later. Without IntersectionObserver it renders at once.
+ */
+export function DeferredSection({
+  children,
+  placeholderClassName = 'h-80',
+}: {
+  children: ReactNode;
+  placeholderClassName?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(() => typeof IntersectionObserver === 'undefined');
+  useEffect(() => {
+    if (shown || !ref.current) return;
+    const show = () => setShown(true);
+    const io = new IntersectionObserver(
+      (entries) => entries.some((e) => e.isIntersecting) && show(),
+      // Start a little before it scrolls into view, so it is usually ready on arrival.
+      { rootMargin: '0px 0px 200px 0px' },
+    );
+    io.observe(ref.current);
+    // Fallback: once the browser is idle after the first screen, load it anyway, so it is ready
+    // before the person scrolls and anything that reads the page (tests, assistive tech) finds it.
+    const idle =
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(show, { timeout: 2000 })
+        : window.setTimeout(show, 1200);
+    return () => {
+      io.disconnect();
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
+  }, [shown]);
+  if (shown) return <>{children}</>;
+  return (
+    <div ref={ref}>
+      <Skeleton className={cn('w-full rounded-lg', placeholderClassName)} />
     </div>
   );
 }

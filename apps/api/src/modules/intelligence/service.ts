@@ -281,6 +281,7 @@ export async function getSalesIntelligence(
     lost: 0,
     created: 0,
     totals: new Map<string, bigint>(),
+    counts: new Map<string, number>(),
   }));
   const byMonth = new Map(monthly.map((m) => [m.month, m]));
   for (const d of recent) {
@@ -292,6 +293,7 @@ export async function getSalesIntelligence(
     if (d.status === 'WON') {
       closed.won += 1;
       addTo(closed.totals, d.currency, d.amountMinor);
+      closed.counts.set(d.currency, (closed.counts.get(d.currency) ?? 0) + 1);
     } else if (d.status === 'LOST') closed.lost += 1;
   }
 
@@ -320,10 +322,37 @@ export async function getSalesIntelligence(
     sources.set(key, s);
   }
 
+  // Lead sources, counted on contacts rather than deals, inside the contact read scope. One grouped
+  // query replaces a count request per source; roles without contact access get an empty list.
+  const contactAccess =
+    can(actor.role, 'contacts.read.all') || can(actor.role, 'contacts.read.own');
+  const grouped = contactAccess
+    ? await db.contact.groupBy({
+        by: ['source', 'lifecycle'],
+        where: { AND: [contactReadScope(actor), { source: { not: null } }] },
+        _count: { _all: true },
+      })
+    : [];
+  const leadSources = new Map<string, { leads: number; clients: number }>();
+  for (const g of grouped) {
+    if (!g.source) continue;
+    const row = leadSources.get(g.source) ?? { leads: 0, clients: 0 };
+    row.leads += g._count._all;
+    if (g.lifecycle === 'CUSTOMER') row.clients += g._count._all;
+    leadSources.set(g.source, row);
+  }
+
   return {
     months: query.months,
     stages,
-    monthly: monthly.map(({ totals, ...m }) => ({ ...m, wonTotals: toRecord(totals) })),
+    leadSources: [...leadSources.entries()]
+      .map(([source, r]) => ({ source, ...r }))
+      .sort((a, b) => b.leads - a.leads || a.source.localeCompare(b.source)),
+    monthly: monthly.map(({ totals, counts, ...m }) => ({
+      ...m,
+      wonTotals: toRecord(totals),
+      wonCounts: Object.fromEntries([...counts.entries()].sort(([a], [b]) => a.localeCompare(b))),
+    })),
     sources: [...sources.entries()]
       .map(([source, s]) => ({
         source: source || null,

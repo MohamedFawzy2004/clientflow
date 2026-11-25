@@ -108,6 +108,8 @@ export interface SalesIntelligence {
       lost: number;
       created: number;
       wonTotals: Record<string, string>;
+      /** Deals won in the month per currency; the keys match `wonTotals`. */
+      wonCounts: Record<string, number>;
     }
   >;
   sources: Array<{
@@ -117,6 +119,12 @@ export interface SalesIntelligence {
     lost: number;
     wonTotals: Record<string, string>;
   }>;
+  /**
+   * Contacts per lead source inside the contact read scope (unarchived, same rule as the contacts
+   * list filters): `leads` counts every contact with that source, `clients` those whose lifecycle is
+   * CUSTOMER. Empty for roles with no contact access. Sorted by leads, most first.
+   */
+  leadSources: Array<{ source: string; leads: number; clients: number }>;
 }
 
 /** GET /insights/finance: invoiced and received per month and per project, inside the invoice scope. */

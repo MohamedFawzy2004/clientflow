@@ -198,6 +198,81 @@ describe('GET /insights/sales', () => {
     expect(all.monthly.at(-1)!.created).toBe(2);
   });
 
+  it('keeps won value and won count per currency in the month the deal closed', async () => {
+    const won = async (currency: string, amountMinor: bigint) => {
+      const d = await makeDeal(db, seeded.agencyId, id('salesA'), { currency });
+      await db.deal.update({
+        where: { id: d.id },
+        data: {
+          status: 'WON',
+          closedAt: new Date(),
+          closedById: id('salesA'),
+          wonOverrideReason: 'Signed on a call',
+          amountMinor,
+        },
+      });
+    };
+    await won('EGP', 250_000n);
+    await won('EGP', 50_000n);
+    await won('USD', 70_000n);
+    const s = (await (await as('owner')).get('/api/v1/insights/sales')).body
+      .data as SalesIntelligence;
+    const current = s.monthly.at(-1)!;
+    expect(current.won).toBe(3);
+    // Never one total across currencies: each currency keeps its own sum and count.
+    expect(current.wonTotals).toEqual({ EGP: '300000', USD: '70000' });
+    expect(current.wonCounts).toEqual({ EGP: 2, USD: 1 });
+    expect(s.monthly.slice(0, -1).every((m) => Object.keys(m.wonCounts).length === 0)).toBe(true);
+  });
+
+  it('counts lead sources on contacts inside the contact scope, one entry per source', async () => {
+    const contact = (ownerKey: string, data: Record<string, unknown>) =>
+      db.contact.create({
+        data: { agencyId: seeded.agencyId, ownerId: id(ownerKey), fullName: 'Lead', ...data },
+      });
+    await contact('salesA', { source: 'REFERRAL' });
+    await contact('salesA', { source: 'REFERRAL', lifecycle: 'CUSTOMER' });
+    await contact('salesA', { source: 'WEBSITE' });
+    await contact('salesB', { source: 'WEBSITE' });
+    await contact('salesB', { source: 'WEBSITE', lifecycle: 'CUSTOMER' });
+    // Archived contacts and contacts without a source never count, as in the contacts list.
+    await contact('salesA', { source: 'EVENT', archivedAt: new Date() });
+    await contact('salesA', {});
+    // Another agency's contacts never count either.
+    const other = await db.agency.create({ data: { name: 'Other Agency', slug: 'other-agency' } });
+    const otherOwner = await db.user.create({
+      data: {
+        agencyId: other.id,
+        emailNorm: 'o@other.test',
+        name: 'O',
+        role: 'OWNER',
+        passwordHash: 'x',
+      },
+    });
+    await db.contact.create({
+      data: {
+        agencyId: other.id,
+        ownerId: otherOwner.id,
+        fullName: 'Elsewhere',
+        source: 'REFERRAL',
+      },
+    });
+
+    const all = (await (await as('manager')).get('/api/v1/insights/sales')).body
+      .data as SalesIntelligence;
+    expect(all.leadSources).toEqual([
+      { source: 'WEBSITE', leads: 3, clients: 1 },
+      { source: 'REFERRAL', leads: 2, clients: 1 },
+    ]);
+    // A rep with contacts.read.own sees only the contacts they own.
+    const mine = (await (await as('salesA')).get('/api/v1/insights/sales')).body
+      .data as SalesIntelligence;
+    expect(mine.leadSources).toEqual([
+      { source: 'REFERRAL', leads: 2, clients: 1 },
+      { source: 'WEBSITE', leads: 1, clients: 0 },
+    ]);
+  });
+
   it('validates months and refuses roles without the sales dashboard', async () => {
     expect((await (await as('owner')).get('/api/v1/insights/sales?months=2')).status).toBe(422);
     expect((await (await as('owner')).get('/api/v1/insights/sales?x=1')).status).toBe(422);
